@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DockYarp.AdminApi\DockYarp.AdminApi.csproj" />
+    <ProjectReference Include="..\DockYarp.Core\DockYarp.Core.csproj" />
+    <ProjectReference Include="..\DockYarp.Docker\DockYarp.Docker.csproj" />
+    <ProjectReference Include="..\DockYarp.Security\DockYarp.Security.csproj" />
+    <ProjectReference Include="..\DockYarp.Tls\DockYarp.Tls.csproj" />
+  </ItemGroup>
+
+</Project>

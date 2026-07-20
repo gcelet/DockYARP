@@ -1,0 +1,37 @@
+# Line-ending normalization — consistent with .editorconfig (end_of_line = crlf for code).
+# Default: normalize to LF in the repo, let Git decide on checkout.
+* text=auto
+
+# .NET code and config: CRLF (aligned with .editorconfig).
+*.cs        text eol=crlf
+*.csproj    text eol=crlf
+*.slnx      text eol=crlf
+*.sln       text eol=crlf
+*.props     text eol=crlf
+*.targets   text eol=crlf
+*.editorconfig text eol=crlf
+*.json      text eol=crlf
+*.yaml      text eol=crlf
+*.yml       text eol=crlf
+*.md        text eol=crlf
+*.ps1       text eol=crlf
+*.cmd       text eol=crlf
+*.bat       text eol=crlf
+
+# Shell scripts: must stay LF (executed on Linux, e.g. build.sh, Docker image).
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+*.dockerfile text eol=lf
+
+# Binary files: never normalized.
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.pfx       binary
+*.snk       binary
+*.zip       binary
+*.gz        binary
+*.dll       binary
+*.exe       binary
