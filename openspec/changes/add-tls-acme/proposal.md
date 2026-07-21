@@ -1,31 +1,35 @@
 ## Why
 
-DockYarp must provide HTTPS automatically for discovered hosts, like nginx-proxy + its ACME companion.
-Certificates must be obtained, stored, renewed, and served by Kestrel without downtime.
-
-> Status: **sketch** — proposal + spec intent only. Design and tasks to be detailed just-in-time when
-> this phase starts.
+DockYarp must provide HTTPS automatically for discovered hosts, like nginx-proxy + its ACME companion:
+obtain certificates, store them, renew before expiry, and serve them via SNI — all without a restart.
 
 ## What Changes
 
-- Add an ACME v2 client (HTTP-01 challenge by default) that obtains certificates for hosts carrying TLS
-  metadata (`LETSENCRYPT_HOST`/`LETSENCRYPT_EMAIL`).
-- Define a certificate storage layout (under a mounted `/certs`).
-- Add a renewal scheduler (background job) that renews before expiry.
-- Integrate certificates into Kestrel via SNI with hot reload (no restart when a cert is added/renewed).
-- Provide a default/fallback certificate so TLS handshakes for unknown hosts fail gracefully.
+- Add a **file-based certificate store** (`/certs`) that loads existing certificates at startup and accepts
+  new ones at runtime.
+- Add a **Kestrel SNI certificate selector** that serves the right certificate per host and a generated
+  **self-signed fallback** for hosts without one (so handshakes fail gracefully).
+- Add an **HTTP-01 challenge** store + middleware (`/.well-known/acme-challenge/...`).
+- Add an **`IAcmeClient` seam** (obtain a certificate for a host via HTTP-01) with a **Certes**
+  implementation, plus a **provisioning/renewal background service** that requests certificates for hosts
+  carrying TLS metadata and renews them before expiry.
 
 ## Capabilities
 
 ### New Capabilities
-- `tls-acme`: ACME v2 client, certificate storage, renewal scheduler, Kestrel SNI integration with hot
-  reload, and a default/fallback certificate.
+- `tls-acme`: certificate store, Kestrel SNI + fallback, HTTP-01 challenge, ACME client (Certes) behind a
+  seam, and a provisioning/renewal service.
 
 ### Modified Capabilities
-<!-- None: reads per-host TLS metadata from proxy-routing. -->
+<!-- None. Reads HostTlsMetadata from proxy-routing; HTTPS enforcement keeps using the EnforceHttps flag. -->
 
 ## Impact
 
-- **Code**: `src/DockYarp.Tls` + Kestrel configuration in `DockYarp.App`.
-- **Dependencies**: an ACME library (e.g. `Certes`/`ACMESharpCore`) — decision recorded in design at phase start.
-- **Upstream**: requires `add-proxy-routing-model` (TLS metadata). **Owning agent**: AG-AT.
+- **Code**: `src/DockYarp.Tls` (store, selector, fallback, challenge, `IAcmeClient` + Certes adapter,
+  provisioning service, options); Kestrel + challenge wiring in `DockYarp.App`.
+- **Dependencies**: `Certes` (CPM); `DockYarp.Tls` references the ASP.NET shared framework.
+- **Testing**: the orchestration is tested with a fake `IAcmeClient`; the real Certes network exchange with
+  the CA is integration-only (a live/Pebble ACME server), not unit-tested.
+- **Deferred**: DNS-01 challenges; wiring the cert store into `/api/certs`; switching HTTPS enforcement to a
+  real cert-availability check (stays flag-based for now).
+- **Owning agent**: AG-AT.

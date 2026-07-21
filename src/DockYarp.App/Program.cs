@@ -3,6 +3,7 @@ using DockYarp.App.ReverseProxy;
 using DockYarp.Core.Interfaces;
 using DockYarp.Core.Stores;
 using DockYarp.Security;
+using DockYarp.Tls;
 
 using OpenTelemetry.Metrics;
 
@@ -16,6 +17,16 @@ builder.Services.AddReverseProxy().LoadFromMemory([], []);
 builder.Services.AddHostedService<YarpConfigBridge>();
 builder.Services.AddDockYarpSecurity(new SecurityHeadersOptions());
 
+// TLS/ACME: certificate store, SNI, HTTP-01 challenge, and provisioning.
+TlsOptions tlsOptions = new() { ContactEmail = builder.Configuration["Tls:ContactEmail"] };
+string? certificateDirectory = builder.Configuration["Tls:CertificateDirectory"];
+if (!string.IsNullOrEmpty(certificateDirectory))
+{
+    tlsOptions.CertificateDirectory = certificateDirectory;
+}
+
+builder.Services.AddDockYarpTls(tlsOptions);
+
 // Admin API + observability.
 builder.Services.AddSingleton(new AdminApiOptions { ApiKey = builder.Configuration["AdminApi:ApiKey"] });
 builder.Services.AddSingleton<DockYarpMetrics>();
@@ -27,6 +38,9 @@ var app = builder.Build();
 
 // Create the meter eagerly so its gauges are present for the first scrape.
 _ = app.Services.GetRequiredService<DockYarpMetrics>();
+
+// ACME HTTP-01 challenge must be reachable over HTTP, before HTTPS enforcement.
+app.UseDockYarpAcmeChallenge();
 
 // Security (headers, HTTPS enforcement, Basic Auth) runs before the reverse proxy.
 app.UseDockYarpSecurity();

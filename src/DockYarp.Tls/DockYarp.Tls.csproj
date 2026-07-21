@@ -5,6 +5,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Certes" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\DockYarp.Core\DockYarp.Core.csproj" />
   </ItemGroup>
 
