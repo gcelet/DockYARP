@@ -1,16 +1,15 @@
 ## Why
 
-Operators need to inspect DockYarp's live state (routes, clusters, certificates, health) and the
-system needs to be observable in production. This exposes a protected read-only API plus metrics/logs.
-
-> Status: **sketch** — proposal + spec intent only. Design and tasks to be detailed just-in-time when
-> this phase starts.
+Operators need to inspect DockYarp's live state (routes, clusters, certificates, health) and the system
+needs to be observable in production. This exposes a protected read-only API plus Prometheus metrics.
 
 ## What Changes
 
-- Add read-only admin endpoints: `/api/routes`, `/api/clusters`, `/api/certs`, `/api/health`.
-- Protect the admin API (token or IP allowlist).
-- Add observability: structured logging and a Prometheus-style `/metrics` endpoint.
+- Add read-only admin endpoints: `/api/routes`, `/api/clusters`, `/api/certs`, `/api/health`, returning
+  **sanitized** JSON (no secrets — Basic Auth passwords are never exposed).
+- Protect the admin API with an **API key** header (`X-Api-Key`), returning 401 otherwise.
+- Add **observability**: structured logging and OpenTelemetry metrics exposed at `/metrics` in Prometheus
+  format (active routes, clusters, endpoints).
 
 ## Capabilities
 
@@ -18,10 +17,14 @@ system needs to be observable in production. This exposes a protected read-only 
 - `admin-api`: protected read-only admin endpoints plus observability (structured logs + `/metrics`).
 
 ### Modified Capabilities
-<!-- None: reads state from proxy-routing and tls-acme. -->
+<!-- None: reads the routing store; no model changes. -->
 
 ## Impact
 
-- **Code**: `src/DockYarp.AdminApi` controllers + wiring in `DockYarp.App`; tests in `DockYarp.AdminApi.Tests`.
-- **Dependencies**: a metrics exporter (e.g. `OpenTelemetry`/`prometheus-net`) — decided at phase start.
+- **Code**: `src/DockYarp.AdminApi` (endpoints, response DTOs, API-key filter, options, metrics); wiring
+  and OpenTelemetry setup in `DockYarp.App`.
+- **Dependencies**: `DockYarp.AdminApi` references the ASP.NET shared framework; `DockYarp.App` adds
+  `OpenTelemetry.Extensions.Hosting` and `OpenTelemetry.Exporter.Prometheus.AspNetCore` (CPM).
+- **Deferred**: `/api/certs` returns an empty list until `tls-acme` provides a certificate store; IP
+  allowlist protection is a future option.
 - **Owning agent**: AG-AA.

@@ -1,7 +1,10 @@
+using DockYarp.AdminApi;
 using DockYarp.App.ReverseProxy;
 using DockYarp.Core.Interfaces;
 using DockYarp.Core.Stores;
 using DockYarp.Security;
+
+using OpenTelemetry.Metrics;
 
 using Yarp.ReverseProxy.Configuration;
 
@@ -13,10 +16,24 @@ builder.Services.AddReverseProxy().LoadFromMemory([], []);
 builder.Services.AddHostedService<YarpConfigBridge>();
 builder.Services.AddDockYarpSecurity(new SecurityHeadersOptions());
 
+// Admin API + observability.
+builder.Services.AddSingleton(new AdminApiOptions { ApiKey = builder.Configuration["AdminApi:ApiKey"] });
+builder.Services.AddSingleton<DockYarpMetrics>();
+builder.Services.AddOpenTelemetry().WithMetrics(metrics => metrics
+    .AddMeter(DockYarpMetrics.MeterName)
+    .AddPrometheusExporter());
+
 var app = builder.Build();
+
+// Create the meter eagerly so its gauges are present for the first scrape.
+_ = app.Services.GetRequiredService<DockYarpMetrics>();
 
 // Security (headers, HTTPS enforcement, Basic Auth) runs before the reverse proxy.
 app.UseDockYarpSecurity();
+
+// Explicit endpoints take routing precedence over YARP's catch-all.
+app.MapAdminApi();
+app.MapPrometheusScrapingEndpoint();
 app.MapReverseProxy();
 
 await app.RunAsync();

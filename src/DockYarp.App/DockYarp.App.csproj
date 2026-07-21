@@ -6,6 +6,8 @@
 
   <ItemGroup>
     <PackageReference Include="Yarp.ReverseProxy" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+    <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" />
   </ItemGroup>
 
   <ItemGroup>
