@@ -1,0 +1,21 @@
+namespace DockYarp.Core.Models;
+
+using System.Collections.Immutable;
+
+/// <summary>A backend service made of one or more interchangeable endpoints.</summary>
+/// <remarks>Execution of the load-balancing policy and health probes belongs to the proxy layer;
+/// this type only models the intended configuration.</remarks>
+public sealed record Cluster
+{
+    /// <summary>Gets the stable cluster identity referenced by routes.</summary>
+    public required string Id { get; init; }
+
+    /// <summary>Gets the destinations that make up the cluster.</summary>
+    public required ImmutableArray<ClusterEndpoint> Endpoints { get; init; }
+
+    /// <summary>Gets the policy used to pick an endpoint per request.</summary>
+    public LoadBalancingPolicy LoadBalancingPolicy { get; init; } = LoadBalancingPolicy.RoundRobin;
+
+    /// <summary>Gets the optional health-check configuration.</summary>
+    public HealthCheckConfig? HealthCheck { get; init; }
+}
