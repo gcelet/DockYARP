@@ -16,8 +16,18 @@ class Build : NukeBuild
     [Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
     readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
 
-    [Parameter("Docker image tag produced by the DockerImage target")]
-    readonly string ImageTag = "dockyarp:local";
+    [Parameter("Container registry host; empty targets Docker Hub")]
+    readonly string Registry = "";
+
+    [Parameter("Image repository name")]
+    readonly string ImageRepository = "dockyarp";
+
+    [Parameter("Image tag")]
+    readonly string ImageTag = "latest";
+
+    string FullImage => string.IsNullOrEmpty(Registry)
+        ? $"{ImageRepository}:{ImageTag}"
+        : $"{Registry}/{ImageRepository}:{ImageTag}";
 
     AbsolutePath SolutionFile => RootDirectory / "DockYarp.slnx";
     AbsolutePath AppProject => RootDirectory / "src" / "DockYarp.App" / "DockYarp.App.csproj";
@@ -56,7 +66,15 @@ class Build : NukeBuild
     Target DockerImage => _ => _
         .DependsOn(Test)
         .Executes(() => ProcessTasks
-            .StartProcess("docker", $"build -t {ImageTag} .", RootDirectory)
+            .StartProcess("docker", $"build -t {FullImage} .", RootDirectory)
+            .AssertZeroExitCode());
+
+    // Pushes the image to the configured registry (Docker Hub by default). Assumes the environment is
+    // already authenticated (`docker login`). Requires Docker on PATH.
+    Target DockerPublish => _ => _
+        .DependsOn(DockerImage)
+        .Executes(() => ProcessTasks
+            .StartProcess("docker", $"push {FullImage}", RootDirectory)
             .AssertZeroExitCode());
 
     // Requires Docker (with the compose plugin) on PATH.

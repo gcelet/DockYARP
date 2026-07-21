@@ -43,13 +43,34 @@ On SIGTERM the host drains in-flight requests and stops background workers withi
 |---|---|
 | `Restore` / `Compile` / `Test` | Restore, build, and test `DockYarp.slnx`. |
 | `Publish` | Publish `DockYarp.App` to `artifacts/publish`. |
-| `DockerImage` | `docker build` the image (depends on `Test`). |
+| `DockerImage` | `docker build` the image (depends on `Test`; the build stage runs the Nuke build). |
+| `DockerPublish` | Build then `docker push` to the configured registry (depends on `DockerImage`). |
 | `E2E` | `docker compose up`, probe the sample service by `VIRTUAL_HOST`, then tear down. |
 
 ```bash
 ./build.sh Test          # or ./build.ps1 Test
 ./build.sh DockerImage
 ./build.sh E2E           # requires Docker (with compose) on PATH
+```
+
+### Publishing to a registry
+
+`DockerPublish` builds the image (the Docker build stage runs the Nuke build) and pushes it. The image
+reference is `{Registry}/{ImageRepository}:{ImageTag}`, or `{ImageRepository}:{ImageTag}` on Docker Hub.
+
+| Parameter | Default | Meaning |
+|---|---|---|
+| `--registry` | *(empty)* | Registry host; empty targets Docker Hub. |
+| `--image-repository` | `dockyarp` | Image repository name. |
+| `--image-tag` | `latest` | Image tag. |
+
+Publishing **assumes you are already authenticated** (`docker login` beforehand); the build handles no
+credentials.
+
+```bash
+docker login <registry>                 # once, outside the build
+./build.sh DockerPublish                                   # -> dockyarp:latest on Docker Hub
+./build.sh DockerPublish --registry registry.example.com --image-repository team/dockyarp --image-tag 1.2.3
 ```
 
 `scripts/e2e-compose.sh` runs the same E2E smoke test standalone.

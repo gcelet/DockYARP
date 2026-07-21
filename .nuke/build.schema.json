@@ -27,6 +27,7 @@
         "Clean",
         "Compile",
         "DockerImage",
+        "DockerPublish",
         "E2E",
         "Publish",
         "Restore",
@@ -112,9 +113,17 @@
             "Release"
           ]
         },
+        "ImageRepository": {
+          "type": "string",
+          "description": "Image repository name"
+        },
         "ImageTag": {
           "type": "string",
-          "description": "Docker image tag produced by the DockerImage target"
+          "description": "Image tag"
+        },
+        "Registry": {
+          "type": "string",
+          "description": "Container registry host; empty targets Docker Hub"
         }
       }
     },
