@@ -1,0 +1,88 @@
+namespace DockYarp.IntegrationTests;
+
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Threading.Tasks;
+
+using AwesomeAssertions;
+
+using DockYarp.Core.Interfaces;
+using DockYarp.Core.Models;
+
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
+
+/// <summary>End-to-end tests that boot the app and exercise YARP driven by the store.</summary>
+public sealed class ProxyIntegrationTests
+{
+    /// <summary>With no matching route, the proxy returns 404.</summary>
+    [Test]
+    public async Task UnmatchedHostReturnsNotFound()
+    {
+        using WebApplicationFactory<Program> factory = new();
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage response = await client.GetAsync("/");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    /// <summary>A request for a routed host is proxied to the backend endpoint.</summary>
+    [Test]
+    public async Task RequestIsProxiedToBackend()
+    {
+        await using WebApplication backend = BuildBackend();
+        await backend.StartAsync();
+
+        try
+        {
+            using WebApplicationFactory<Program> factory = new();
+            using HttpClient client = factory.CreateClient();
+            IRouteConfigStore store = factory.Services.GetRequiredService<IRouteConfigStore>();
+            string address = backend.Urls.First();
+
+            store.Apply(
+                [new RouteRule { HostPattern = "backend.local", ClusterId = "backend" }],
+                [new Cluster { Id = "backend", Endpoints = [new ClusterEndpoint("b1", address)] }]);
+            client.DefaultRequestHeaders.Host = "backend.local";
+
+            (HttpStatusCode status, string body) = await PollAsync(client);
+
+            status.Should().Be(HttpStatusCode.OK);
+            body.Should().Contain("ok");
+        }
+        finally
+        {
+            await backend.StopAsync();
+        }
+    }
+
+    private static WebApplication BuildBackend()
+    {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        WebApplication app = builder.Build();
+        app.Urls.Add("http://127.0.0.1:0");
+        app.MapFallback(() => "ok");
+        return app;
+    }
+
+    private static async Task<(HttpStatusCode Status, string Body)> PollAsync(HttpClient client)
+    {
+        HttpStatusCode status = HttpStatusCode.ServiceUnavailable;
+        for (int attempt = 0; attempt < 100; attempt++)
+        {
+            using HttpResponseMessage response = await client.GetAsync("/");
+            status = response.StatusCode;
+            if (status == HttpStatusCode.OK)
+            {
+                return (status, await response.Content.ReadAsStringAsync());
+            }
+
+            await Task.Delay(20);
+        }
+
+        return (status, string.Empty);
+    }
+}

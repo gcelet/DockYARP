@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Yarp.ReverseProxy" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\DockYarp.AdminApi\DockYarp.AdminApi.csproj" />
     <ProjectReference Include="..\DockYarp.Core\DockYarp.Core.csproj" />
     <ProjectReference Include="..\DockYarp.Docker\DockYarp.Docker.csproj" />

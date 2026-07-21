@@ -1,5 +1,6 @@
 namespace DockYarp.Core.Stores;
 
+using System;
 using System.Collections.Immutable;
 using System.Threading;
 
@@ -19,11 +20,15 @@ public sealed class RouteConfigStore : IRouteConfigStore
     private RouteConfigSnapshot current = RouteConfigSnapshot.Empty;
 
     /// <inheritdoc />
+    public event EventHandler? Changed;
+
+    /// <inheritdoc />
     public RouteConfigSnapshot Current => Volatile.Read(ref current);
 
     /// <inheritdoc />
     public RouteConfigSnapshot Apply(ImmutableArray<RouteRule> routes, ImmutableArray<Cluster> clusters)
     {
+        RouteConfigSnapshot next;
         lock (writeLock)
         {
             RouteConfigSnapshot existing = current;
@@ -32,9 +37,14 @@ public sealed class RouteConfigStore : IRouteConfigStore
                 return existing;
             }
 
-            RouteConfigSnapshot next = new(routes, clusters, existing.Version + 1);
+            next = new RouteConfigSnapshot(routes, clusters, existing.Version + 1);
             Volatile.Write(ref current, next);
-            return next;
         }
+
+        // Raised outside the lock so a slow observer cannot block other writers.
+        OnChanged();
+        return next;
     }
+
+    private void OnChanged() => Changed?.Invoke(this, EventArgs.Empty);
 }

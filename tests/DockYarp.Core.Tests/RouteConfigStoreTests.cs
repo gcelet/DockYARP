@@ -71,6 +71,35 @@ public sealed class RouteConfigStoreTests
         before.Version.Should().Be(1);
     }
 
+    /// <summary>A content change notifies observers via the Changed event.</summary>
+    [Test]
+    public void ChangedRaisedOnContentChange()
+    {
+        RouteConfigStore store = new();
+        int notifications = 0;
+        store.Changed += (_, _) => notifications++;
+
+        store.Apply([new RouteRule { HostPattern = "app.local", ClusterId = "app" }], [ClusterFor("app")]);
+
+        notifications.Should().Be(1);
+    }
+
+    /// <summary>A no-op update does not raise the Changed event.</summary>
+    [Test]
+    public void ChangedNotRaisedOnNoOp()
+    {
+        RouteConfigStore store = new();
+        ImmutableArray<RouteRule> routes = [new RouteRule { HostPattern = "app.local", ClusterId = "app" }];
+        ImmutableArray<Cluster> clusters = [ClusterFor("app")];
+        store.Apply(routes, clusters);
+
+        int notifications = 0;
+        store.Changed += (_, _) => notifications++;
+        store.Apply(routes, clusters);
+
+        notifications.Should().Be(0);
+    }
+
     private static Cluster ClusterFor(string id) =>
         new() { Id = id, Endpoints = [new ClusterEndpoint($"{id}-1", $"http://{id}:8080")] };
 }

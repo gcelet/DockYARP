@@ -1,5 +1,6 @@
 namespace DockYarp.Core.Interfaces;
 
+using System;
 using System.Collections.Immutable;
 
 using DockYarp.Core.Models;
@@ -7,6 +8,9 @@ using DockYarp.Core.Models;
 /// <summary>Holds the active routing configuration and publishes it as atomic, versioned snapshots.</summary>
 public interface IRouteConfigStore
 {
+    /// <summary>Raised after a new snapshot becomes current; not raised for a no-op update.</summary>
+    event EventHandler? Changed;
+
     /// <summary>Gets the current snapshot. Readers never observe a partially applied update.</summary>
     RouteConfigSnapshot Current { get; }
 
