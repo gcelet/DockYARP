@@ -19,6 +19,9 @@ public sealed record RouteRule
     /// <summary>Gets the optional per-host TLS metadata.</summary>
     public HostTlsMetadata? Tls { get; init; }
 
+    /// <summary>Gets the optional Basic Auth credentials protecting this route.</summary>
+    public BasicAuthCredentials? Auth { get; init; }
+
     /// <summary>Gets the optional request transforms.</summary>
     public RouteTransforms? Transforms { get; init; }
 }

@@ -1,33 +1,43 @@
 ## ADDED Requirements
 
 ### Requirement: HTTPS enforcement
-The system SHALL redirect HTTP requests to HTTPS for hosts where a certificate is available, with the
-redirect behavior configurable per host.
+The system SHALL redirect an HTTP request to HTTPS when the request's host matches a route whose TLS
+metadata requests HTTPS enforcement, preserving the host and path. Hosts without enforcement are served
+over HTTP unchanged.
 
-#### Scenario: HTTP redirected to HTTPS
-- **WHEN** an HTTP request targets a host that has a certificate and enforcement is enabled
-- **THEN** the request is redirected to the HTTPS URL for the same host and path
+#### Scenario: HTTP redirected to HTTPS for an enforced host
+- **WHEN** an HTTP request targets a host whose route sets `EnforceHttps`
+- **THEN** the response redirects to the HTTPS URL for the same host and path
 
-#### Scenario: Enforcement disabled for a host
-- **WHEN** enforcement is disabled for a host
-- **THEN** HTTP requests to that host are served without a redirect
+#### Scenario: No redirect when enforcement is off
+- **WHEN** an HTTP request targets a host whose route does not enforce HTTPS
+- **THEN** the request is served over HTTP without a redirect
 
-### Requirement: Label-driven Basic Auth
-The system SHALL protect routes with Basic Auth when configured via labels, returning 401 for missing or
-invalid credentials and never logging credentials in clear text.
+### Requirement: Route Basic Auth
+The system SHALL protect a route that carries Basic Auth credentials, rejecting requests with missing or
+invalid credentials with 401 and a `WWW-Authenticate: Basic` challenge, and never logging credentials in
+clear text.
 
 #### Scenario: Missing credentials are rejected
-- **WHEN** a request to a Basic-Auth-protected route has no valid `Authorization` header
-- **THEN** the response status is 401 and access is denied
+- **WHEN** a request to a protected route has no valid `Authorization` header
+- **THEN** the response status is 401 with a `WWW-Authenticate: Basic` header
 
 #### Scenario: Valid credentials are accepted
-- **WHEN** a request to a protected route presents valid credentials
-- **THEN** the request is proxied to the backend
+- **WHEN** a request to a protected route presents the configured username and password
+- **THEN** the request proceeds to the reverse proxy
+
+#### Scenario: Unprotected route is not challenged
+- **WHEN** a request targets a route without auth credentials
+- **THEN** no authentication is required
 
 ### Requirement: Security headers
-The system SHALL apply HSTS and common security headers to proxied responses, with the header set
-configurable.
+The system SHALL apply configurable security headers to proxied responses, including HSTS on HTTPS
+responses and `X-Content-Type-Options`, `X-Frame-Options`, and `Referrer-Policy`.
 
 #### Scenario: HSTS applied over HTTPS
-- **WHEN** a response is served over HTTPS for an enforced host
-- **THEN** the response includes a `Strict-Transport-Security` header
+- **WHEN** a response is served over HTTPS
+- **THEN** it includes a `Strict-Transport-Security` header
+
+#### Scenario: Baseline headers applied
+- **WHEN** any response is produced
+- **THEN** it includes `X-Content-Type-Options: nosniff`

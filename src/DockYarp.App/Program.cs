@@ -1,6 +1,7 @@
 using DockYarp.App.ReverseProxy;
 using DockYarp.Core.Interfaces;
 using DockYarp.Core.Stores;
+using DockYarp.Security;
 
 using Yarp.ReverseProxy.Configuration;
 
@@ -10,9 +11,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton<IRouteConfigStore, RouteConfigStore>();
 builder.Services.AddReverseProxy().LoadFromMemory([], []);
 builder.Services.AddHostedService<YarpConfigBridge>();
+builder.Services.AddDockYarpSecurity(new SecurityHeadersOptions());
 
 var app = builder.Build();
 
+// Security (headers, HTTPS enforcement, Basic Auth) runs before the reverse proxy.
+app.UseDockYarpSecurity();
 app.MapReverseProxy();
 
 await app.RunAsync();

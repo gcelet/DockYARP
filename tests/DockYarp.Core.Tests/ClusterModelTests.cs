@@ -53,6 +53,23 @@ public sealed class ClusterModelTests
         updated.Endpoints.Should().HaveCount(2);
     }
 
+    /// <summary>A route exposes its Basic Auth credentials when configured, and none otherwise.</summary>
+    [Test]
+    public void RouteExposesAuthCredentials()
+    {
+        RouteRule protectedRoute = new()
+        {
+            HostPattern = "app.local",
+            ClusterId = "app",
+            Auth = new BasicAuthCredentials { Username = "admin", Password = "secret", Realm = "app" },
+        };
+        RouteRule openRoute = new() { HostPattern = "open.local", ClusterId = "open" };
+
+        protectedRoute.Auth.Should().NotBeNull();
+        protectedRoute.Auth!.Username.Should().Be("admin");
+        openRoute.Auth.Should().BeNull();
+    }
+
     /// <summary>TLS metadata on a route exposes the certificate host and contact email.</summary>
     [Test]
     public void RouteExposesTlsMetadata()

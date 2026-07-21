@@ -1,0 +1,22 @@
+namespace DockYarp.Security;
+
+using System;
+
+/// <summary>Options for the security headers applied to responses.</summary>
+public sealed class SecurityHeadersOptions
+{
+    /// <summary>Gets or sets a value indicating whether HSTS is emitted on HTTPS responses.</summary>
+    public bool EnableHsts { get; set; } = true;
+
+    /// <summary>Gets or sets the HSTS max-age.</summary>
+    public TimeSpan HstsMaxAge { get; set; } = TimeSpan.FromDays(365);
+
+    /// <summary>Gets or sets a value indicating whether HSTS applies to subdomains.</summary>
+    public bool HstsIncludeSubDomains { get; set; }
+
+    /// <summary>Gets or sets the <c>X-Frame-Options</c> value.</summary>
+    public string FrameOptions { get; set; } = "DENY";
+
+    /// <summary>Gets or sets the <c>Referrer-Policy</c> value.</summary>
+    public string ReferrerPolicy { get; set; } = "no-referrer";
+}
