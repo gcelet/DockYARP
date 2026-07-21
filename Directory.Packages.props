@@ -5,6 +5,10 @@
   <!-- App dependencies -->
   <ItemGroup>
     <PackageVersion Include="Yarp.ReverseProxy" Version="2.3.0" />
+    <PackageVersion Include="Docker.DotNet" Version="3.125.15" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
   </ItemGroup>
   <!-- Code quality analyzers -->
   <ItemGroup>
