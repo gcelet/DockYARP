@@ -1,7 +1,11 @@
+using System;
+
 using DockYarp.AdminApi;
 using DockYarp.App.ReverseProxy;
 using DockYarp.Core.Interfaces;
 using DockYarp.Core.Stores;
+using DockYarp.Docker;
+using DockYarp.Docker.Discovery;
 using DockYarp.Security;
 using DockYarp.Tls;
 
@@ -10,6 +14,16 @@ using OpenTelemetry.Metrics;
 using Yarp.ReverseProxy.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Graceful shutdown: drain in-flight requests and stop background workers within a bounded timeout.
+int shutdownSeconds = builder.Configuration.GetValue("Host:ShutdownTimeoutSeconds", 30);
+builder.Services.Configure<HostOptions>(host => host.ShutdownTimeout = TimeSpan.FromSeconds(shutdownSeconds));
+
+// Docker discovery is opt-in (kept off in tests / local runs without a daemon).
+if (builder.Configuration.GetValue("Docker:Enabled", defaultValue: false))
+{
+    builder.Services.AddDockerDiscovery(new DockerDiscoveryOptions { DockerEndpoint = builder.Configuration["Docker:Endpoint"] });
+}
 
 // The routing store is the single source of truth; YARP is driven from it via the bridge.
 builder.Services.AddSingleton<IRouteConfigStore, RouteConfigStore>();

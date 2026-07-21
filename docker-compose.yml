@@ -1,0 +1,26 @@
+# Reference stack: DockYarp in front of a labeled sample service.
+# Local demo uses HTTP (real ACME/TLS needs public DNS). See docs/deployment.md.
+services:
+  dockyarp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dockyarp:local
+    ports:
+      - "80:8080"
+    environment:
+      # Enable Docker discovery (off by default outside the reference stack).
+      Docker__Enabled: "true"
+      AdminApi__ApiKey: "change-me"
+    volumes:
+      # Read-only access to the Docker socket for container discovery.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./certs:/certs
+      - ./config:/config
+    restart: unless-stopped
+
+  whoami:
+    image: traefik/whoami
+    labels:
+      VIRTUAL_HOST: "whoami.local"
+      VIRTUAL_PORT: "80"

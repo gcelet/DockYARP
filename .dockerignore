@@ -1,0 +1,15 @@
+# Keep sources + build scaffolding (the Nuke build runs inside the build stage);
+# exclude build outputs and noise.
+**/bin
+**/obj
+artifacts
+.git
+.github
+.idea
+.vs
+.swival
+docs
+openspec
+certs
+config
+**/*.md

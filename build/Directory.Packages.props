@@ -1,0 +1,7 @@
+<Project>
+  <!-- The Nuke build project is a standalone tool: opt it out of the app's Central Package Management
+       so its own tool package versions stay local to build/. -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+</Project>

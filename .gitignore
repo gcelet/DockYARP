@@ -486,6 +486,9 @@ fabric.properties
 ######################
 .build
 
+# Nuke publish/build output
+artifacts/
+
 # Claude Code — per-machine local settings (not shared). The shared settings.json is committed.
 .claude/settings.local.json
 .claude/.mcp.local.json
