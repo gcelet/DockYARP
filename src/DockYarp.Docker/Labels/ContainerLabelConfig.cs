@@ -1,12 +1,14 @@
 namespace DockYarp.Docker.Labels;
 
+using System.Collections.Immutable;
+
 using DockYarp.Core.Models;
 
 /// <summary>Strongly-typed configuration parsed from a container's labels.</summary>
 public sealed record ContainerLabelConfig
 {
-    /// <summary>Gets the host the container is exposed on (<c>VIRTUAL_HOST</c>).</summary>
-    public required string Host { get; init; }
+    /// <summary>Gets the hosts the container is exposed on (comma-separated <c>VIRTUAL_HOST</c>).</summary>
+    public required ImmutableArray<string> Hosts { get; init; }
 
     /// <summary>Gets the target container port (<c>VIRTUAL_PORT</c>, or inferred).</summary>
     public required int Port { get; init; }

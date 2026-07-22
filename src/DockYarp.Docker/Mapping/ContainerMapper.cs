@@ -58,13 +58,17 @@ public static class ContainerMapper
                 warnings.Add($"{container.Name} ({Short(container.Id)}): incomplete auth labels; route left unprotected.");
             }
 
-            if (!groups.TryGetValue(config.Host, out HostGroup? group))
+            // A comma-separated VIRTUAL_HOST fans the container out to one route/cluster per host.
+            foreach (string host in config.Hosts)
             {
-                group = new HostGroup(config);
-                groups.Add(config.Host, group);
-            }
+                if (!groups.TryGetValue(host, out HostGroup? group))
+                {
+                    group = new HostGroup(config);
+                    groups.Add(host, group);
+                }
 
-            group.Add(container, config);
+                group.Add(container, config);
+            }
         }
 
         return groups;

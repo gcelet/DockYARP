@@ -21,8 +21,56 @@ public sealed class LabelParserTests
 
         parsed.Should().BeTrue();
         error.Should().BeNull();
-        config!.Host.Should().Be("app.local");
+        config!.Hosts.Should().ContainSingle().Which.Should().Be("app.local");
         config.Port.Should().Be(8080);
+    }
+
+    /// <summary>A comma-separated VIRTUAL_HOST yields one entry per host.</summary>
+    [Test]
+    public void CommaSeparatedHostsAreSplit()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local,www.app.local"),
+                (DockerLabels.VirtualPort, "8080")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.Hosts.Should().Equal("app.local", "www.app.local");
+    }
+
+    /// <summary>Whitespace and empty entries in VIRTUAL_HOST are trimmed and dropped.</summary>
+    [Test]
+    public void WhitespaceAndEmptyHostEntriesAreTolerated()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "a.local, ,b.local"),
+                (DockerLabels.VirtualPort, "8080")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.Hosts.Should().Equal("a.local", "b.local");
+    }
+
+    /// <summary>A VIRTUAL_HOST with only separators/whitespace leaves no valid host and is invalid.</summary>
+    [Test]
+    public void HostWithoutValidEntryIsInvalid()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels((DockerLabels.VirtualHost, " , "), (DockerLabels.VirtualPort, "8080")));
+
+        bool parsed = LabelParser.TryParse(container, out ContainerLabelConfig? config, out string? error);
+
+        parsed.Should().BeFalse();
+        config.Should().BeNull();
+        error.Should().NotBeNull();
     }
 
     /// <summary>A missing VIRTUAL_HOST makes the container invalid.</summary>

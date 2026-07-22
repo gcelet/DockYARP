@@ -26,7 +26,10 @@ public static class LabelParser
         config = null;
         IReadOnlyDictionary<string, string> labels = container.Labels;
 
-        if (!labels.TryGetValue(DockerLabels.VirtualHost, out string? host) || string.IsNullOrWhiteSpace(host))
+        ImmutableArray<string> hosts = labels.TryGetValue(DockerLabels.VirtualHost, out string? host)
+            ? SplitHosts(host)
+            : [];
+        if (hosts.IsEmpty)
         {
             error = $"{DockerLabels.VirtualHost} is required.";
             return false;
@@ -40,7 +43,7 @@ public static class LabelParser
         error = null;
         config = new ContainerLabelConfig
         {
-            Host = host,
+            Hosts = hosts,
             Port = port,
             PathPrefix = GetOrNull(labels, DockerLabels.VirtualPath),
             LetsEncryptHost = GetOrNull(labels, DockerLabels.LetsEncryptHost),
@@ -107,6 +110,22 @@ public static class LabelParser
 
         error = $"{DockerLabels.VirtualPort} is required because the container exposes {exposedPorts.Length} ports.";
         return false;
+    }
+
+    /// <summary>Splits a comma-separated host label, trimming whitespace and dropping empty entries.</summary>
+    private static ImmutableArray<string> SplitHosts(string raw)
+    {
+        ImmutableArray<string>.Builder hosts = ImmutableArray.CreateBuilder<string>();
+        foreach (string part in raw.Split(','))
+        {
+            string trimmed = part.Trim();
+            if (trimmed.Length > 0)
+            {
+                hosts.Add(trimmed);
+            }
+        }
+
+        return hosts.ToImmutable();
     }
 
     private static string? GetOrNull(IReadOnlyDictionary<string, string> labels, string key) =>

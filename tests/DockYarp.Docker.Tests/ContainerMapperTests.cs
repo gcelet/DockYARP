@@ -31,6 +31,24 @@ public sealed class ContainerMapperTests
             .Which.Endpoints.Should().HaveCount(2);
     }
 
+    /// <summary>A comma-separated VIRTUAL_HOST maps the container to one route/cluster per host.</summary>
+    [Test]
+    public void CommaSeparatedHostsCreateMultipleRoutes()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "a.local,b.local"),
+                (DockerLabels.VirtualPort, "8080")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Routes.Select(route => route.HostPattern).Should().BeEquivalentTo("a.local", "b.local");
+        result.Contribution.Clusters.Should().HaveCount(2);
+        result.Contribution.Clusters.Should().OnlyContain(cluster => cluster.Endpoints.Length == 1);
+    }
+
     /// <summary>LETSENCRYPT labels populate the route's TLS metadata.</summary>
     [Test]
     public void TlsMetadataIsPopulated()
