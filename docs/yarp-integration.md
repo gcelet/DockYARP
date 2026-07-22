@@ -32,6 +32,18 @@ docker-discovery / static config ──> IRouteConfigStore.Apply(...)
 | `LoadBalancingPolicy` | `ClusterConfig.LoadBalancingPolicy` (`RoundRobin`, `LeastRequests`) |
 | `HealthCheckConfig` | `ClusterConfig.HealthCheck` (active + passive) when present |
 
+## Forwarded headers
+
+`ForwardedHeadersTransform` (applied globally via `AddTransforms`) sets, on every proxied request:
+
+- `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host` (via `AddXForwarded`),
+- `X-Real-IP` and `X-Forwarded-Port` (from the connection),
+- and forwards the **original `Host`** (`AddOriginalHost`) — YARP suppresses it by default.
+
+`Proxy:TrustDownstreamProxy` (default `true`) controls the `X-Forwarded-*` action: **Append** (trust and
+extend the client's chain) when true, **Set** (replace with the connection's values) when false — the
+equivalent of nginx-proxy's `TRUST_DOWNSTREAM_PROXY`.
+
 ## Host wiring (`Program`)
 
 ```csharp

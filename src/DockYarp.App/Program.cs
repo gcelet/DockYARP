@@ -12,6 +12,7 @@ using DockYarp.Tls;
 using OpenTelemetry.Metrics;
 
 using Yarp.ReverseProxy.Configuration;
+using Yarp.ReverseProxy.Transforms;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,8 +29,13 @@ if (builder.Configuration.GetValue("Docker:Enabled", defaultValue: false))
 }
 
 // The routing store is the single source of truth; YARP is driven from it via the bridge.
+bool trustDownstreamProxy = builder.Configuration.GetValue("Proxy:TrustDownstreamProxy", defaultValue: true);
+ForwardedTransformActions xForwardedAction =
+    trustDownstreamProxy ? ForwardedTransformActions.Append : ForwardedTransformActions.Set;
 builder.Services.AddSingleton<IRouteConfigStore, RouteConfigStore>();
-builder.Services.AddReverseProxy().LoadFromMemory([], []);
+builder.Services.AddReverseProxy()
+    .LoadFromMemory([], [])
+    .AddTransforms(context => ForwardedHeadersTransform.Apply(context, xForwardedAction));
 builder.Services.AddHostedService<YarpConfigBridge>();
 
 // Security options bound from the "Security" section (defaults preserved when unset).
