@@ -81,3 +81,16 @@ host — for example a status code (`404`, `503`) or a redirect — instead of a
 - **WHEN** no default response is configured and a request matches no route
 - **THEN** the response status is 404
 
+### Requirement: Route priority ordering
+The system SHALL map a route's priority to YARP's route order so that a higher priority takes precedence
+(YARP treats a lower order as higher precedence); a priority of `0` leaves the route at YARP's default
+order.
+
+#### Scenario: Higher priority yields higher precedence
+- **WHEN** a route has priority `5`
+- **THEN** the mapped YARP route order is `-5` (higher precedence than a priority-`0` route)
+
+#### Scenario: Default priority keeps the default order
+- **WHEN** a route has priority `0`
+- **THEN** the mapped YARP route leaves the order unset
+
