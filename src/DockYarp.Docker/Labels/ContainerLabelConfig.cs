@@ -13,6 +13,9 @@ public sealed record ContainerLabelConfig
     /// <summary>Gets the target container port (<c>VIRTUAL_PORT</c>, or inferred).</summary>
     public required int Port { get; init; }
 
+    /// <summary>Gets the backend transport scheme (<c>VIRTUAL_PROTO</c>); defaults to HTTP.</summary>
+    public BackendScheme Scheme { get; init; } = BackendScheme.Http;
+
     /// <summary>Gets the optional path prefix (<c>VIRTUAL_PATH</c>).</summary>
     public string? PathPrefix { get; init; }
 

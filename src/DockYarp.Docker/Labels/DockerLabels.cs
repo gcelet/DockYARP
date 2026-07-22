@@ -13,6 +13,9 @@ public static class DockerLabels
     /// <summary>Optional path prefix the route matches.</summary>
     public const string VirtualPath = "VIRTUAL_PATH";
 
+    /// <summary>Backend transport scheme (<c>http</c> or <c>https</c>); defaults to <c>http</c>.</summary>
+    public const string VirtualProto = "VIRTUAL_PROTO";
+
     /// <summary>Host a certificate should be obtained for.</summary>
     public const string LetsEncryptHost = "LETSENCRYPT_HOST";
 

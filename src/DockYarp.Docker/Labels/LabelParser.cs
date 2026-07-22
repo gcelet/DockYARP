@@ -45,6 +45,7 @@ public static class LabelParser
         {
             Hosts = hosts,
             Port = port,
+            Scheme = ParseScheme(GetOrNull(labels, DockerLabels.VirtualProto)),
             PathPrefix = GetOrNull(labels, DockerLabels.VirtualPath),
             LetsEncryptHost = GetOrNull(labels, DockerLabels.LetsEncryptHost),
             LetsEncryptEmail = GetOrNull(labels, DockerLabels.LetsEncryptEmail),
@@ -64,6 +65,23 @@ public static class LabelParser
         bool hasPassword = GetOrNull(labels, DockerLabels.AuthPassword) is not null;
         return hasUser != hasPassword;
     }
+
+    /// <summary>Reports whether <c>VIRTUAL_PROTO</c> is present but not a supported scheme.</summary>
+    /// <param name="labels">The container labels.</param>
+    /// <returns><see langword="true"/> when the value is neither <c>http</c> nor <c>https</c>.</returns>
+    public static bool HasUnsupportedProto(IReadOnlyDictionary<string, string> labels)
+    {
+        ArgumentNullException.ThrowIfNull(labels);
+        string? proto = GetOrNull(labels, DockerLabels.VirtualProto);
+        return proto is not null
+            && !proto.Equals("http", StringComparison.OrdinalIgnoreCase)
+            && !proto.Equals("https", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static BackendScheme ParseScheme(string? value) =>
+        string.Equals(value, "https", StringComparison.OrdinalIgnoreCase)
+            ? BackendScheme.Https
+            : BackendScheme.Http;
 
     private static BasicAuthCredentials? ParseAuth(IReadOnlyDictionary<string, string> labels)
     {

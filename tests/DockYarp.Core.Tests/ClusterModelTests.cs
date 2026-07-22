@@ -53,6 +53,17 @@ public sealed class ClusterModelTests
         updated.Endpoints.Should().HaveCount(2);
     }
 
+    /// <summary>The endpoint factory builds an address whose scheme matches the requested backend scheme.</summary>
+    [Test]
+    public void EndpointFactoryBuildsSchemeAddress()
+    {
+        ClusterEndpoint https = ClusterEndpoint.Create("c1", BackendScheme.Https, "10.0.0.1", 443);
+        ClusterEndpoint http = ClusterEndpoint.Create("c2", BackendScheme.Http, "10.0.0.2", 8080);
+
+        https.Address.Should().Be("https://10.0.0.1:443");
+        http.Address.Should().Be("http://10.0.0.2:8080");
+    }
+
     /// <summary>A route exposes its Basic Auth credentials when configured, and none otherwise.</summary>
     [Test]
     public void RouteExposesAuthCredentials()

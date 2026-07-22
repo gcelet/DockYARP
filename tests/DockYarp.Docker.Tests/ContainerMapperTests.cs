@@ -49,6 +49,41 @@ public sealed class ContainerMapperTests
         result.Contribution.Clusters.Should().OnlyContain(cluster => cluster.Endpoints.Length == 1);
     }
 
+    /// <summary>VIRTUAL_PROTO=https makes the endpoint target the backend over HTTPS.</summary>
+    [Test]
+    public void HttpsProtoTargetsHttpsBackend()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "443"),
+                (DockerLabels.VirtualProto, "https")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Clusters.Single().Endpoints.Single().Address.Should().Be("https://10.0.0.1:443");
+    }
+
+    /// <summary>An unsupported VIRTUAL_PROTO falls back to HTTP and produces a warning.</summary>
+    [Test]
+    public void UnsupportedProtoFallsBackToHttpWithWarning()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.VirtualProto, "fastcgi")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Clusters.Single().Endpoints.Single().Address.Should().Be("http://10.0.0.1:8080");
+        result.Warnings.Should().Contain(warning => warning.Contains("VIRTUAL_PROTO", System.StringComparison.Ordinal));
+    }
+
     /// <summary>LETSENCRYPT labels populate the route's TLS metadata.</summary>
     [Test]
     public void TlsMetadataIsPopulated()

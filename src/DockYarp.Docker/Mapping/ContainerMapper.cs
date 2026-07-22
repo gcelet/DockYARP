@@ -3,8 +3,6 @@ namespace DockYarp.Docker.Mapping;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
 
 using DockYarp.Core.Configuration;
 using DockYarp.Core.Models;
@@ -58,6 +56,11 @@ public static class ContainerMapper
                 warnings.Add($"{container.Name} ({Short(container.Id)}): incomplete auth labels; route left unprotected.");
             }
 
+            if (LabelParser.HasUnsupportedProto(container.Labels))
+            {
+                warnings.Add($"{container.Name} ({Short(container.Id)}): unsupported {DockerLabels.VirtualProto}; defaulting to http.");
+            }
+
             // A comma-separated VIRTUAL_HOST fans the container out to one route/cluster per host.
             foreach (string host in config.Hosts)
             {
@@ -80,17 +83,8 @@ public static class ContainerMapper
     {
         private readonly List<ClusterEndpoint> endpoints = [];
 
-        [SuppressMessage(
-            "SonarAnalyzer",
-            "S5332:Using http protocol is insecure",
-            Justification = "Backend container endpoints are plain HTTP on the internal Docker network; TLS is terminated at the proxy.")]
-        public void Add(ContainerInfo container, ContainerLabelConfig config)
-        {
-            string address = string.Create(
-                CultureInfo.InvariantCulture,
-                $"http://{container.Address}:{config.Port}");
-            endpoints.Add(new ClusterEndpoint(container.Id, address));
-        }
+        public void Add(ContainerInfo container, ContainerLabelConfig config) =>
+            endpoints.Add(ClusterEndpoint.Create(container.Id, config.Scheme, container.Address, config.Port));
 
         public RouteRule BuildRoute(string host)
         {

@@ -10,6 +10,7 @@ are **nginx-proxy compatible**; DockYarp-specific labels use the `DOCKYARP_` pre
 | `VIRTUAL_HOST` | **Yes** | Host(s) the container is exposed on; comma-separated for several. | `app.local,www.app.local` |
 | `VIRTUAL_PORT` | Conditional | Target container port. Required when the container exposes more than one port; inferred when exactly one is exposed. | `8080` |
 | `VIRTUAL_PATH` | No | Path prefix the route matches (empty = all paths). | `/api` |
+| `VIRTUAL_PROTO` | No | Backend transport scheme: `http` (default) or `https`. | `https` |
 | `LETSENCRYPT_HOST` | No | Host a certificate should be obtained for (enables TLS metadata). | `app.local` |
 | `LETSENCRYPT_EMAIL` | No | Contact email used when requesting the certificate. | `admin@example.com` |
 | `DOCKYARP_LB` | No | Load-balancing policy: `round-robin` (default) or `least-requests`. | `least-requests` |
@@ -25,6 +26,8 @@ are **nginx-proxy compatible**; DockYarp-specific labels use the `DOCKYARP_` pre
 
 - **Multiple hosts**: a comma-separated `VIRTUAL_HOST` (whitespace trimmed, empty entries ignored) maps the
   container to one route per host, each sharing its port, path, TLS, and auth settings.
+- **Backend scheme**: `VIRTUAL_PROTO` selects how the proxy reaches the container — `http` (default) or
+  `https`. Unsupported values (e.g. `fastcgi`) fall back to `http` and are logged.
 - **Port inference**: with no `VIRTUAL_PORT`, if the container exposes exactly one port it is used;
   otherwise the container is skipped with a warning (ambiguous).
 - **Replicas**: containers sharing the same `VIRTUAL_HOST` are aggregated into a single cluster, one
