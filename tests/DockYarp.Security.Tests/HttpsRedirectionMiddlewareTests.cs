@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 
 using AwesomeAssertions;
 
+using DockYarp.Core.Configuration;
 using DockYarp.Core.Models;
 using DockYarp.Core.Stores;
 
@@ -22,7 +23,7 @@ public sealed class HttpsRedirectionMiddlewareTests
             ClusterId = "app",
             Tls = new HostTlsMetadata { CertificateHost = "app.local", EnforceHttps = true },
         });
-        HttpsRedirectionMiddleware middleware = new(new RouteLookup(store));
+        HttpsRedirectionMiddleware middleware = new(new RouteLookup(store, new RoutingOptions()));
         DefaultHttpContext context = SecurityTestHelpers.Context("http", "app.local", "/orders");
         bool nextCalled = false;
 
@@ -42,7 +43,7 @@ public sealed class HttpsRedirectionMiddlewareTests
     public async Task NoRedirectWhenNotEnforced()
     {
         RouteConfigStore store = SecurityTestHelpers.StoreWith(new RouteRule { HostPattern = "app.local", ClusterId = "app" });
-        HttpsRedirectionMiddleware middleware = new(new RouteLookup(store));
+        HttpsRedirectionMiddleware middleware = new(new RouteLookup(store, new RoutingOptions()));
         DefaultHttpContext context = SecurityTestHelpers.Context("http", "app.local", "/");
         bool nextCalled = false;
 

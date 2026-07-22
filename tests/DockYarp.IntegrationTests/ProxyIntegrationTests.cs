@@ -11,6 +11,7 @@ using DockYarp.Core.Interfaces;
 using DockYarp.Core.Models;
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -91,6 +92,50 @@ public sealed class ProxyIntegrationTests
 
             status.Should().Be(HttpStatusCode.OK);
             body.Should().Be("/orders");
+        }
+        finally
+        {
+            await backend.StopAsync();
+        }
+    }
+
+    /// <summary>An unmatched request returns the configured default status code.</summary>
+    [Test]
+    public async Task UnmatchedReturnsConfiguredDefaultStatus()
+    {
+        using WebApplicationFactory<Program> factory = new WebApplicationFactory<Program>()
+            .WithWebHostBuilder(builder => builder.UseSetting("Routing:DefaultResponseStatusCode", "503"));
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage response = await client.GetAsync("/");
+
+        response.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+    }
+
+    /// <summary>A configured default host serves an unknown host by proxying to its backend.</summary>
+    [Test]
+    public async Task DefaultHostProxiesUnknownHosts()
+    {
+        await using WebApplication backend = BuildBackend();
+        await backend.StartAsync();
+
+        try
+        {
+            using WebApplicationFactory<Program> factory = new WebApplicationFactory<Program>()
+                .WithWebHostBuilder(builder => builder.UseSetting("Routing:DefaultHost", "app.local"));
+            using HttpClient client = factory.CreateClient();
+            IRouteConfigStore store = factory.Services.GetRequiredService<IRouteConfigStore>();
+            string address = backend.Urls.First();
+
+            store.Apply(
+                [new RouteRule { HostPattern = "app.local", ClusterId = "app" }],
+                [new Cluster { Id = "app", Endpoints = [new ClusterEndpoint("b1", address)] }]);
+            client.DefaultRequestHeaders.Host = "unknown.example";
+
+            (HttpStatusCode status, string body) = await PollAsync(client);
+
+            status.Should().Be(HttpStatusCode.OK);
+            body.Should().Contain("ok");
         }
         finally
         {

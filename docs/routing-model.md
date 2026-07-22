@@ -48,6 +48,26 @@ matcher.TryMatch("app.local", "/") => exact     # exact beats wildcard
 matcher.TryMatch("app.local", "/api/orders") => api   # longest prefix wins
 ```
 
+## Default host & default response — `RoutingOptions`
+
+Bound from the `Routing` configuration section:
+
+| Option | Default | Meaning |
+|---|---|---|
+| `DefaultHost` | _(none)_ | Host whose route also serves requests whose host matches no other route. |
+| `DefaultResponseStatusCode` | `404` | Status returned for requests matching no route **and** no default host. |
+
+- **Default host (catch-all)**: when set, `RouteMatcher` falls back to that host's routes for an unknown
+  host, and the YARP mapping adds a lowest-precedence catch-all route (matching any host) to the default
+  host's cluster — so unknown hosts are proxied to the chosen backend while specific host routes still win.
+- **Default response**: a terminal fallback returns `DefaultResponseStatusCode` (e.g. `503`) when nothing
+  matches and no default host is configured; otherwise the catch-all absorbs the request.
+
+```jsonc
+// appsettings.json
+{ "Routing": { "DefaultHost": "app.local", "DefaultResponseStatusCode": 503 } }
+```
+
 ## Configuration sources & precedence — `RouteConfigMerger`
 
 Routes/clusters can come from several `ConfigContribution`s, each tagged with a `ConfigSource`

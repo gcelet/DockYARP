@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using AwesomeAssertions;
 
 using DockYarp.App.ReverseProxy;
+using DockYarp.Core.Configuration;
 using DockYarp.Core.Models;
 using DockYarp.Core.Stores;
 
@@ -21,7 +22,7 @@ public sealed class YarpConfigBridgeTests
     {
         RouteConfigStore store = new();
         InMemoryConfigProvider provider = new([], []);
-        YarpConfigBridge bridge = new(store, provider);
+        YarpConfigBridge bridge = new(store, provider, new RoutingOptions());
         await bridge.StartAsync(CancellationToken.None);
 
         try

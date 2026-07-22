@@ -107,6 +107,39 @@ public sealed class YarpConfigMapperTests
         routes.Single().Transforms.Should().BeNull();
     }
 
+    /// <summary>A configured default host adds a lowest-precedence catch-all route to its cluster.</summary>
+    [Test]
+    public void DefaultHostEmitsCatchAllRoute()
+    {
+        RouteConfigSnapshot snapshot = new(
+            [new RouteRule { HostPattern = "app.local", ClusterId = "app" }],
+            [Cluster("app", LoadBalancingPolicy.RoundRobin)],
+            1);
+
+        (System.Collections.Generic.IReadOnlyList<RouteConfig> routes, _) =
+            YarpConfigMapper.Map(snapshot, defaultHost: "app.local");
+
+        routes.Should().HaveCount(2);
+        RouteConfig catchAll = routes.Single(route => route.Match.Hosts is null);
+        catchAll.ClusterId.Should().Be("app");
+        catchAll.Order.Should().Be(int.MaxValue - 1);
+    }
+
+    /// <summary>Without a default host no catch-all route is added.</summary>
+    [Test]
+    public void NoDefaultHostEmitsNoCatchAll()
+    {
+        RouteConfigSnapshot snapshot = new(
+            [new RouteRule { HostPattern = "app.local", ClusterId = "app" }],
+            [Cluster("app", LoadBalancingPolicy.RoundRobin)],
+            1);
+
+        (System.Collections.Generic.IReadOnlyList<RouteConfig> routes, _) = YarpConfigMapper.Map(snapshot);
+
+        routes.Should().ContainSingle();
+        routes.Single().Match.Hosts.Should().NotBeNull();
+    }
+
     private static Cluster Cluster(string id, LoadBalancingPolicy policy) =>
         new()
         {

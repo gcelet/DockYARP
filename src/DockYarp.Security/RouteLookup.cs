@@ -3,13 +3,15 @@ namespace DockYarp.Security;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 
+using DockYarp.Core.Configuration;
 using DockYarp.Core.Interfaces;
 using DockYarp.Core.Models;
 using DockYarp.Core.Routing;
 
 /// <summary>Resolves the route matching a request, caching a matcher until the store version changes.</summary>
 /// <param name="store">The route configuration store.</param>
-public sealed class RouteLookup(IRouteConfigStore store)
+/// <param name="routing">Routing options supplying the optional default host.</param>
+public sealed class RouteLookup(IRouteConfigStore store, RoutingOptions routing)
 {
     private readonly Lock gate = new();
     private RouteMatcher? matcher;
@@ -28,7 +30,7 @@ public sealed class RouteLookup(IRouteConfigStore store)
         {
             if (matcher is null || version != snapshot.Version)
             {
-                matcher = new RouteMatcher(snapshot.Routes);
+                matcher = new RouteMatcher(snapshot.Routes, routing.DefaultHost);
                 version = snapshot.Version;
             }
 

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
+using DockYarp.Core.Configuration;
 using DockYarp.Core.Interfaces;
 using Microsoft.Extensions.Hosting;
 using Yarp.ReverseProxy.Configuration;
@@ -16,7 +17,8 @@ using Yarp.ReverseProxy.Configuration;
 /// </remarks>
 /// <param name="store">The routing store.</param>
 /// <param name="provider">YARP's in-memory configuration provider.</param>
-public sealed class YarpConfigBridge(IRouteConfigStore store, InMemoryConfigProvider provider)
+/// <param name="routing">Routing options supplying the optional default host.</param>
+public sealed class YarpConfigBridge(IRouteConfigStore store, InMemoryConfigProvider provider, RoutingOptions routing)
     : IHostedService, IDisposable
 {
     /// <inheritdoc />
@@ -46,7 +48,7 @@ public sealed class YarpConfigBridge(IRouteConfigStore store, InMemoryConfigProv
     private void Publish()
     {
         (IReadOnlyList<RouteConfig> routes, IReadOnlyList<ClusterConfig> clusters) =
-            YarpConfigMapper.Map(store.Current);
+            YarpConfigMapper.Map(store.Current, routing.DefaultHost);
         provider.Update(routes, clusters);
     }
 }

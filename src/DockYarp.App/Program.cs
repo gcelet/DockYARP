@@ -3,6 +3,7 @@ using System;
 using DockYarp.AdminApi;
 using DockYarp.App.Observability;
 using DockYarp.App.ReverseProxy;
+using DockYarp.Core.Configuration;
 using DockYarp.Core.Interfaces;
 using DockYarp.Core.Stores;
 using DockYarp.Docker;
@@ -38,6 +39,12 @@ else
 bool trustDownstreamProxy = builder.Configuration.GetValue("Proxy:TrustDownstreamProxy", defaultValue: true);
 ForwardedTransformActions xForwardedAction =
     trustDownstreamProxy ? ForwardedTransformActions.Append : ForwardedTransformActions.Set;
+
+// Routing options: default (catch-all) host and the response for genuinely unmatched requests.
+RoutingOptions routingOptions = new();
+builder.Configuration.GetSection("Routing").Bind(routingOptions);
+builder.Services.AddSingleton(routingOptions);
+
 builder.Services.AddSingleton<IRouteConfigStore, RouteConfigStore>();
 builder.Services.AddReverseProxy()
     .LoadFromMemory([], [])
@@ -79,6 +86,9 @@ app.UseDockYarpSecurity();
 app.MapAdminApi();
 app.MapPrometheusScrapingEndpoint();
 app.MapReverseProxy();
+
+// Terminal fallback: requests matching no route (and no default host) get the configured default response.
+app.MapFallback(() => Results.StatusCode(routingOptions.DefaultResponseStatusCode));
 
 await app.RunAsync();
 

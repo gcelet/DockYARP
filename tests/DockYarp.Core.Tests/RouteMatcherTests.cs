@@ -54,6 +54,20 @@ public sealed class RouteMatcherTests
         route!.ClusterId.Should().Be("wild");
     }
 
+    /// <summary>A configured default host serves requests whose host matches no other route.</summary>
+    [Test]
+    public void DefaultHostServesUnknownHosts()
+    {
+        RouteMatcher matcher = new(
+            [new RouteRule { HostPattern = "app.local", ClusterId = "app" }],
+            defaultHost: "app.local");
+
+        bool matched = matcher.TryMatch("unknown.example", "/", out RouteRule? route);
+
+        matched.Should().BeTrue();
+        route!.ClusterId.Should().Be("app");
+    }
+
     /// <summary>No route matches an unknown host.</summary>
     [Test]
     public void NoMatchForUnknownHost()

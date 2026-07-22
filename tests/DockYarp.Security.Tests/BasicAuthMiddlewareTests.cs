@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 using AwesomeAssertions;
 
+using DockYarp.Core.Configuration;
 using DockYarp.Core.Models;
 using DockYarp.Core.Stores;
 
@@ -18,7 +19,7 @@ public sealed class BasicAuthMiddlewareTests
     [Test]
     public async Task MissingCredentialsRejected()
     {
-        BasicAuthMiddleware middleware = new(new RouteLookup(ProtectedStore()));
+        BasicAuthMiddleware middleware = new(new RouteLookup(ProtectedStore(), new RoutingOptions()));
         DefaultHttpContext context = SecurityTestHelpers.Context("https", "app.local", "/");
         bool nextCalled = false;
 
@@ -37,7 +38,7 @@ public sealed class BasicAuthMiddlewareTests
     [Test]
     public async Task ValidCredentialsAccepted()
     {
-        BasicAuthMiddleware middleware = new(new RouteLookup(ProtectedStore()));
+        BasicAuthMiddleware middleware = new(new RouteLookup(ProtectedStore(), new RoutingOptions()));
         DefaultHttpContext context = SecurityTestHelpers.Context("https", "app.local", "/");
         context.Request.Headers.Authorization = "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes("admin:secret"));
         bool nextCalled = false;
@@ -56,7 +57,7 @@ public sealed class BasicAuthMiddlewareTests
     public async Task UnprotectedRouteNotChallenged()
     {
         RouteConfigStore store = SecurityTestHelpers.StoreWith(new RouteRule { HostPattern = "app.local", ClusterId = "app" });
-        BasicAuthMiddleware middleware = new(new RouteLookup(store));
+        BasicAuthMiddleware middleware = new(new RouteLookup(store, new RoutingOptions()));
         DefaultHttpContext context = SecurityTestHelpers.Context("https", "app.local", "/");
         bool nextCalled = false;
 

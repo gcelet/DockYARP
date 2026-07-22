@@ -17,10 +17,19 @@ public sealed class RouteMatcher
 {
     private readonly Dictionary<string, RouteRule[]> exactHosts;
     private readonly WildcardRoute[] wildcardHosts;
+    private readonly RouteRule[]? defaultHostRoutes;
+
+    /// <summary>Builds a matcher from the given routes, with no default host.</summary>
+    /// <param name="routes">The routes to index.</param>
+    public RouteMatcher(ImmutableArray<RouteRule> routes)
+        : this(routes, defaultHost: null)
+    {
+    }
 
     /// <summary>Builds a matcher from the given routes.</summary>
     /// <param name="routes">The routes to index.</param>
-    public RouteMatcher(ImmutableArray<RouteRule> routes)
+    /// <param name="defaultHost">Host whose routes also serve requests matching no other host, or <see langword="null"/>.</param>
+    public RouteMatcher(ImmutableArray<RouteRule> routes, string? defaultHost)
     {
         Dictionary<string, List<RouteRule>> exact = new(StringComparer.OrdinalIgnoreCase);
         List<WildcardRoute> wildcards = [];
@@ -45,6 +54,9 @@ public sealed class RouteMatcher
         exactHosts = BuildExactIndex(exact);
         wildcards.Sort(static (left, right) => CompareRoutes(left.Rule, right.Rule));
         wildcardHosts = [.. wildcards];
+        defaultHostRoutes = defaultHost is { Length: > 0 } host && exactHosts.TryGetValue(host, out RouteRule[]? routesForHost)
+            ? routesForHost
+            : null;
     }
 
     /// <summary>Attempts to select the route matching the given host and path.</summary>
@@ -70,6 +82,12 @@ public sealed class RouteMatcher
                 route = wildcard.Rule;
                 return true;
             }
+        }
+
+        // Fallback: the configured default host also serves requests matching no other host.
+        if (defaultHostRoutes is not null && TryMatchPath(defaultHostRoutes, path, out route))
+        {
+            return true;
         }
 
         route = null;

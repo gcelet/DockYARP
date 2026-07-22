@@ -16,16 +16,55 @@ public static class YarpConfigMapper
     private const string RoundRobin = "RoundRobin";
     private const string LeastRequests = "LeastRequests";
 
-    /// <summary>Maps a snapshot to YARP routes and clusters.</summary>
+    /// <summary>Maps a snapshot to YARP routes and clusters, with no default host.</summary>
     /// <param name="snapshot">The routing snapshot.</param>
     /// <returns>The YARP route and cluster configuration.</returns>
     public static (IReadOnlyList<RouteConfig> Routes, IReadOnlyList<ClusterConfig> Clusters) Map(
-        RouteConfigSnapshot snapshot)
+        RouteConfigSnapshot snapshot) => Map(snapshot, defaultHost: null);
+
+    /// <summary>Maps a snapshot to YARP routes and clusters.</summary>
+    /// <param name="snapshot">The routing snapshot.</param>
+    /// <param name="defaultHost">Host whose backend also serves requests matching no other host, or <see langword="null"/>.</param>
+    /// <returns>The YARP route and cluster configuration.</returns>
+    public static (IReadOnlyList<RouteConfig> Routes, IReadOnlyList<ClusterConfig> Clusters) Map(
+        RouteConfigSnapshot snapshot,
+        string? defaultHost)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
-        IReadOnlyList<RouteConfig> routes = [.. snapshot.Routes.Select(BuildRoute)];
+        List<RouteConfig> routeList = [.. snapshot.Routes.Select(BuildRoute)];
+        if (BuildDefaultRoute(snapshot, defaultHost) is { } catchAll)
+        {
+            routeList.Add(catchAll);
+        }
+
         IReadOnlyList<ClusterConfig> clusters = [.. snapshot.Clusters.Select(BuildCluster)];
-        return (routes, clusters);
+        return (routeList, clusters);
+    }
+
+    private static RouteConfig? BuildDefaultRoute(RouteConfigSnapshot snapshot, string? defaultHost)
+    {
+        if (defaultHost is not { Length: > 0 })
+        {
+            return null;
+        }
+
+        RouteRule? target = snapshot.Routes.FirstOrDefault(
+            rule => string.Equals(rule.HostPattern, defaultHost, StringComparison.OrdinalIgnoreCase));
+        if (target is null)
+        {
+            return null;
+        }
+
+        // No host match => any host; near-lowest precedence so specific host routes win, but it still
+        // beats the terminal MapFallback (which sits at int.MaxValue) so unknown hosts reach the backend.
+        return new RouteConfig
+        {
+            RouteId = "__default_host__",
+            ClusterId = target.ClusterId,
+            Order = int.MaxValue - 1,
+            Match = new RouteMatch { Path = "/{**catch-all}" },
+            Transforms = BuildTransforms(target.Transforms),
+        };
     }
 
     private static RouteConfig BuildRoute(RouteRule rule) =>
