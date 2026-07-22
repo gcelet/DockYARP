@@ -68,4 +68,41 @@ public sealed class ContainerMapperTests
         result.Contribution.Routes.Should().ContainSingle(route => route.HostPattern == "app.local");
         result.Warnings.Should().ContainSingle();
     }
+
+    /// <summary>Complete auth labels protect the mapped route.</summary>
+    [Test]
+    public void AuthLabelsProtectRoute()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.AuthUser, "admin"),
+                (DockerLabels.AuthPassword, "secret")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Routes.Single().Auth.Should().NotBeNull();
+        result.Contribution.Routes.Single().Auth!.Username.Should().Be("admin");
+    }
+
+    /// <summary>Incomplete auth labels leave the route unprotected and produce a warning.</summary>
+    [Test]
+    public void IncompleteAuthWarnsAndLeavesUnprotected()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.AuthUser, "admin")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Routes.Single().Auth.Should().BeNull();
+        result.Warnings.Should().Contain(warning => warning.Contains("auth", System.StringComparison.Ordinal));
+    }
 }

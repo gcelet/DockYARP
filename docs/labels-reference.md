@@ -13,8 +13,15 @@ are **nginx-proxy compatible**; DockYarp-specific labels use the `DOCKYARP_` pre
 | `LETSENCRYPT_HOST` | No | Host a certificate should be obtained for (enables TLS metadata). | `app.local` |
 | `LETSENCRYPT_EMAIL` | No | Contact email used when requesting the certificate. | `admin@example.com` |
 | `DOCKYARP_LB` | No | Load-balancing policy: `round-robin` (default) or `least-requests`. | `least-requests` |
+| `DOCKYARP_AUTH_USER` | No | Basic Auth username protecting the route (with `DOCKYARP_AUTH_PASSWORD`). | `admin` |
+| `DOCKYARP_AUTH_PASSWORD` | No | Basic Auth password. | `s3cret` |
+| `DOCKYARP_AUTH_REALM` | No | Optional Basic Auth realm shown in the challenge. | `Admin area` |
 
 ## Behavior
+
+- **Basic Auth**: `DOCKYARP_AUTH_USER` and `DOCKYARP_AUTH_PASSWORD` protect the route (visible via
+  `docker inspect`). Both are required together; if only one is present the route is left unprotected and a
+  warning is logged.
 
 - **Port inference**: with no `VIRTUAL_PORT`, if the container exposes exactly one port it is used;
   otherwise the container is skipped with a warning (ambiguous).

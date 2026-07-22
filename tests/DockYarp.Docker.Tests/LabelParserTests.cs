@@ -93,4 +93,43 @@ public sealed class LabelParserTests
         config!.LetsEncryptHost.Should().Be("app.local");
         config.LetsEncryptEmail.Should().Be("admin@example.com");
     }
+
+    /// <summary>Complete auth labels produce Basic Auth credentials.</summary>
+    [Test]
+    public void AuthLabelsAreParsed()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.AuthUser, "admin"),
+                (DockerLabels.AuthPassword, "secret"),
+                (DockerLabels.AuthRealm, "app")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.Auth.Should().NotBeNull();
+        config.Auth!.Username.Should().Be("admin");
+        config.Auth.Realm.Should().Be("app");
+    }
+
+    /// <summary>Partial auth labels produce no credentials and are flagged as incomplete.</summary>
+    [Test]
+    public void PartialAuthYieldsNoCredentials()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.AuthUser, "admin")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.Auth.Should().BeNull();
+        LabelParser.HasIncompleteAuth(container.Labels).Should().BeTrue();
+    }
 }

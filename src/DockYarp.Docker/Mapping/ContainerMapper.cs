@@ -53,6 +53,11 @@ public static class ContainerMapper
                 continue;
             }
 
+            if (LabelParser.HasIncompleteAuth(container.Labels))
+            {
+                warnings.Add($"{container.Name} ({Short(container.Id)}): incomplete auth labels; route left unprotected.");
+            }
+
             if (!groups.TryGetValue(config.Host, out HostGroup? group))
             {
                 group = new HostGroup(config);
@@ -100,6 +105,7 @@ public static class ContainerMapper
                 PathPrefix = first.PathPrefix,
                 ClusterId = host,
                 Tls = tls,
+                Auth = first.Auth,
             };
         }
 

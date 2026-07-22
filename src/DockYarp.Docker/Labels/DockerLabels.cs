@@ -21,4 +21,13 @@ public static class DockerLabels
 
     /// <summary>DockYarp-specific load-balancing policy (<c>round-robin</c> or <c>least-requests</c>).</summary>
     public const string LoadBalancing = "DOCKYARP_LB";
+
+    /// <summary>Basic Auth username protecting the route.</summary>
+    public const string AuthUser = "DOCKYARP_AUTH_USER";
+
+    /// <summary>Basic Auth password protecting the route.</summary>
+    public const string AuthPassword = "DOCKYARP_AUTH_PASSWORD";
+
+    /// <summary>Optional Basic Auth realm shown in the challenge.</summary>
+    public const string AuthRealm = "DOCKYARP_AUTH_REALM";
 }

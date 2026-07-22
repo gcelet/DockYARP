@@ -46,8 +46,37 @@ public static class LabelParser
             LetsEncryptHost = GetOrNull(labels, DockerLabels.LetsEncryptHost),
             LetsEncryptEmail = GetOrNull(labels, DockerLabels.LetsEncryptEmail),
             LoadBalancingPolicy = ParsePolicy(GetOrNull(labels, DockerLabels.LoadBalancing)),
+            Auth = ParseAuth(labels),
         };
         return true;
+    }
+
+    /// <summary>Reports whether exactly one of the auth user/password labels is present (incomplete).</summary>
+    /// <param name="labels">The container labels.</param>
+    /// <returns><see langword="true"/> when auth labels are present but incomplete.</returns>
+    public static bool HasIncompleteAuth(IReadOnlyDictionary<string, string> labels)
+    {
+        ArgumentNullException.ThrowIfNull(labels);
+        bool hasUser = GetOrNull(labels, DockerLabels.AuthUser) is not null;
+        bool hasPassword = GetOrNull(labels, DockerLabels.AuthPassword) is not null;
+        return hasUser != hasPassword;
+    }
+
+    private static BasicAuthCredentials? ParseAuth(IReadOnlyDictionary<string, string> labels)
+    {
+        string? user = GetOrNull(labels, DockerLabels.AuthUser);
+        string? password = GetOrNull(labels, DockerLabels.AuthPassword);
+        if (user is null || password is null)
+        {
+            return null;
+        }
+
+        return new BasicAuthCredentials
+        {
+            Username = user,
+            Password = password,
+            Realm = GetOrNull(labels, DockerLabels.AuthRealm),
+        };
     }
 
     private static bool TryResolvePort(
