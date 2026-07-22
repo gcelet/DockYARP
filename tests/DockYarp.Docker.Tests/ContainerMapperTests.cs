@@ -139,6 +139,73 @@ public sealed class ContainerMapperTests
         result.Contribution.Routes.Single().Transforms.Should().BeNull();
     }
 
+    /// <summary>A healthy container is routed.</summary>
+    [Test]
+    public void HealthyContainerIsRouted()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels((DockerLabels.VirtualHost, "app.local"), (DockerLabels.VirtualPort, "8080")))
+            with { Health = ContainerHealth.Healthy };
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Routes.Should().ContainSingle(route => route.HostPattern == "app.local");
+    }
+
+    /// <summary>An unhealthy container is excluded from routing and reported.</summary>
+    [Test]
+    public void UnhealthyContainerIsExcluded()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels((DockerLabels.VirtualHost, "app.local"), (DockerLabels.VirtualPort, "8080")))
+            with { Health = ContainerHealth.Unhealthy };
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Routes.Should().BeEmpty();
+        result.Warnings.Should().Contain(warning => warning.Contains("Unhealthy", System.StringComparison.Ordinal));
+    }
+
+    /// <summary>A starting container is excluded until it becomes healthy.</summary>
+    [Test]
+    public void StartingContainerIsExcluded()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels((DockerLabels.VirtualHost, "app.local"), (DockerLabels.VirtualPort, "8080")))
+            with { Health = ContainerHealth.Starting };
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Routes.Should().BeEmpty();
+    }
+
+    /// <summary>An unhealthy replica is dropped while its healthy sibling still serves the host.</summary>
+    [Test]
+    public void HealthySiblingStillServesHost()
+    {
+        ContainerInfo healthy = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels((DockerLabels.VirtualHost, "app.local"), (DockerLabels.VirtualPort, "8080")))
+            with { Health = ContainerHealth.Healthy };
+        ContainerInfo unhealthy = DiscoveryTestData.Container(
+            "c2",
+            "10.0.0.2",
+            DiscoveryTestData.Labels((DockerLabels.VirtualHost, "app.local"), (DockerLabels.VirtualPort, "8080")))
+            with { Health = ContainerHealth.Unhealthy };
+
+        ContainerMapResult result = ContainerMapper.Map([healthy, unhealthy]);
+
+        result.Contribution.Clusters.Should().ContainSingle()
+            .Which.Endpoints.Should().ContainSingle(endpoint => endpoint.Id == "c1");
+    }
+
     /// <summary>An invalid container is skipped and reported as a warning.</summary>
     [Test]
     public void InvalidContainerIsSkippedWithWarning()

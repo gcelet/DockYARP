@@ -106,6 +106,7 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
             Address = ResolveAddress(response),
             Labels = CopyLabels(response.Labels),
             ExposedPorts = ResolvePorts(response.Ports),
+            Health = ContainerStatusParser.ParseHealth(response.Status),
         };
 
     private static IReadOnlyDictionary<string, string> CopyLabels(IDictionary<string, string>? labels) =>
@@ -148,14 +149,7 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
             return false;
         }
 
-        ContainerEventKind? kind = message.Action switch
-        {
-            "start" => ContainerEventKind.Started,
-            "stop" => ContainerEventKind.Stopped,
-            "die" => ContainerEventKind.Died,
-            "update" => ContainerEventKind.Updated,
-            _ => null,
-        };
+        ContainerEventKind? kind = ContainerStatusParser.MapAction(message.Action);
         if (kind is null)
         {
             return false;

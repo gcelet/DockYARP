@@ -22,9 +22,19 @@ map them, merge (resolving precedence, reporting diagnostics), and publish. Even
 authoritative state always comes from a full enumeration. This single code path guarantees convergence and
 covers containers started before DockYarp, replicas joining/leaving, and changes missed during an outage.
 
+## Health-aware selection
+
+Routing follows Docker health: a container that is **unhealthy** or still **starting** is excluded (its
+endpoint is not added) and the exclusion is logged; a container that is **healthy** or declares **no health
+check** is routed. Exclusion is per container, so a healthy replica keeps serving a host when a sibling is
+unhealthy. Health is read from the container status (no extra inspect call), and `health_status` events
+trigger a reconciliation so a container is picked up as soon as it becomes healthy (and dropped when it
+turns unhealthy).
+
 ## Event handling and failure modes
 
-- **Events handled**: `start`, `stop`, `die`, `update` (container scope). Each triggers a reconciliation.
+- **Events handled**: `start`, `stop`, `die`, `update`, and `health_status` (container scope). Each triggers
+  a reconciliation.
 - **Startup reconciliation**: running containers are enumerated at startup, so a container started before
   DockYarp is routed without waiting for an event.
 - **Daemon restart / connection drop**: the event stream ends or throws. The service reconnects with

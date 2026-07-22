@@ -20,4 +20,7 @@ public sealed record ContainerInfo
 
     /// <summary>Gets the container's exposed (private) ports.</summary>
     public ImmutableArray<int> ExposedPorts { get; init; } = [];
+
+    /// <summary>Gets the container's Docker health state; <see cref="ContainerHealth.None"/> when no check is declared.</summary>
+    public ContainerHealth Health { get; init; } = ContainerHealth.None;
 }

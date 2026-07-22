@@ -51,6 +51,13 @@ public static class ContainerMapper
                 continue;
             }
 
+            // Health-aware: an unhealthy/starting container is excluded so healthy siblings still serve the host.
+            if (container.Health is ContainerHealth.Unhealthy or ContainerHealth.Starting)
+            {
+                warnings.Add($"{container.Name} ({Short(container.Id)}): excluded while {container.Health} (not routed).");
+                continue;
+            }
+
             if (LabelParser.HasIncompleteAuth(container.Labels))
             {
                 warnings.Add($"{container.Name} ({Short(container.Id)}): incomplete auth labels; route left unprotected.");
