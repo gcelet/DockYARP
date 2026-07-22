@@ -18,13 +18,15 @@ using DockYarp.Docker.Models;
 public sealed class DockerContainerSource : IContainerSource, IDisposable
 {
     private readonly IDockerClient client;
+    private readonly string? preferredNetwork;
 
     /// <summary>Initializes the source, creating a Docker client from the options.</summary>
-    /// <param name="options">Discovery options (endpoint).</param>
+    /// <param name="options">Discovery options (endpoint, preferred network).</param>
     public DockerContainerSource(DockerDiscoveryOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
         client = CreateClient(options.DockerEndpoint);
+        preferredNetwork = options.PreferredNetwork;
     }
 
     /// <inheritdoc />
@@ -98,7 +100,7 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
         return configuration.CreateClient();
     }
 
-    private static ContainerInfo ToContainerInfo(ContainerListResponse response) =>
+    private ContainerInfo ToContainerInfo(ContainerListResponse response) =>
         new()
         {
             Id = response.ID,
@@ -117,11 +119,14 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
     private static string ResolveName(IList<string>? names) =>
         names is { Count: > 0 } ? names[0].TrimStart('/') : string.Empty;
 
-    private static string ResolveAddress(ContainerListResponse response)
+    private string ResolveAddress(ContainerListResponse response)
     {
-        // Prefer the first network IP; fall back to the container name (resolvable on a shared network).
-        string? ip = response.NetworkSettings?.Networks?.Values
-            .FirstOrDefault(network => !string.IsNullOrEmpty(network?.IPAddress))?.IPAddress;
+        // Select by network (preferred network, ingress skipped, deterministic); fall back to the
+        // container name (resolvable on a shared network) when no usable network address is found.
+        Dictionary<string, string?> networks = response.NetworkSettings?.Networks is { } map
+            ? map.ToDictionary(pair => pair.Key, pair => pair.Value?.IPAddress, StringComparer.Ordinal)
+            : new Dictionary<string, string?>(StringComparer.Ordinal);
+        string? ip = NetworkAddressSelector.Select(networks, preferredNetwork);
         return string.IsNullOrEmpty(ip) ? ResolveName(response.Names) : ip;
     }
 

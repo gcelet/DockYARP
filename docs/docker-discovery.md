@@ -44,12 +44,23 @@ turns unhealthy).
   container with invalid labels is skipped and logged; other containers keep working.
 - **Ambiguous port**: a container exposing several ports without `VIRTUAL_PORT` is skipped with a warning.
 
+## Network address selection
+
+A container on several networks has several IPs; only the IP on a network the proxy shares is reachable.
+DockYarp selects the forwarded address as follows: if `PreferredNetwork` is configured and the container
+is attached to it, that network's IP is used; otherwise it picks deterministically (ordinal by network
+name), **skipping** the Swarm `ingress` network; if no network address is available it falls back to the
+container name (resolvable on a shared network). Set `PreferredNetwork` to the network the proxy shares with
+its backends.
+
 ## Configuration
 
 `DockerDiscoveryOptions`:
 
 - `DockerEndpoint` — daemon URI; `null` uses the platform default
   (`unix:///var/run/docker.sock` on Linux, `npipe://./pipe/docker_engine` on Windows).
+- `PreferredNetwork` — Docker network whose IP is preferred when a container is attached to it; `null`
+  selects deterministically (ingress skipped).
 - `InitialReconnectDelay` / `MaxReconnectDelay` — reconnect backoff bounds.
 
 Register with `services.AddDockerDiscovery(options)` (the host must also register an `IRouteConfigStore`).
