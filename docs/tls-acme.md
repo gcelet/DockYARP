@@ -7,9 +7,9 @@ DockYarp obtains and serves HTTPS certificates automatically for hosts that decl
 
 | Type | Role |
 |---|---|
-| `ICertificateStore` / `FileCertificateStore` | PFX files under a directory, mirrored in memory for SNI. |
+| `ICertificateStore` / `FileCertificateStore` | PFX and PEM files under a directory, mirrored in memory for SNI. |
 | `DefaultCertificateProvider` | Self-signed **fallback** certificate generated at startup. |
-| `SniCertificateSelector` | Picks the host certificate or the fallback per SNI. |
+| `SniCertificateSelector` | Picks the exact host certificate, then a wildcard parent, else the fallback. |
 | `KestrelTlsConfigurator` | Wires the selector into Kestrel's HTTPS defaults. |
 | `IHttp01ChallengeStore` / `Http01ChallengeMiddleware` | Serves `/.well-known/acme-challenge/{token}`. |
 | `IAcmeClient` / `CertesAcmeClient` | Obtains a certificate via ACME HTTP-01 (Certes). |
@@ -32,6 +32,20 @@ The ACME challenge middleware runs **before** HTTPS enforcement so validation is
 The host listens for HTTPS on port 8443 (`ASPNETCORE_HTTPS_PORTS`); Kestrel selects the certificate per
 SNI host via `KestrelTlsConfigurator`, with the self-signed fallback set as the default certificate (a
 ports-only HTTPS endpoint requires a default certificate to start).
+
+## Provided certificates & wildcard selection
+
+Operators can **mount their own certificates** into `CertificateDirectory` (loaded at startup, alongside
+ACME-persisted ones):
+
+- **PEM pair**: `{host}.crt` + `{host}.key` (a `.crt` with no matching `.key` is skipped).
+- **PFX**: `{host}.pfx`.
+
+A mounted certificate takes precedence over an ACME-persisted one for the same host. Files are keyed by the
+host in the file name. For a **wildcard** certificate (`*.example.com`), provide it under its base domain
+(`example.com.crt`/`example.com.key`): SNI selection tries the exact host, then the parent domain (leftmost
+label stripped), then the self-signed fallback. Filesystem access goes through `System.IO.Abstractions`,
+so loading is unit-tested against a mock filesystem.
 
 ## Testing boundary
 

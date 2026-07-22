@@ -1,6 +1,7 @@
 namespace DockYarp.Tls;
 
 using System;
+using System.IO.Abstractions;
 
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +21,7 @@ public static class TlsServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(options);
 
         services.AddSingleton(options);
+        services.AddSingleton<IFileSystem, FileSystem>();
         services.AddSingleton<DefaultCertificateProvider>();
         services.AddSingleton<ICertificateStore, FileCertificateStore>();
         services.AddSingleton<SniCertificateSelector>();

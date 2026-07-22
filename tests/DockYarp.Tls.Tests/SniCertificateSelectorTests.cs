@@ -24,6 +24,19 @@ public sealed class SniCertificateSelectorTests
         selected.Thumbprint.Should().Be(appCertificate.Thumbprint);
     }
 
+    /// <summary>A subdomain with no exact certificate selects the parent-domain (wildcard) certificate.</summary>
+    [Test]
+    public void ReturnsParentDomainCertificateForSubdomain()
+    {
+        FakeCertificateStore store = new();
+        using X509Certificate2 wildcard = DefaultCertificateFactory.CreateSelfSigned("*.example.com");
+        store.Save("example.com", wildcard);
+        using DefaultCertificateProvider fallback = new();
+        SniCertificateSelector selector = new(store, fallback);
+
+        selector.Select("foo.example.com").Thumbprint.Should().Be(wildcard.Thumbprint);
+    }
+
     /// <summary>The fallback certificate is returned for an unknown host or missing SNI.</summary>
     [Test]
     public void ReturnsFallbackWhenMissing()
@@ -33,6 +46,7 @@ public sealed class SniCertificateSelectorTests
         SniCertificateSelector selector = new(store, fallback);
 
         selector.Select("unknown.local").Thumbprint.Should().Be(fallback.Certificate.Thumbprint);
+        selector.Select("bar.other.test").Thumbprint.Should().Be(fallback.Certificate.Thumbprint);
         selector.Select(null).Thumbprint.Should().Be(fallback.Certificate.Thumbprint);
     }
 }

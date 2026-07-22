@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="Certes" />
+    <PackageReference Include="System.IO.Abstractions" />
   </ItemGroup>
 
   <ItemGroup>

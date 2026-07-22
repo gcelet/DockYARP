@@ -12,6 +12,7 @@
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.17.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.17.0-beta.1" />
     <PackageVersion Include="Certes" Version="3.0.4" />
+    <PackageVersion Include="System.IO.Abstractions" Version="22.2.0" />
   </ItemGroup>
   <!-- Code quality analyzers -->
   <ItemGroup>
@@ -25,6 +26,7 @@
   <!-- Test dependencies -->
   <ItemGroup>
     <PackageVersion Include="AwesomeAssertions" Version="9.4.0" />
+    <PackageVersion Include="System.IO.Abstractions.TestingHelpers" Version="22.2.0" />
     <PackageVersion Include="AwesomeAssertions.Analyzers" Version="9.0.8" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.9" />
     <PackageVersion Include="NUnit" Version="4.6.1" />
