@@ -38,7 +38,19 @@ public static class YarpConfigMapper
                 Hosts = [rule.HostPattern],
                 Path = BuildPath(rule.PathPrefix),
             },
+            Transforms = BuildTransforms(rule.Transforms),
         };
+
+    private static IReadOnlyList<IReadOnlyDictionary<string, string>>? BuildTransforms(RouteTransforms? transforms)
+    {
+        if (transforms?.PathRemovePrefix is not { Length: > 0 } prefix)
+        {
+            return null;
+        }
+
+        // Built-in YARP request transform: strips the matching prefix (on segment boundaries) before forwarding.
+        return [new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["PathRemovePrefix"] = prefix }];
+    }
 
     private static ClusterConfig BuildCluster(Cluster cluster) =>
         new()

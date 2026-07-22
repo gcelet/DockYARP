@@ -69,6 +69,44 @@ public sealed class YarpConfigMapperTests
         clusters.Single().HealthCheck!.Active!.Path.Should().Be("/health");
     }
 
+    /// <summary>A route carrying a path-remove-prefix transform maps to a YARP transform entry.</summary>
+    [Test]
+    public void PathRemovePrefixTransformIsMapped()
+    {
+        RouteConfigSnapshot snapshot = new(
+            [
+                new RouteRule
+                {
+                    HostPattern = "app.local",
+                    PathPrefix = "/api",
+                    ClusterId = "app",
+                    Transforms = new RouteTransforms { PathRemovePrefix = "/api" },
+                },
+            ],
+            [Cluster("app", LoadBalancingPolicy.RoundRobin)],
+            1);
+
+        (System.Collections.Generic.IReadOnlyList<RouteConfig> routes, _) = YarpConfigMapper.Map(snapshot);
+
+        routes.Single().Transforms.Should().ContainSingle()
+            .Which.Should().Contain(
+                new System.Collections.Generic.KeyValuePair<string, string>("PathRemovePrefix", "/api"));
+    }
+
+    /// <summary>A route with no transform maps to a null transform list (original path forwarded).</summary>
+    [Test]
+    public void NoTransformProducesNullTransforms()
+    {
+        RouteConfigSnapshot snapshot = new(
+            [new RouteRule { HostPattern = "app.local", ClusterId = "app" }],
+            [Cluster("app", LoadBalancingPolicy.RoundRobin)],
+            1);
+
+        (System.Collections.Generic.IReadOnlyList<RouteConfig> routes, _) = YarpConfigMapper.Map(snapshot);
+
+        routes.Single().Transforms.Should().BeNull();
+    }
+
     private static Cluster Cluster(string id, LoadBalancingPolicy policy) =>
         new()
         {

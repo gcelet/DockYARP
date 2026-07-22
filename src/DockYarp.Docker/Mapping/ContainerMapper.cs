@@ -97,6 +97,10 @@ public static class ContainerMapper
                 }
                 : null;
 
+            RouteTransforms? transforms = first.PathRemovePrefix is { Length: > 0 } prefix
+                ? new RouteTransforms { PathRemovePrefix = prefix }
+                : null;
+
             return new RouteRule
             {
                 HostPattern = host,
@@ -104,6 +108,7 @@ public static class ContainerMapper
                 ClusterId = host,
                 Tls = tls,
                 Auth = first.Auth,
+                Transforms = transforms,
             };
         }
 

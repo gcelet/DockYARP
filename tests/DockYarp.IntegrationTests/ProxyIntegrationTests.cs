@@ -11,6 +11,7 @@ using DockYarp.Core.Interfaces;
 using DockYarp.Core.Models;
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -59,6 +60,44 @@ public sealed class ProxyIntegrationTests
         }
     }
 
+    /// <summary>A path-remove-prefix transform strips the prefix before the request reaches the backend.</summary>
+    [Test]
+    public async Task PathRemovePrefixStripsPrefixBeforeForwarding()
+    {
+        await using WebApplication backend = BuildEchoBackend();
+        await backend.StartAsync();
+
+        try
+        {
+            using WebApplicationFactory<Program> factory = new();
+            using HttpClient client = factory.CreateClient();
+            IRouteConfigStore store = factory.Services.GetRequiredService<IRouteConfigStore>();
+            string address = backend.Urls.First();
+
+            store.Apply(
+                [
+                    new RouteRule
+                    {
+                        HostPattern = "backend.local",
+                        PathPrefix = "/api",
+                        ClusterId = "backend",
+                        Transforms = new RouteTransforms { PathRemovePrefix = "/api" },
+                    },
+                ],
+                [new Cluster { Id = "backend", Endpoints = [new ClusterEndpoint("b1", address)] }]);
+            client.DefaultRequestHeaders.Host = "backend.local";
+
+            (HttpStatusCode status, string body) = await PollAsync(client, "/api/orders");
+
+            status.Should().Be(HttpStatusCode.OK);
+            body.Should().Be("/orders");
+        }
+        finally
+        {
+            await backend.StopAsync();
+        }
+    }
+
     private static WebApplication BuildBackend()
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
@@ -68,12 +107,21 @@ public sealed class ProxyIntegrationTests
         return app;
     }
 
-    private static async Task<(HttpStatusCode Status, string Body)> PollAsync(HttpClient client)
+    private static WebApplication BuildEchoBackend()
+    {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        WebApplication app = builder.Build();
+        app.Urls.Add("http://127.0.0.1:0");
+        app.MapFallback(static (HttpContext context) => context.Request.Path.ToString());
+        return app;
+    }
+
+    private static async Task<(HttpStatusCode Status, string Body)> PollAsync(HttpClient client, string path = "/")
     {
         HttpStatusCode status = HttpStatusCode.ServiceUnavailable;
         for (int attempt = 0; attempt < 100; attempt++)
         {
-            using HttpResponseMessage response = await client.GetAsync("/");
+            using HttpResponseMessage response = await client.GetAsync(path);
             status = response.StatusCode;
             if (status == HttpStatusCode.OK)
             {

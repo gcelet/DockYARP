@@ -47,6 +47,7 @@ public static class LabelParser
             Port = port,
             Scheme = ParseScheme(GetOrNull(labels, DockerLabels.VirtualProto)),
             PathPrefix = GetOrNull(labels, DockerLabels.VirtualPath),
+            PathRemovePrefix = ResolvePathRewrite(labels),
             LetsEncryptHost = GetOrNull(labels, DockerLabels.LetsEncryptHost),
             LetsEncryptEmail = GetOrNull(labels, DockerLabels.LetsEncryptEmail),
             LoadBalancingPolicy = ParsePolicy(GetOrNull(labels, DockerLabels.LoadBalancing)),
@@ -76,6 +77,15 @@ public static class LabelParser
         return proto is not null
             && !proto.Equals("http", StringComparison.OrdinalIgnoreCase)
             && !proto.Equals("https", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Derives the path prefix to strip: <c>VIRTUAL_DEST</c> maps <c>VIRTUAL_PATH</c> to root.</summary>
+    private static string? ResolvePathRewrite(IReadOnlyDictionary<string, string> labels)
+    {
+        // VIRTUAL_DEST rewrites the matched VIRTUAL_PATH; only the "/" prefix-strip is supported today.
+        string? dest = GetOrNull(labels, DockerLabels.VirtualDest);
+        string? path = GetOrNull(labels, DockerLabels.VirtualPath);
+        return dest is not null && path is not null ? path : null;
     }
 
     private static BackendScheme ParseScheme(string? value) =>

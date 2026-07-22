@@ -11,6 +11,7 @@ are **nginx-proxy compatible**; DockYarp-specific labels use the `DOCKYARP_` pre
 | `VIRTUAL_PORT` | Conditional | Target container port. Required when the container exposes more than one port; inferred when exactly one is exposed. | `8080` |
 | `VIRTUAL_PATH` | No | Path prefix the route matches (empty = all paths). | `/api` |
 | `VIRTUAL_PROTO` | No | Backend transport scheme: `http` (default) or `https`. | `https` |
+| `VIRTUAL_DEST` | No | Rewrites the matched path before forwarding; `/` strips the `VIRTUAL_PATH` prefix. | `/` |
 | `LETSENCRYPT_HOST` | No | Host a certificate should be obtained for (enables TLS metadata). | `app.local` |
 | `LETSENCRYPT_EMAIL` | No | Contact email used when requesting the certificate. | `admin@example.com` |
 | `DOCKYARP_LB` | No | Load-balancing policy: `round-robin` (default) or `least-requests`. | `least-requests` |
@@ -28,6 +29,9 @@ are **nginx-proxy compatible**; DockYarp-specific labels use the `DOCKYARP_` pre
   container to one route per host, each sharing its port, path, TLS, and auth settings.
 - **Backend scheme**: `VIRTUAL_PROTO` selects how the proxy reaches the container — `http` (default) or
   `https`. Unsupported values (e.g. `fastcgi`) fall back to `http` and are logged.
+- **Path rewrite**: `VIRTUAL_DEST` rewrites the matched path before forwarding. Currently the supported
+  form is `VIRTUAL_DEST=/`, which strips the `VIRTUAL_PATH` prefix (so `/api/x` reaches the backend as
+  `/x`); richer rewrites are not yet supported.
 - **Port inference**: with no `VIRTUAL_PORT`, if the container exposes exactly one port it is used;
   otherwise the container is skipped with a warning (ambiguous).
 - **Replicas**: containers sharing the same `VIRTUAL_HOST` are aggregated into a single cluster, one

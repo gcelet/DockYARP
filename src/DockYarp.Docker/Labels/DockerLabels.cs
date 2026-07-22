@@ -16,6 +16,9 @@ public static class DockerLabels
     /// <summary>Backend transport scheme (<c>http</c> or <c>https</c>); defaults to <c>http</c>.</summary>
     public const string VirtualProto = "VIRTUAL_PROTO";
 
+    /// <summary>Destination path rewrite; <c>/</c> strips the <see cref="VirtualPath"/> prefix before forwarding.</summary>
+    public const string VirtualDest = "VIRTUAL_DEST";
+
     /// <summary>Host a certificate should be obtained for.</summary>
     public const string LetsEncryptHost = "LETSENCRYPT_HOST";
 
