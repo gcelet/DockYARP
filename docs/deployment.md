@@ -36,6 +36,22 @@ docker compose down -v
 On SIGTERM the host drains in-flight requests and stops background workers within
 `Host:ShutdownTimeoutSeconds` (default 30s).
 
+## Configuration
+
+Options are bound from `appsettings.json` and environment variables (double-underscore syntax, e.g.
+`Tls__AcceptTermsOfService=true`). Unset keys keep their defaults.
+
+| Section | Keys |
+|---|---|
+| `Tls` | `ContactEmail`, `CertificateDirectory`, `AcmeDirectoryUri` (defaults to Let's Encrypt **staging**), `AcceptTermsOfService`, `RenewBeforeExpiry`, `CheckInterval` |
+| `Security` | `EnableHsts`, `HstsMaxAge`, `HstsIncludeSubDomains`, `FrameOptions`, `ReferrerPolicy` |
+| `Docker` | `Enabled`, `DockerEndpoint` |
+| `AdminApi` | `ApiKey` (empty ⇒ admin API closed) |
+| `Host` | `ShutdownTimeoutSeconds` |
+
+For production TLS, set `Tls__AcmeDirectoryUri` to the production ACME endpoint, `Tls__AcceptTermsOfService=true`,
+and `Tls__ContactEmail`.
+
 ## CI/CD with Nuke
 
 [`build/Build.cs`](../build/Build.cs) defines the pipeline:

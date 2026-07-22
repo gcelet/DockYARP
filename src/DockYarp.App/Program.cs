@@ -22,27 +22,30 @@ builder.Services.Configure<HostOptions>(host => host.ShutdownTimeout = TimeSpan.
 // Docker discovery is opt-in (kept off in tests / local runs without a daemon).
 if (builder.Configuration.GetValue("Docker:Enabled", defaultValue: false))
 {
-    builder.Services.AddDockerDiscovery(new DockerDiscoveryOptions { DockerEndpoint = builder.Configuration["Docker:Endpoint"] });
+    DockerDiscoveryOptions dockerOptions = new();
+    builder.Configuration.GetSection("Docker").Bind(dockerOptions);
+    builder.Services.AddDockerDiscovery(dockerOptions);
 }
 
 // The routing store is the single source of truth; YARP is driven from it via the bridge.
 builder.Services.AddSingleton<IRouteConfigStore, RouteConfigStore>();
 builder.Services.AddReverseProxy().LoadFromMemory([], []);
 builder.Services.AddHostedService<YarpConfigBridge>();
-builder.Services.AddDockYarpSecurity(new SecurityHeadersOptions());
+
+// Security options bound from the "Security" section (defaults preserved when unset).
+SecurityHeadersOptions securityOptions = new();
+builder.Configuration.GetSection("Security").Bind(securityOptions);
+builder.Services.AddDockYarpSecurity(securityOptions);
 
 // TLS/ACME: certificate store, SNI, HTTP-01 challenge, and provisioning.
-TlsOptions tlsOptions = new() { ContactEmail = builder.Configuration["Tls:ContactEmail"] };
-string? certificateDirectory = builder.Configuration["Tls:CertificateDirectory"];
-if (!string.IsNullOrEmpty(certificateDirectory))
-{
-    tlsOptions.CertificateDirectory = certificateDirectory;
-}
-
+TlsOptions tlsOptions = new();
+builder.Configuration.GetSection("Tls").Bind(tlsOptions);
 builder.Services.AddDockYarpTls(tlsOptions);
 
 // Admin API + observability.
-builder.Services.AddSingleton(new AdminApiOptions { ApiKey = builder.Configuration["AdminApi:ApiKey"] });
+AdminApiOptions adminApiOptions = new();
+builder.Configuration.GetSection("AdminApi").Bind(adminApiOptions);
+builder.Services.AddSingleton(adminApiOptions);
 builder.Services.AddSingleton<DockYarpMetrics>();
 builder.Services.AddOpenTelemetry().WithMetrics(metrics => metrics
     .AddMeter(DockYarpMetrics.MeterName)
