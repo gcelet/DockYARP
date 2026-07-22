@@ -10,8 +10,8 @@ and everything else is proxied.
 |---|---|
 | `GET /api/routes` | Active routes (sanitized — see below). |
 | `GET /api/clusters` | Active clusters with their endpoints. |
-| `GET /api/certs` | Empty list for now (a certificate store arrives with `tls-acme`). |
-| `GET /api/health` | Overall status plus route/cluster counts. |
+| `GET /api/certs` | Stored certificates (host + expiry, no private keys) from the certificate store. |
+| `GET /api/health` | Overall status (`Healthy`/`Degraded`) with route/cluster/certificate counts and Docker discovery status (`connected`/`disconnected`/`disabled`). |
 | `GET /metrics` | OpenTelemetry metrics in Prometheus format (unauthenticated, for scrapers). |
 
 Responses are **sanitized DTOs**: a route exposes `requiresAuth` (bool) but never the Basic Auth password.

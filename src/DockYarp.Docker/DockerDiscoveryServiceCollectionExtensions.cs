@@ -20,6 +20,7 @@ public static class DockerDiscoveryServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(options);
 
         services.AddSingleton(options);
+        services.AddSingleton<DiscoveryHealthState>();
         services.AddSingleton<IContainerSource, DockerContainerSource>();
         services.AddSingleton<DiscoveryReconciler>();
         services.AddHostedService<DockerDiscoveryService>();

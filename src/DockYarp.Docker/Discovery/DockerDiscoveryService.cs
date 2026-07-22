@@ -19,11 +19,13 @@ using Microsoft.Extensions.Logging;
 /// <param name="source">The container source (event stream).</param>
 /// <param name="reconciler">The reconciler that publishes state.</param>
 /// <param name="options">Discovery options (backoff bounds).</param>
+/// <param name="health">Shared connection-health state for observability.</param>
 /// <param name="logger">Logger for connection-state transitions.</param>
 public sealed class DockerDiscoveryService(
     IContainerSource source,
     DiscoveryReconciler reconciler,
     DockerDiscoveryOptions options,
+    DiscoveryHealthState health,
     ILogger<DockerDiscoveryService> logger) : BackgroundService
 {
     /// <inheritdoc />
@@ -40,6 +42,7 @@ public sealed class DockerDiscoveryService(
             {
                 await reconciler.ReconcileAsync(stoppingToken).ConfigureAwait(false);
                 attempt = 0;
+                health.MarkConnected();
                 DiscoveryLog.Connected(logger);
 
                 await foreach (ContainerLifecycleEvent lifecycleEvent in
@@ -66,6 +69,7 @@ public sealed class DockerDiscoveryService(
 
     private Task DelayBeforeReconnectAsync(int attempt, Exception? exception, CancellationToken cancellationToken)
     {
+        health.MarkDisconnected();
         TimeSpan delay = BackoffPolicy.Compute(attempt, options.InitialReconnectDelay, options.MaxReconnectDelay);
         DiscoveryLog.Reconnecting(logger, attempt, delay, exception);
         return Task.Delay(delay, cancellationToken);

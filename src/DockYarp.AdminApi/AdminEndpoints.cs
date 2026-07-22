@@ -23,11 +23,23 @@ public static class AdminEndpoints
 
         group.MapGet("/routes", static (IRouteConfigStore store) => Results.Json(AdminMapper.Routes(store.Current)));
         group.MapGet("/clusters", static (IRouteConfigStore store) => Results.Json(AdminMapper.Clusters(store.Current)));
-        group.MapGet("/certs", static () => Results.Json(Array.Empty<AdminApiModels.CertView>()));
-        group.MapGet("/health", static (IRouteConfigStore store) =>
+        group.MapGet("/certs", static (ICertificateInventory inventory) => Results.Json(inventory.List()));
+        group.MapGet("/health", static (IRouteConfigStore store, ICertificateInventory inventory, IDiscoveryHealth discovery) =>
         {
             RouteConfigSnapshot snapshot = store.Current;
-            return Results.Json(new AdminApiModels.HealthView("Healthy", snapshot.Routes.Length, snapshot.Clusters.Length));
+            string discoveryStatus = (discovery.Enabled, discovery.Connected) switch
+            {
+                (false, _) => "disabled",
+                (true, true) => "connected",
+                (true, false) => "disconnected",
+            };
+            string status = discovery.Enabled && !discovery.Connected ? "Degraded" : "Healthy";
+            return Results.Json(new AdminApiModels.HealthView(
+                status,
+                snapshot.Routes.Length,
+                snapshot.Clusters.Length,
+                inventory.List().Count,
+                discoveryStatus));
         });
 
         return endpoints;

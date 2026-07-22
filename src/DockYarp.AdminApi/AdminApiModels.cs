@@ -49,12 +49,14 @@ public static class AdminApiModels
     public sealed record ClusterView(string Id, string LoadBalancingPolicy, IReadOnlyList<EndpointView> Endpoints);
 
     /// <summary>Overall health view.</summary>
-    /// <param name="Status">Health status.</param>
+    /// <param name="Status">Health status (<c>Healthy</c> or <c>Degraded</c>).</param>
     /// <param name="Routes">Active route count.</param>
     /// <param name="Clusters">Active cluster count.</param>
-    public sealed record HealthView(string Status, int Routes, int Clusters);
+    /// <param name="Certificates">Stored certificate count.</param>
+    /// <param name="Discovery">Docker discovery status (<c>connected</c>/<c>disconnected</c>/<c>disabled</c>).</param>
+    public sealed record HealthView(string Status, int Routes, int Clusters, int Certificates, string Discovery);
 
-    /// <summary>A certificate view (empty until the TLS capability provides a store).</summary>
+    /// <summary>A certificate view (host and expiry; never the private key).</summary>
     /// <param name="Host">Certificate host.</param>
     /// <param name="NotAfter">Expiry timestamp (ISO-8601).</param>
     public sealed record CertView(string Host, string NotAfter);

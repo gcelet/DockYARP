@@ -1,6 +1,7 @@
 using System;
 
 using DockYarp.AdminApi;
+using DockYarp.App.Observability;
 using DockYarp.App.ReverseProxy;
 using DockYarp.Core.Interfaces;
 using DockYarp.Core.Stores;
@@ -26,6 +27,11 @@ if (builder.Configuration.GetValue("Docker:Enabled", defaultValue: false))
     DockerDiscoveryOptions dockerOptions = new();
     builder.Configuration.GetSection("Docker").Bind(dockerOptions);
     builder.Services.AddDockerDiscovery(dockerOptions);
+    builder.Services.AddSingleton<IDiscoveryHealth, DiscoveryHealthAdapter>();
+}
+else
+{
+    builder.Services.AddSingleton<IDiscoveryHealth>(new DisabledDiscoveryHealth());
 }
 
 // The routing store is the single source of truth; YARP is driven from it via the bridge.
@@ -52,6 +58,7 @@ builder.Services.AddDockYarpTls(tlsOptions);
 AdminApiOptions adminApiOptions = new();
 builder.Configuration.GetSection("AdminApi").Bind(adminApiOptions);
 builder.Services.AddSingleton(adminApiOptions);
+builder.Services.AddSingleton<ICertificateInventory, CertificateInventoryAdapter>();
 builder.Services.AddSingleton<DockYarpMetrics>();
 builder.Services.AddOpenTelemetry().WithMetrics(metrics => metrics
     .AddMeter(DockYarpMetrics.MeterName)

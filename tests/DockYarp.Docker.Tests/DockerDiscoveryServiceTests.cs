@@ -72,7 +72,7 @@ public sealed class DockerDiscoveryServiceTests
             InitialReconnectDelay = TimeSpan.FromMilliseconds(5),
             MaxReconnectDelay = TimeSpan.FromMilliseconds(20),
         };
-        return new DockerDiscoveryService(source, reconciler, options, NullLogger<DockerDiscoveryService>.Instance);
+        return new DockerDiscoveryService(source, reconciler, options, new DiscoveryHealthState(), NullLogger<DockerDiscoveryService>.Instance);
     }
 
     private static ContainerInfo Replica(string id, string address) =>
