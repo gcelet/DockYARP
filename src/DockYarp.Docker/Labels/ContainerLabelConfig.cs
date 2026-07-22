@@ -31,6 +31,9 @@ public sealed record ContainerLabelConfig
     /// <summary>Gets the HTTPS method (<c>HTTPS_METHOD</c>); defaults to <see cref="Core.Models.HttpsMethod.Redirect"/>.</summary>
     public HttpsMethod HttpsMethod { get; init; } = HttpsMethod.Redirect;
 
+    /// <summary>Gets the per-host HSTS override (<c>HSTS</c>), if any.</summary>
+    public string? Hsts { get; init; }
+
     /// <summary>Gets the requested load-balancing policy (<c>DOCKYARP_LB</c>), if any.</summary>
     public LoadBalancingPolicy? LoadBalancingPolicy { get; init; }
 

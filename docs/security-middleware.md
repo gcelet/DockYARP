@@ -9,11 +9,12 @@ by the matched route from the `proxy-routing` store (see [routing-model.md](rout
 
 1. **`SecurityHeadersMiddleware`** — applies baseline headers to every response
    (`X-Content-Type-Options: nosniff`, `X-Frame-Options`, `Referrer-Policy`) and, on HTTPS responses,
-   `Strict-Transport-Security` (HSTS). Configurable via `SecurityHeadersOptions`.
-2. **`HttpsRedirectionMiddleware`** — if the request is HTTP and its matched route's `HostTlsMetadata.Method`
-   is redirecting (`redirect`/`nohttp`) **and** a certificate is available for the host, redirects to the
-   HTTPS URL for the same host/path (308). `noredirect`/`nohttps` never redirect, and a host without a
-   certificate is served over HTTP (no redirect to a not-yet-provisioned endpoint).
+   `Strict-Transport-Security` (HSTS). Configurable via `SecurityHeadersOptions` (including `HstsPreload`).
+   A matched route's per-host `HSTS` override replaces the header (or `off` suppresses it for that host).
+2. **`HttpsRedirectionMiddleware`** — applies the route's HTTPS method. On HTTP: if the method is redirecting
+   (`redirect`/`nohttp`) **and** a certificate is available for the host, redirects to the HTTPS URL for the
+   same host/path (308); `noredirect`/`nohttps` and a certless host are served over HTTP. On HTTPS: a
+   `nohttps` host is refused (404), since it is served over HTTP only.
 3. **`BasicAuthMiddleware`** — if the matched route carries `BasicAuthCredentials`, requires a valid
    `Authorization: Basic` header; otherwise responds 401 with `WWW-Authenticate: Basic`. Credentials are
    compared in fixed time and never logged.

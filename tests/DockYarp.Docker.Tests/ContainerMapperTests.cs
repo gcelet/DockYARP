@@ -260,6 +260,24 @@ public sealed class ContainerMapperTests
         result.Contribution.Routes.Single().Tls!.Method.Should().Be(HttpsMethod.NoRedirect);
     }
 
+    /// <summary>The HSTS label is carried onto the route's TLS metadata.</summary>
+    [Test]
+    public void HstsLabelIsCarriedOnTlsMetadata()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.LetsEncryptHost, "app.local"),
+                (DockerLabels.Hsts, "off")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Routes.Single().Tls!.Hsts.Should().Be("off");
+    }
+
     /// <summary>An unrecognized HTTPS_METHOD defaults to redirect and produces a warning.</summary>
     [Test]
     public void UnrecognizedHttpsMethodWarnsAndDefaultsToRedirect()

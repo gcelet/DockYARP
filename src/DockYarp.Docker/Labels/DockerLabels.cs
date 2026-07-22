@@ -28,6 +28,9 @@ public static class DockerLabels
     /// <summary>HTTP↔HTTPS behavior: <c>redirect</c> (default), <c>noredirect</c>, <c>nohttp</c>, <c>nohttps</c>.</summary>
     public const string HttpsMethod = "HTTPS_METHOD";
 
+    /// <summary>Per-host HSTS policy: a <c>Strict-Transport-Security</c> value, or <c>off</c> to disable it.</summary>
+    public const string Hsts = "HSTS";
+
     /// <summary>DockYarp-specific load-balancing policy (<c>round-robin</c> or <c>least-requests</c>).</summary>
     public const string LoadBalancing = "DOCKYARP_LB";
 

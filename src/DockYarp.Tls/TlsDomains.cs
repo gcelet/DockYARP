@@ -18,7 +18,7 @@ public static class TlsDomains
         return
         [
             .. snapshot.Routes
-                .Where(route => route.Tls is { } tls && !string.IsNullOrEmpty(tls.CertificateHost))
+                .Where(route => route.Tls is { CertificateHost.Length: > 0 } tls && tls.Method != HttpsMethod.NoHttps)
                 .Select(route => new DesiredCertificate(route.Tls!.CertificateHost, route.Tls!.ContactEmail))
                 .DistinctBy(desired => desired.Host, StringComparer.OrdinalIgnoreCase),
         ];

@@ -89,6 +89,24 @@ public sealed class HttpsRedirectionMiddlewareTests
         context.Response.StatusCode.Should().Be(StatusCodes.Status200OK);
     }
 
+    /// <summary>An HTTPS request to a nohttps host is refused with 404.</summary>
+    [Test]
+    public async Task HttpsRefusedForNoHttpsHost()
+    {
+        HttpsRedirectionMiddleware middleware = Middleware(HttpsMethod.NoHttps, certificateAvailable: true);
+        DefaultHttpContext context = SecurityTestHelpers.Context("https", "app.local", "/");
+        bool nextCalled = false;
+
+        await middleware.InvokeAsync(context, _ =>
+        {
+            nextCalled = true;
+            return Task.CompletedTask;
+        });
+
+        context.Response.StatusCode.Should().Be(StatusCodes.Status404NotFound);
+        nextCalled.Should().BeFalse();
+    }
+
     private static HttpsRedirectionMiddleware Middleware(HttpsMethod method, bool certificateAvailable)
     {
         RouteConfigStore store = SecurityTestHelpers.StoreWith(new RouteRule

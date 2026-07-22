@@ -1,14 +1,20 @@
 namespace DockYarp.Security;
 
+using System;
 using System.Globalization;
 using System.Threading.Tasks;
 
+using DockYarp.Core.Models;
+
 using Microsoft.AspNetCore.Http;
 
-/// <summary>Adds baseline security headers (and HSTS on HTTPS) to every response.</summary>
+/// <summary>Adds baseline security headers (and HSTS on HTTPS, with an optional per-host override) to responses.</summary>
 /// <param name="options">Header configuration.</param>
-public sealed class SecurityHeadersMiddleware(SecurityHeadersOptions options) : IMiddleware
+/// <param name="routes">Route lookup used to resolve a per-host HSTS override.</param>
+public sealed class SecurityHeadersMiddleware(SecurityHeadersOptions options, RouteLookup routes) : IMiddleware
 {
+    private const string HstsOff = "off";
+
     /// <inheritdoc />
     public Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
@@ -17,18 +23,38 @@ public sealed class SecurityHeadersMiddleware(SecurityHeadersOptions options) : 
         headers["X-Frame-Options"] = options.FrameOptions;
         headers["Referrer-Policy"] = options.ReferrerPolicy;
 
-        if (options.EnableHsts && context.Request.IsHttps)
+        if (context.Request.IsHttps && ResolveHsts(context.Request) is { } hsts)
         {
-            headers["Strict-Transport-Security"] = BuildHsts();
+            headers["Strict-Transport-Security"] = hsts;
         }
 
         return next(context);
     }
 
-    private string BuildHsts()
+    private string? ResolveHsts(HttpRequest request)
+    {
+        // A per-host override wins: a value replaces the header, "off"/empty suppresses it for the host.
+        if (request.Host.Host is { Length: > 0 } host
+            && routes.TryMatch(host, request.Path, out RouteRule? route)
+            && route.Tls?.Hsts is { } perHost)
+        {
+            return perHost.Length == 0 || string.Equals(perHost, HstsOff, StringComparison.OrdinalIgnoreCase)
+                ? null
+                : perHost;
+        }
+
+        return options.EnableHsts ? BuildGlobalHsts() : null;
+    }
+
+    private string BuildGlobalHsts()
     {
         long seconds = (long)options.HstsMaxAge.TotalSeconds;
         string value = string.Create(CultureInfo.InvariantCulture, $"max-age={seconds}");
-        return options.HstsIncludeSubDomains ? $"{value}; includeSubDomains" : value;
+        if (options.HstsIncludeSubDomains)
+        {
+            value += "; includeSubDomains";
+        }
+
+        return options.HstsPreload ? $"{value}; preload" : value;
     }
 }

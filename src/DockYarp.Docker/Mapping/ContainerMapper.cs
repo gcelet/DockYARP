@@ -111,6 +111,7 @@ public static class ContainerMapper
                     CertificateHost = certificateHost,
                     ContactEmail = first.LetsEncryptEmail,
                     Method = first.HttpsMethod,
+                    Hsts = first.Hsts,
                 }
                 : null;
 

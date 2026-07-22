@@ -51,6 +51,7 @@ public static class LabelParser
             LetsEncryptHost = GetOrNull(labels, DockerLabels.LetsEncryptHost),
             LetsEncryptEmail = GetOrNull(labels, DockerLabels.LetsEncryptEmail),
             HttpsMethod = ParseHttpsMethod(GetOrNull(labels, DockerLabels.HttpsMethod)),
+            Hsts = GetOrNull(labels, DockerLabels.Hsts),
             LoadBalancingPolicy = ParsePolicy(GetOrNull(labels, DockerLabels.LoadBalancing)),
             Priority = ParsePriority(GetOrNull(labels, DockerLabels.Priority)),
             Auth = ParseAuth(labels),

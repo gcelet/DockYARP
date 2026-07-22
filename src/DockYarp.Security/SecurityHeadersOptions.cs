@@ -14,6 +14,9 @@ public sealed class SecurityHeadersOptions
     /// <summary>Gets or sets a value indicating whether HSTS applies to subdomains.</summary>
     public bool HstsIncludeSubDomains { get; set; }
 
+    /// <summary>Gets or sets a value indicating whether the HSTS <c>preload</c> directive is emitted.</summary>
+    public bool HstsPreload { get; set; }
+
     /// <summary>Gets or sets the <c>X-Frame-Options</c> value.</summary>
     public string FrameOptions { get; set; } = "DENY";
 

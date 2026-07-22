@@ -34,4 +34,23 @@ public sealed class TlsDomainsTests
         desired.Single().Host.Should().Be("app.local");
         desired.Single().Email.Should().Be("a@example.com");
     }
+
+    /// <summary>A host whose HTTPS method is nohttps is excluded from provisioning.</summary>
+    [Test]
+    public void NoHttpsHostIsNotProvisioned()
+    {
+        RouteConfigSnapshot snapshot = new(
+            [
+                new RouteRule
+                {
+                    HostPattern = "app.local",
+                    ClusterId = "app",
+                    Tls = new HostTlsMetadata { CertificateHost = "app.local", Method = HttpsMethod.NoHttps },
+                },
+            ],
+            [],
+            1);
+
+        TlsDomains.Desired(snapshot).Should().BeEmpty();
+    }
 }

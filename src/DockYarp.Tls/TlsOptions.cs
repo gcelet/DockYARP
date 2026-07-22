@@ -22,4 +22,13 @@ public sealed class TlsOptions
 
     /// <summary>Gets or sets the interval between provisioning/renewal checks.</summary>
     public TimeSpan CheckInterval { get; set; } = TimeSpan.FromHours(12);
+
+    /// <summary>Gets or sets the minimum accepted TLS version (default TLS 1.2).</summary>
+    public TlsVersion MinimumTlsVersion { get; set; } = TlsVersion.Tls12;
+
+    /// <summary>Gets or sets the enabled HTTP protocols for the endpoints (default <c>Http1AndHttp2</c>).</summary>
+    public string HttpProtocols { get; set; } = "Http1AndHttp2";
+
+    /// <summary>Gets or sets an optional cipher-suite allow-list (applied on Linux/macOS only).</summary>
+    public string[]? CipherSuites { get; set; }
 }

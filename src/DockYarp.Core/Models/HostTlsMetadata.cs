@@ -11,4 +11,7 @@ public sealed record HostTlsMetadata
 
     /// <summary>Gets the HTTPS method controlling HTTP↔HTTPS behavior for this host.</summary>
     public HttpsMethod Method { get; init; } = HttpsMethod.Redirect;
+
+    /// <summary>Gets the per-host HSTS override; <see langword="null"/> uses the global policy, <c>off</c> suppresses it.</summary>
+    public string? Hsts { get; init; }
 }

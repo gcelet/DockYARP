@@ -59,6 +59,12 @@ Certes↔CA network exchange is untested (validate manually against Let's Encryp
 - `ContactEmail` — default ACME contact (per-host `LETSENCRYPT_EMAIL` overrides).
 - `AcmeDirectoryUri` — defaults to **Let's Encrypt staging** to avoid rate limits.
 - `AcceptTermsOfService`, `RenewBeforeExpiry` (default 30 days), `CheckInterval` (default 12 h).
+- `MinimumTlsVersion` — `Tls12` (default; also enables TLS 1.3) or `Tls13` (1.3 only).
+- `HttpProtocols` — enabled HTTP protocols (default `Http1AndHttp2`; e.g. `Http1AndHttp2AndHttp3` needs MsQuic).
+- `CipherSuites` — optional cipher-suite allow-list, applied on Linux/macOS (ignored where the platform
+  manages ciphers, e.g. Windows).
+
+A host whose `HTTPS_METHOD` is `nohttps` is **not** provisioned (it is served over HTTP only).
 
 ## Deferred
 

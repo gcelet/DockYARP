@@ -17,7 +17,7 @@ public sealed class KestrelTlsConfiguratorTests
     {
         FakeCertificateStore store = new();
         using DefaultCertificateProvider fallback = new();
-        KestrelTlsConfigurator configurator = new(new SniCertificateSelector(store, fallback), fallback);
+        KestrelTlsConfigurator configurator = new(new SniCertificateSelector(store, fallback), fallback, new TlsOptions());
         KestrelServerOptions options = new();
 
         Action configure = () => configurator.Configure(options);
