@@ -78,6 +78,11 @@ public static class ContainerMapper
                 warnings.Add($"{container.Name} ({Short(container.Id)}): unrecognized {DockerLabels.HttpsMethod}; using redirect.");
             }
 
+            if (LabelParser.HasUnsupportedClientCert(container.Labels))
+            {
+                warnings.Add($"{container.Name} ({Short(container.Id)}): unrecognized {DockerLabels.ClientCert}; requiring no client certificate.");
+            }
+
             // A comma-separated VIRTUAL_HOST fans the container out to one route/cluster per host.
             foreach (string host in config.Hosts)
             {
@@ -127,6 +132,7 @@ public static class ContainerMapper
                 ClusterId = host,
                 Tls = tls,
                 Auth = first.Auth,
+                ClientCertificate = first.ClientCertificate,
                 Transforms = transforms,
             };
         }

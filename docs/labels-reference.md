@@ -18,6 +18,7 @@ are **nginx-proxy compatible**; DockYarp-specific labels use the `DOCKYARP_` pre
 | `HSTS` | No | Per-host `Strict-Transport-Security` value, or `off` to disable HSTS for the host. | `off` |
 | `DOCKYARP_LB` | No | Load-balancing policy: `round-robin` (default) or `least-requests`. | `least-requests` |
 | `DOCKYARP_PRIORITY` | No | Route priority; higher wins when several routes could match (default `0`). | `10` |
+| `DOCKYARP_CLIENT_CERT` | No | Client-certificate (mTLS) requirement: `required`, `optional`, or `none`/`off` (default). | `required` |
 | `DOCKYARP_AUTH_USER` | No | Basic Auth username protecting the route (with `DOCKYARP_AUTH_PASSWORD`). | `admin` |
 | `DOCKYARP_AUTH_PASSWORD` | No | Basic Auth password. | `s3cret` |
 | `DOCKYARP_AUTH_REALM` | No | Optional Basic Auth realm shown in the challenge. | `Admin area` |

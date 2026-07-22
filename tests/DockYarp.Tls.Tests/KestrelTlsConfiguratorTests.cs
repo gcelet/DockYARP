@@ -1,6 +1,7 @@
 namespace DockYarp.Tls.Tests;
 
 using System;
+using System.IO.Abstractions.TestingHelpers;
 
 using AwesomeAssertions;
 
@@ -17,7 +18,12 @@ public sealed class KestrelTlsConfiguratorTests
     {
         FakeCertificateStore store = new();
         using DefaultCertificateProvider fallback = new();
-        KestrelTlsConfigurator configurator = new(new SniCertificateSelector(store, fallback), fallback, new TlsOptions());
+        TlsOptions tlsOptions = new();
+        KestrelTlsConfigurator configurator = new(
+            new SniCertificateSelector(store, fallback),
+            fallback,
+            tlsOptions,
+            new ClientCertificateValidator(tlsOptions, new MockFileSystem()));
         KestrelServerOptions options = new();
 
         Action configure = () => configurator.Configure(options);

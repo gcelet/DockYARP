@@ -5,6 +5,7 @@ using System.Collections.Immutable;
 using System.Net.Security;
 
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.Extensions.Options;
 
 /// <summary>Wires the SNI certificate selector, default certificate, and TLS hardening into Kestrel.</summary>
@@ -15,10 +16,12 @@ using Microsoft.Extensions.Options;
 /// <param name="selector">The SNI certificate selector.</param>
 /// <param name="fallback">Provider of the self-signed fallback certificate (used as the default).</param>
 /// <param name="options">TLS options carrying the hardening settings.</param>
+/// <param name="clientCertificates">Validator used to verify client certificates against the configured CA.</param>
 public sealed class KestrelTlsConfigurator(
     SniCertificateSelector selector,
     DefaultCertificateProvider fallback,
-    TlsOptions options)
+    TlsOptions options,
+    ClientCertificateValidator clientCertificates)
     : IConfigureOptions<KestrelServerOptions>
 {
     /// <inheritdoc />
@@ -42,6 +45,13 @@ public sealed class KestrelTlsConfigurator(
                         sslOptions.CipherSuitesPolicy = new CipherSuitesPolicy(ciphers);
                     }
                 };
+            }
+
+            // Mutual TLS: request a client certificate and accept only those chaining to the configured CA.
+            if (clientCertificates.HasClientCa)
+            {
+                https.ClientCertificateMode = ClientCertificateMode.AllowCertificate;
+                https.ClientCertificateValidation = (certificate, _, _) => clientCertificates.Validate(certificate);
             }
         });
 

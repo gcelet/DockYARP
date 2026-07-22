@@ -15,7 +15,10 @@ by the matched route from the `proxy-routing` store (see [routing-model.md](rout
    (`redirect`/`nohttp`) **and** a certificate is available for the host, redirects to the HTTPS URL for the
    same host/path (308); `noredirect`/`nohttps` and a certless host are served over HTTP. On HTTPS: a
    `nohttps` host is refused (404), since it is served over HTTP only.
-3. **`BasicAuthMiddleware`** — if the matched route carries `BasicAuthCredentials`, requires a valid
+3. **`ClientCertificateMiddleware`** — if the matched route requires a client certificate
+   (`RouteRule.ClientCertificate == Required`) and none was presented on the connection, responds 403.
+   Certificates are validated against the configured CA at the TLS handshake; this enforces presence per host.
+4. **`BasicAuthMiddleware`** — if the matched route carries `BasicAuthCredentials`, requires a valid
    `Authorization: Basic` header; otherwise responds 401 with `WWW-Authenticate: Basic`. Credentials are
    compared in fixed time and never logged.
 

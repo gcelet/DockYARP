@@ -66,6 +66,13 @@ Certes↔CA network exchange is untested (validate manually against Let's Encryp
 
 A host whose `HTTPS_METHOD` is `nohttps` is **not** provisioned (it is served over HTTP only).
 
+### Mutual TLS
+
+`ClientCaCertificatePath` points to a PEM CA bundle. When set, Kestrel requests a client certificate and
+accepts only those chaining to the CA (`ClientCertificateValidator`, loaded via `System.IO.Abstractions`).
+The per-route requirement (`DOCKYARP_CLIENT_CERT` → `RouteRule.ClientCertificate`) is enforced by the
+security layer: a `required` route with no client certificate is rejected with 403.
+
 ## Deferred
 
 DNS-01 challenges; wiring the store into `/api/certs`; switching HTTPS enforcement from the `EnforceHttps`

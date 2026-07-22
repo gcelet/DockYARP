@@ -21,6 +21,7 @@ public static class SecurityServiceCollectionExtensions
         services.AddSingleton<RouteLookup>();
         services.AddSingleton<SecurityHeadersMiddleware>();
         services.AddSingleton<HttpsRedirectionMiddleware>();
+        services.AddSingleton<ClientCertificateMiddleware>();
         services.AddSingleton<BasicAuthMiddleware>();
         return services;
     }

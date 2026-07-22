@@ -22,6 +22,7 @@ public static class TlsServiceCollectionExtensions
 
         services.AddSingleton(options);
         services.AddSingleton<IFileSystem, FileSystem>();
+        services.AddSingleton<ClientCertificateValidator>();
         services.AddSingleton<DefaultCertificateProvider>();
         services.AddSingleton<ICertificateStore, FileCertificateStore>();
         services.AddSingleton<SniCertificateSelector>();

@@ -31,4 +31,7 @@ public sealed class TlsOptions
 
     /// <summary>Gets or sets an optional cipher-suite allow-list (applied on Linux/macOS only).</summary>
     public string[]? CipherSuites { get; set; }
+
+    /// <summary>Gets or sets the path to a client CA certificate (PEM) enabling mutual TLS; <see langword="null"/> disables it.</summary>
+    public string? ClientCaCertificatePath { get; set; }
 }

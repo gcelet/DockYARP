@@ -40,6 +40,9 @@ public sealed record ContainerLabelConfig
     /// <summary>Gets the route priority (<c>DOCKYARP_PRIORITY</c>); higher wins, default <c>0</c>.</summary>
     public int Priority { get; init; }
 
+    /// <summary>Gets the client-certificate requirement (<c>DOCKYARP_CLIENT_CERT</c>); defaults to none.</summary>
+    public ClientCertificateRequirement ClientCertificate { get; init; } = ClientCertificateRequirement.None;
+
     /// <summary>Gets the Basic Auth credentials (<c>DOCKYARP_AUTH_*</c>), set only when complete.</summary>
     public BasicAuthCredentials? Auth { get; init; }
 }

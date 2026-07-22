@@ -37,6 +37,9 @@ public static class DockerLabels
     /// <summary>Route priority; higher wins when several routes could match (default <c>0</c>).</summary>
     public const string Priority = "DOCKYARP_PRIORITY";
 
+    /// <summary>Client-certificate (mutual TLS) requirement: <c>required</c>, <c>optional</c>, or <c>none</c>/<c>off</c>.</summary>
+    public const string ClientCert = "DOCKYARP_CLIENT_CERT";
+
     /// <summary>Basic Auth username protecting the route.</summary>
     public const string AuthUser = "DOCKYARP_AUTH_USER";
 

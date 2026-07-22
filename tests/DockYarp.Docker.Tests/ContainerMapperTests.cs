@@ -297,6 +297,41 @@ public sealed class ContainerMapperTests
         result.Warnings.Should().Contain(warning => warning.Contains(DockerLabels.HttpsMethod, System.StringComparison.Ordinal));
     }
 
+    /// <summary>DOCKYARP_CLIENT_CERT sets the route's client-certificate requirement.</summary>
+    [Test]
+    public void ClientCertLabelSetsRequirement()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.ClientCert, "required")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Routes.Single().ClientCertificate.Should().Be(ClientCertificateRequirement.Required);
+    }
+
+    /// <summary>An unrecognized DOCKYARP_CLIENT_CERT defaults to none and produces a warning.</summary>
+    [Test]
+    public void UnrecognizedClientCertWarnsAndDefaultsToNone()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.ClientCert, "maybe")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Routes.Single().ClientCertificate.Should().Be(ClientCertificateRequirement.None);
+        result.Warnings.Should().Contain(warning => warning.Contains(DockerLabels.ClientCert, System.StringComparison.Ordinal));
+    }
+
     /// <summary>An invalid container is skipped and reported as a warning.</summary>
     [Test]
     public void InvalidContainerIsSkippedWithWarning()

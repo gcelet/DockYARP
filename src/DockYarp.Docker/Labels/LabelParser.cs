@@ -54,6 +54,7 @@ public static class LabelParser
             Hsts = GetOrNull(labels, DockerLabels.Hsts),
             LoadBalancingPolicy = ParsePolicy(GetOrNull(labels, DockerLabels.LoadBalancing)),
             Priority = ParsePriority(GetOrNull(labels, DockerLabels.Priority)),
+            ClientCertificate = ParseClientCertificate(GetOrNull(labels, DockerLabels.ClientCert)),
             Auth = ParseAuth(labels),
         };
         return true;
@@ -101,6 +102,24 @@ public static class LabelParser
         return raw is not null
             && !int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out _);
     }
+
+    /// <summary>Reports whether <c>DOCKYARP_CLIENT_CERT</c> is present but not a recognized value.</summary>
+    /// <param name="labels">The container labels.</param>
+    /// <returns><see langword="true"/> when the value is not required/optional/none/off.</returns>
+    public static bool HasUnsupportedClientCert(IReadOnlyDictionary<string, string> labels)
+    {
+        ArgumentNullException.ThrowIfNull(labels);
+        string? value = GetOrNull(labels, DockerLabels.ClientCert);
+        return value is not null && value.ToUpperInvariant() is not ("REQUIRED" or "OPTIONAL" or "NONE" or "OFF");
+    }
+
+    private static ClientCertificateRequirement ParseClientCertificate(string? value) =>
+        value?.ToUpperInvariant() switch
+        {
+            "REQUIRED" => ClientCertificateRequirement.Required,
+            "OPTIONAL" => ClientCertificateRequirement.Optional,
+            _ => ClientCertificateRequirement.None,
+        };
 
     private static int ParsePriority(string? value) =>
         int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int priority) ? priority : 0;
