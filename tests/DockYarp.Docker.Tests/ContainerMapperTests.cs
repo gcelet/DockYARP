@@ -206,6 +206,41 @@ public sealed class ContainerMapperTests
             .Which.Endpoints.Should().ContainSingle(endpoint => endpoint.Id == "c1");
     }
 
+    /// <summary>The priority label sets the route priority; an invalid value warns and defaults to zero.</summary>
+    [Test]
+    public void PriorityLabelSetsRoutePriority()
+    {
+        ContainerInfo valid = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.Priority, "7")));
+
+        ContainerMapResult result = ContainerMapper.Map([valid]);
+
+        result.Contribution.Routes.Single().Priority.Should().Be(7);
+    }
+
+    /// <summary>A non-numeric priority leaves priority at zero and produces a warning.</summary>
+    [Test]
+    public void InvalidPriorityWarnsAndDefaultsToZero()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.Priority, "high")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Routes.Single().Priority.Should().Be(0);
+        result.Warnings.Should().Contain(warning => warning.Contains(DockerLabels.Priority, System.StringComparison.Ordinal));
+    }
+
     /// <summary>An invalid container is skipped and reported as a warning.</summary>
     [Test]
     public void InvalidContainerIsSkippedWithWarning()

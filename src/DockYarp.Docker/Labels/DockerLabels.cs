@@ -28,6 +28,9 @@ public static class DockerLabels
     /// <summary>DockYarp-specific load-balancing policy (<c>round-robin</c> or <c>least-requests</c>).</summary>
     public const string LoadBalancing = "DOCKYARP_LB";
 
+    /// <summary>Route priority; higher wins when several routes could match (default <c>0</c>).</summary>
+    public const string Priority = "DOCKYARP_PRIORITY";
+
     /// <summary>Basic Auth username protecting the route.</summary>
     public const string AuthUser = "DOCKYARP_AUTH_USER";
 

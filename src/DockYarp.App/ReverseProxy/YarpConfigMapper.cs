@@ -72,6 +72,9 @@ public static class YarpConfigMapper
         {
             RouteId = $"{rule.HostPattern}|{rule.PathPrefix}",
             ClusterId = rule.ClusterId,
+
+            // YARP: a lower order takes precedence, so a higher priority maps to a lower (negated) order.
+            Order = rule.Priority == 0 ? null : -rule.Priority,
             Match = new RouteMatch
             {
                 Hosts = [rule.HostPattern],

@@ -51,6 +51,7 @@ public static class LabelParser
             LetsEncryptHost = GetOrNull(labels, DockerLabels.LetsEncryptHost),
             LetsEncryptEmail = GetOrNull(labels, DockerLabels.LetsEncryptEmail),
             LoadBalancingPolicy = ParsePolicy(GetOrNull(labels, DockerLabels.LoadBalancing)),
+            Priority = ParsePriority(GetOrNull(labels, DockerLabels.Priority)),
             Auth = ParseAuth(labels),
         };
         return true;
@@ -87,6 +88,20 @@ public static class LabelParser
         string? path = GetOrNull(labels, DockerLabels.VirtualPath);
         return dest is not null && path is not null ? path : null;
     }
+
+    /// <summary>Reports whether <c>DOCKYARP_PRIORITY</c> is present but not a valid integer.</summary>
+    /// <param name="labels">The container labels.</param>
+    /// <returns><see langword="true"/> when the value cannot be parsed as an integer.</returns>
+    public static bool HasInvalidPriority(IReadOnlyDictionary<string, string> labels)
+    {
+        ArgumentNullException.ThrowIfNull(labels);
+        string? raw = GetOrNull(labels, DockerLabels.Priority);
+        return raw is not null
+            && !int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out _);
+    }
+
+    private static int ParsePriority(string? value) =>
+        int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int priority) ? priority : 0;
 
     private static BackendScheme ParseScheme(string? value) =>
         string.Equals(value, "https", StringComparison.OrdinalIgnoreCase)

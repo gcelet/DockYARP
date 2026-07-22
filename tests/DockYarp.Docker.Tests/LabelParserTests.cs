@@ -142,6 +142,47 @@ public sealed class LabelParserTests
         config.LetsEncryptEmail.Should().Be("admin@example.com");
     }
 
+    /// <summary>A numeric priority label is parsed; absent defaults to zero.</summary>
+    [Test]
+    public void PriorityLabelIsParsed()
+    {
+        ContainerInfo withPriority = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.Priority, "10")));
+        ContainerInfo withoutPriority = DiscoveryTestData.Container(
+            "c2",
+            "10.0.0.2",
+            DiscoveryTestData.Labels((DockerLabels.VirtualHost, "app.local"), (DockerLabels.VirtualPort, "8080")));
+
+        LabelParser.TryParse(withPriority, out ContainerLabelConfig? withConfig, out _).Should().BeTrue();
+        LabelParser.TryParse(withoutPriority, out ContainerLabelConfig? withoutConfig, out _).Should().BeTrue();
+
+        withConfig!.Priority.Should().Be(10);
+        withoutConfig!.Priority.Should().Be(0);
+    }
+
+    /// <summary>A non-numeric priority falls back to zero and is flagged as invalid.</summary>
+    [Test]
+    public void NonNumericPriorityFallsBackToZero()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.Priority, "high")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.Priority.Should().Be(0);
+        LabelParser.HasInvalidPriority(container.Labels).Should().BeTrue();
+    }
+
     /// <summary>Complete auth labels produce Basic Auth credentials.</summary>
     [Test]
     public void AuthLabelsAreParsed()

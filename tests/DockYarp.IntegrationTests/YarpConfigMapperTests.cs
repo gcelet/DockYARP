@@ -140,6 +140,24 @@ public sealed class YarpConfigMapperTests
         routes.Single().Match.Hosts.Should().NotBeNull();
     }
 
+    /// <summary>A route priority maps to a negated YARP order; priority 0 leaves the order unset.</summary>
+    [Test]
+    public void PriorityMapsToYarpOrder()
+    {
+        RouteConfigSnapshot snapshot = new(
+            [
+                new RouteRule { HostPattern = "high.local", ClusterId = "app", Priority = 5 },
+                new RouteRule { HostPattern = "default.local", ClusterId = "app", Priority = 0 },
+            ],
+            [Cluster("app", LoadBalancingPolicy.RoundRobin)],
+            1);
+
+        (System.Collections.Generic.IReadOnlyList<RouteConfig> routes, _) = YarpConfigMapper.Map(snapshot);
+
+        routes.Single(route => route.RouteId == "high.local|").Order.Should().Be(-5);
+        routes.Single(route => route.RouteId == "default.local|").Order.Should().BeNull();
+    }
+
     private static Cluster Cluster(string id, LoadBalancingPolicy policy) =>
         new()
         {

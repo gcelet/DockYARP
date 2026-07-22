@@ -15,6 +15,7 @@ are **nginx-proxy compatible**; DockYarp-specific labels use the `DOCKYARP_` pre
 | `LETSENCRYPT_HOST` | No | Host a certificate should be obtained for (enables TLS metadata). | `app.local` |
 | `LETSENCRYPT_EMAIL` | No | Contact email used when requesting the certificate. | `admin@example.com` |
 | `DOCKYARP_LB` | No | Load-balancing policy: `round-robin` (default) or `least-requests`. | `least-requests` |
+| `DOCKYARP_PRIORITY` | No | Route priority; higher wins when several routes could match (default `0`). | `10` |
 | `DOCKYARP_AUTH_USER` | No | Basic Auth username protecting the route (with `DOCKYARP_AUTH_PASSWORD`). | `admin` |
 | `DOCKYARP_AUTH_PASSWORD` | No | Basic Auth password. | `s3cret` |
 | `DOCKYARP_AUTH_REALM` | No | Optional Basic Auth realm shown in the challenge. | `Admin area` |
@@ -29,6 +30,8 @@ are **nginx-proxy compatible**; DockYarp-specific labels use the `DOCKYARP_` pre
   container to one route per host, each sharing its port, path, TLS, and auth settings.
 - **Backend scheme**: `VIRTUAL_PROTO` selects how the proxy reaches the container — `http` (default) or
   `https`. Unsupported values (e.g. `fastcgi`) fall back to `http` and are logged.
+- **Priority**: `DOCKYARP_PRIORITY` orders routes when several could match — a higher value wins (it
+  maps to a lower YARP route order). A non-numeric value falls back to `0` and is logged.
 - **Path rewrite**: `VIRTUAL_DEST` rewrites the matched path before forwarding. Currently the supported
   form is `VIRTUAL_DEST=/`, which strips the `VIRTUAL_PATH` prefix (so `/api/x` reaches the backend as
   `/x`); richer rewrites are not yet supported.

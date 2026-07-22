@@ -68,6 +68,11 @@ public static class ContainerMapper
                 warnings.Add($"{container.Name} ({Short(container.Id)}): unsupported {DockerLabels.VirtualProto}; defaulting to http.");
             }
 
+            if (LabelParser.HasInvalidPriority(container.Labels))
+            {
+                warnings.Add($"{container.Name} ({Short(container.Id)}): invalid {DockerLabels.Priority}; using priority 0.");
+            }
+
             // A comma-separated VIRTUAL_HOST fans the container out to one route/cluster per host.
             foreach (string host in config.Hosts)
             {
@@ -112,6 +117,7 @@ public static class ContainerMapper
             {
                 HostPattern = host,
                 PathPrefix = first.PathPrefix,
+                Priority = first.Priority,
                 ClusterId = host,
                 Tls = tls,
                 Auth = first.Auth,

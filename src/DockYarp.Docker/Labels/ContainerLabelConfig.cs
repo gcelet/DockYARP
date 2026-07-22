@@ -31,6 +31,9 @@ public sealed record ContainerLabelConfig
     /// <summary>Gets the requested load-balancing policy (<c>DOCKYARP_LB</c>), if any.</summary>
     public LoadBalancingPolicy? LoadBalancingPolicy { get; init; }
 
+    /// <summary>Gets the route priority (<c>DOCKYARP_PRIORITY</c>); higher wins, default <c>0</c>.</summary>
+    public int Priority { get; init; }
+
     /// <summary>Gets the Basic Auth credentials (<c>DOCKYARP_AUTH_*</c>), set only when complete.</summary>
     public BasicAuthCredentials? Auth { get; init; }
 }
