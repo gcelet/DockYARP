@@ -29,6 +29,10 @@ proxy-routing (HostTlsMetadata) ──> TlsDomains.Desired ──> CertificatePr
 
 The ACME challenge middleware runs **before** HTTPS enforcement so validation is reachable over HTTP.
 
+The host listens for HTTPS on port 8443 (`ASPNETCORE_HTTPS_PORTS`); Kestrel selects the certificate per
+SNI host via `KestrelTlsConfigurator`, with the self-signed fallback set as the default certificate (a
+ports-only HTTPS endpoint requires a default certificate to start).
+
 ## Testing boundary
 
 The real ACME exchange with the CA cannot run in the test suite (no CA). It lives behind `IAcmeClient`;

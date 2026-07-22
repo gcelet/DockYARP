@@ -12,8 +12,9 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled AS runtime
 WORKDIR /app
 COPY --from=build /src/artifacts/publish ./
 
-# Listen on 8080 (HTTP). HTTPS (8443) requires certificate configuration in production.
+# HTTP on 8080 (ACME challenge + redirects); HTTPS on 8443 (SNI per host, self-signed fallback).
 ENV ASPNETCORE_HTTP_PORTS=8080
+ENV ASPNETCORE_HTTPS_PORTS=8443
 EXPOSE 8080
 EXPOSE 8443
 

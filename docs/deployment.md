@@ -6,7 +6,8 @@ A multi-stage [`Dockerfile`](../Dockerfile) builds on the .NET SDK and ships a m
 runtime (`mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled`), running as a **non-root** user. Chiseled
 images carry no ICU, so the app sets `InvariantGlobalization=true` (it uses invariant/ordinal operations).
 
-- Listens on **8080** (HTTP). HTTPS (8443) requires certificate configuration in production.
+- Listens on **8080** (HTTP — ACME challenge + redirects) and **8443** (HTTPS — SNI per host, self-signed
+  fallback for unknown hosts).
 - Mounts **`/certs`** (certificate store) and **`/config`** (static configuration).
 
 ```bash
