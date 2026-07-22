@@ -25,6 +25,9 @@ public static class DockerLabels
     /// <summary>Contact email used when requesting the certificate.</summary>
     public const string LetsEncryptEmail = "LETSENCRYPT_EMAIL";
 
+    /// <summary>HTTP↔HTTPS behavior: <c>redirect</c> (default), <c>noredirect</c>, <c>nohttp</c>, <c>nohttps</c>.</summary>
+    public const string HttpsMethod = "HTTPS_METHOD";
+
     /// <summary>DockYarp-specific load-balancing policy (<c>round-robin</c> or <c>least-requests</c>).</summary>
     public const string LoadBalancing = "DOCKYARP_LB";
 

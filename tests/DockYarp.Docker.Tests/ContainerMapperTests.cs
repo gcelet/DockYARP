@@ -4,6 +4,7 @@ using System.Linq;
 
 using AwesomeAssertions;
 
+using DockYarp.Core.Models;
 using DockYarp.Docker.Labels;
 using DockYarp.Docker.Mapping;
 using DockYarp.Docker.Models;
@@ -239,6 +240,43 @@ public sealed class ContainerMapperTests
 
         result.Contribution.Routes.Single().Priority.Should().Be(0);
         result.Warnings.Should().Contain(warning => warning.Contains(DockerLabels.Priority, System.StringComparison.Ordinal));
+    }
+
+    /// <summary>HTTPS_METHOD is carried on the route's TLS metadata; an unknown value warns and defaults to redirect.</summary>
+    [Test]
+    public void HttpsMethodIsCarriedOnTlsMetadata()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.LetsEncryptHost, "app.local"),
+                (DockerLabels.HttpsMethod, "noredirect")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Routes.Single().Tls!.Method.Should().Be(HttpsMethod.NoRedirect);
+    }
+
+    /// <summary>An unrecognized HTTPS_METHOD defaults to redirect and produces a warning.</summary>
+    [Test]
+    public void UnrecognizedHttpsMethodWarnsAndDefaultsToRedirect()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.LetsEncryptHost, "app.local"),
+                (DockerLabels.HttpsMethod, "bogus")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Routes.Single().Tls!.Method.Should().Be(HttpsMethod.Redirect);
+        result.Warnings.Should().Contain(warning => warning.Contains(DockerLabels.HttpsMethod, System.StringComparison.Ordinal));
     }
 
     /// <summary>An invalid container is skipped and reported as a warning.</summary>

@@ -6,9 +6,10 @@ using DockYarp.Core.Models;
 
 using Microsoft.AspNetCore.Http;
 
-/// <summary>Redirects HTTP requests to HTTPS when the matched route enforces it.</summary>
+/// <summary>Redirects HTTP requests to HTTPS when the matched route's method requires it and a certificate exists.</summary>
 /// <param name="routes">Route lookup used to find the request's route.</param>
-public sealed class HttpsRedirectionMiddleware(RouteLookup routes) : IMiddleware
+/// <param name="certificates">Certificate availability used to avoid redirecting before a certificate exists.</param>
+public sealed class HttpsRedirectionMiddleware(RouteLookup routes, ICertificateAvailability certificates) : IMiddleware
 {
     /// <inheritdoc />
     public Task InvokeAsync(HttpContext context, RequestDelegate next)
@@ -17,7 +18,9 @@ public sealed class HttpsRedirectionMiddleware(RouteLookup routes) : IMiddleware
         if (!request.IsHttps
             && request.Host.Host is { Length: > 0 } host
             && routes.TryMatch(host, request.Path, out RouteRule? route)
-            && route.Tls is { EnforceHttps: true })
+            && route.Tls is { } tls
+            && Redirects(tls.Method)
+            && certificates.IsAvailable(host))
         {
             string target = $"https://{host}{request.PathBase}{request.Path}{request.QueryString}";
             context.Response.Redirect(target, permanent: true, preserveMethod: true);
@@ -26,4 +29,6 @@ public sealed class HttpsRedirectionMiddleware(RouteLookup routes) : IMiddleware
 
         return next(context);
     }
+
+    private static bool Redirects(HttpsMethod method) => method is HttpsMethod.Redirect or HttpsMethod.NoHttp;
 }

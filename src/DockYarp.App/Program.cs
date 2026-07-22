@@ -3,6 +3,7 @@ using System;
 using DockYarp.AdminApi;
 using DockYarp.App.Observability;
 using DockYarp.App.ReverseProxy;
+using DockYarp.App.Security;
 using DockYarp.Core.Configuration;
 using DockYarp.Core.Interfaces;
 using DockYarp.Core.Stores;
@@ -55,6 +56,9 @@ builder.Services.AddHostedService<YarpConfigBridge>();
 SecurityHeadersOptions securityOptions = new();
 builder.Configuration.GetSection("Security").Bind(securityOptions);
 builder.Services.AddDockYarpSecurity(securityOptions);
+
+// HTTPS redirection is gated on real certificate availability (store-backed).
+builder.Services.AddSingleton<ICertificateAvailability, CertificateAvailabilityAdapter>();
 
 // TLS/ACME: certificate store, SNI, HTTP-01 challenge, and provisioning.
 TlsOptions tlsOptions = new();

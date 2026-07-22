@@ -9,6 +9,6 @@ public sealed record HostTlsMetadata
     /// <summary>Gets the contact email used when requesting the certificate.</summary>
     public string? ContactEmail { get; init; }
 
-    /// <summary>Gets a value indicating whether HTTP requests for this host should be redirected to HTTPS.</summary>
-    public bool EnforceHttps { get; init; }
+    /// <summary>Gets the HTTPS method controlling HTTP↔HTTPS behavior for this host.</summary>
+    public HttpsMethod Method { get; init; } = HttpsMethod.Redirect;
 }

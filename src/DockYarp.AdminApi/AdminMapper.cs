@@ -30,7 +30,7 @@ public static class AdminMapper
             RequiresAuth = route.Auth is not null,
             Tls = route.Tls is null
                 ? null
-                : new AdminApiModels.TlsView { CertificateHost = route.Tls.CertificateHost, EnforceHttps = route.Tls.EnforceHttps },
+                : new AdminApiModels.TlsView { CertificateHost = route.Tls.CertificateHost, HttpsMethod = route.Tls.Method.ToString() },
         };
 
     private static AdminApiModels.ClusterView ToCluster(Cluster cluster) =>

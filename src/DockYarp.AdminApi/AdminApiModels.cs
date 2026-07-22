@@ -11,8 +11,8 @@ public static class AdminApiModels
         /// <summary>Gets the host a certificate is requested for.</summary>
         public required string CertificateHost { get; init; }
 
-        /// <summary>Gets a value indicating whether HTTP is redirected to HTTPS.</summary>
-        public bool EnforceHttps { get; init; }
+        /// <summary>Gets the HTTPS method (<c>redirect</c>/<c>noredirect</c>/<c>nohttp</c>/<c>nohttps</c>).</summary>
+        public required string HttpsMethod { get; init; }
     }
 
     /// <summary>A route view; exposes whether auth is required but never the credentials.</summary>

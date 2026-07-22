@@ -50,6 +50,7 @@ public static class LabelParser
             PathRemovePrefix = ResolvePathRewrite(labels),
             LetsEncryptHost = GetOrNull(labels, DockerLabels.LetsEncryptHost),
             LetsEncryptEmail = GetOrNull(labels, DockerLabels.LetsEncryptEmail),
+            HttpsMethod = ParseHttpsMethod(GetOrNull(labels, DockerLabels.HttpsMethod)),
             LoadBalancingPolicy = ParsePolicy(GetOrNull(labels, DockerLabels.LoadBalancing)),
             Priority = ParsePriority(GetOrNull(labels, DockerLabels.Priority)),
             Auth = ParseAuth(labels),
@@ -102,6 +103,28 @@ public static class LabelParser
 
     private static int ParsePriority(string? value) =>
         int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int priority) ? priority : 0;
+
+    /// <summary>Reports whether <c>HTTPS_METHOD</c> is present but not a recognized value.</summary>
+    /// <param name="labels">The container labels.</param>
+    /// <returns><see langword="true"/> when the value is not one of redirect/noredirect/nohttp/nohttps.</returns>
+    public static bool HasUnsupportedHttpsMethod(IReadOnlyDictionary<string, string> labels)
+    {
+        ArgumentNullException.ThrowIfNull(labels);
+        string? value = GetOrNull(labels, DockerLabels.HttpsMethod);
+        return value is not null && !IsKnownHttpsMethod(value);
+    }
+
+    private static bool IsKnownHttpsMethod(string value) =>
+        value.ToUpperInvariant() is "REDIRECT" or "NOREDIRECT" or "NOHTTP" or "NOHTTPS";
+
+    private static HttpsMethod ParseHttpsMethod(string? value) =>
+        value?.ToUpperInvariant() switch
+        {
+            "NOREDIRECT" => HttpsMethod.NoRedirect,
+            "NOHTTP" => HttpsMethod.NoHttp,
+            "NOHTTPS" => HttpsMethod.NoHttps,
+            _ => HttpsMethod.Redirect,
+        };
 
     private static BackendScheme ParseScheme(string? value) =>
         string.Equals(value, "https", StringComparison.OrdinalIgnoreCase)

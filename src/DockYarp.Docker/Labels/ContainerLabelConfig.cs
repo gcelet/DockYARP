@@ -28,6 +28,9 @@ public sealed record ContainerLabelConfig
     /// <summary>Gets the certificate contact email (<c>LETSENCRYPT_EMAIL</c>), if any.</summary>
     public string? LetsEncryptEmail { get; init; }
 
+    /// <summary>Gets the HTTPS method (<c>HTTPS_METHOD</c>); defaults to <see cref="Core.Models.HttpsMethod.Redirect"/>.</summary>
+    public HttpsMethod HttpsMethod { get; init; } = HttpsMethod.Redirect;
+
     /// <summary>Gets the requested load-balancing policy (<c>DOCKYARP_LB</c>), if any.</summary>
     public LoadBalancingPolicy? LoadBalancingPolicy { get; init; }
 

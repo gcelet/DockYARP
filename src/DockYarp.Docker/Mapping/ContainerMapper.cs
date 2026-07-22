@@ -73,6 +73,11 @@ public static class ContainerMapper
                 warnings.Add($"{container.Name} ({Short(container.Id)}): invalid {DockerLabels.Priority}; using priority 0.");
             }
 
+            if (LabelParser.HasUnsupportedHttpsMethod(container.Labels))
+            {
+                warnings.Add($"{container.Name} ({Short(container.Id)}): unrecognized {DockerLabels.HttpsMethod}; using redirect.");
+            }
+
             // A comma-separated VIRTUAL_HOST fans the container out to one route/cluster per host.
             foreach (string host in config.Hosts)
             {
@@ -105,7 +110,7 @@ public static class ContainerMapper
                 {
                     CertificateHost = certificateHost,
                     ContactEmail = first.LetsEncryptEmail,
-                    EnforceHttps = true,
+                    Method = first.HttpsMethod,
                 }
                 : null;
 

@@ -2,6 +2,7 @@ namespace DockYarp.Docker.Tests;
 
 using AwesomeAssertions;
 
+using DockYarp.Core.Models;
 using DockYarp.Docker.Labels;
 using DockYarp.Docker.Models;
 
@@ -181,6 +182,37 @@ public sealed class LabelParserTests
 
         config!.Priority.Should().Be(0);
         LabelParser.HasInvalidPriority(container.Labels).Should().BeTrue();
+    }
+
+    /// <summary>HTTPS_METHOD is parsed; absent defaults to redirect; an unknown value is flagged.</summary>
+    [Test]
+    public void HttpsMethodLabelIsParsed()
+    {
+        ContainerInfo noRedirect = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.HttpsMethod, "noredirect")));
+        ContainerInfo defaulted = DiscoveryTestData.Container(
+            "c2",
+            "10.0.0.2",
+            DiscoveryTestData.Labels((DockerLabels.VirtualHost, "app.local"), (DockerLabels.VirtualPort, "8080")));
+        ContainerInfo bogus = DiscoveryTestData.Container(
+            "c3",
+            "10.0.0.3",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.HttpsMethod, "bogus")));
+
+        LabelParser.TryParse(noRedirect, out ContainerLabelConfig? noRedirectConfig, out _).Should().BeTrue();
+        LabelParser.TryParse(defaulted, out ContainerLabelConfig? defaultedConfig, out _).Should().BeTrue();
+
+        noRedirectConfig!.HttpsMethod.Should().Be(HttpsMethod.NoRedirect);
+        defaultedConfig!.HttpsMethod.Should().Be(HttpsMethod.Redirect);
+        LabelParser.HasUnsupportedHttpsMethod(bogus.Labels).Should().BeTrue();
     }
 
     /// <summary>Complete auth labels produce Basic Auth credentials.</summary>
