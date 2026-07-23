@@ -41,6 +41,18 @@ The host wires `AddOpenTelemetry().WithMetrics(m => m.AddMeter("DockYarp").AddPr
 `MapPrometheusScrapingEndpoint()`. The meter is created eagerly at startup so the gauges are present for the
 first scrape.
 
+## Access logging
+
+`AccessLogMiddleware` runs first in the pipeline and emits a **structured** access-log entry per request
+(method, scheme, host, path, response status, elapsed ms) via source-generated logging — covering proxied
+requests, redirects, and unmatched responses. Disable it with `AccessLog:Enabled=false`. The rendered format
+follows the configured logging provider: enable JSON with the console logger, e.g.
+
+```jsonc
+// appsettings.json
+{ "Logging": { "Console": { "FormatterName": "json" } } }
+```
+
 ## Note
 
 Admin endpoints are path-based and currently exist on every host; a dedicated admin host or port is a

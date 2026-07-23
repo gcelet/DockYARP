@@ -66,15 +66,15 @@ AdminApiOptions adminApiOptions = new();
 builder.Configuration.GetSection("AdminApi").Bind(adminApiOptions);
 builder.Services.AddSingleton(adminApiOptions);
 builder.Services.AddSingleton<ICertificateInventory, CertificateInventoryAdapter>();
-builder.Services.AddSingleton<DockYarpMetrics>();
-builder.Services.AddOpenTelemetry().WithMetrics(metrics => metrics
-    .AddMeter(DockYarpMetrics.MeterName)
-    .AddPrometheusExporter());
+builder.Services.AddDockYarpObservability(builder.Configuration);
 
 var app = builder.Build();
 
 // Create the meter eagerly so its gauges are present for the first scrape.
 _ = app.Services.GetRequiredService<DockYarpMetrics>();
+
+// Access logging wraps the whole pipeline so redirects and unmatched responses are logged too.
+app.UseMiddleware<AccessLogMiddleware>();
 
 // ACME HTTP-01 challenge must be reachable over HTTP, before HTTPS enforcement.
 app.UseDockYarpAcmeChallenge();
