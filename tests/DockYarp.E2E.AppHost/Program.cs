@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 using DockYarp.E2E.AppHost;
 
 // End-to-end distributed system: DockYarp (as a container mounting the Docker socket) in front of a set
@@ -13,7 +11,9 @@ const string apiKey = "e2e-secret-key";
 
 // Local ACME certificate authority. step-ca initialises its PKI (root + intermediate + an ACME provisioner)
 // on first boot into the bind-mounted directory; DockYarp and the tests read the root from there.
-var stepca = builder.AddContainer("stepca", "smallstep/step-ca")
+// DockYarp is deliberately NOT gated on step-ca (its provisioning retries in the background), because the
+// step-ca image's health check can stay "starting" and would otherwise block DockYarp from ever starting.
+builder.AddContainer("stepca", "smallstep/step-ca")
     .WithBindMount(E2EPaths.StepCaDirectory, "/home/step")
     .WithEnvironment("DOCKER_STEPCA_INIT_NAME", "DockYarp E2E CA")
     .WithEnvironment("DOCKER_STEPCA_INIT_DNS_NAMES", "stepca,localhost")
@@ -39,8 +39,10 @@ var proxy = builder.AddContainer("dockyarp", "dockyarp", "local")
     .WaitFor(dockerproxy);
 
 // TLS: point DockYarp's ACME client at step-ca, trust its root (Certes uses the default HttpClient, so the
-// container OS must trust the CA via SSL_CERT_FILE), enable mutual TLS, and expose the HTTPS listener. The
-// network aliases let step-ca resolve each LETSENCRYPT_HOST back to DockYarp for the HTTP-01 challenge.
+// container OS must trust the CA via SSL_CERT_FILE), enable mutual TLS, and expose the HTTPS listener.
+// NOTE: HTTP-01 also needs step-ca to resolve each LETSENCRYPT_HOST back to DockYarp. Doing that via
+// `--network-alias` container runtime args made DCP fail to create the DockYarp container, so it is
+// removed here; a DCP-compatible host-resolution mechanism for HTTP-01 is deferred to a follow-up.
 proxy
     .WithBindMount(E2EPaths.StepCaDirectory, "/stepca", isReadOnly: true)
     .WithBindMount(E2EPaths.ClientCaDirectory, "/clientca", isReadOnly: true)
@@ -49,9 +51,7 @@ proxy
     .WithEnvironment("Tls__AcceptTermsOfService", "true")
     .WithEnvironment("Tls__ContactEmail", "e2e@dockyarp.local")
     .WithEnvironment("Tls__ClientCaCertificatePath", "/clientca/client-ca.crt")
-    .WithHttpsEndpoint(targetPort: 8443, name: "https")
-    .WithContainerRuntimeArgs(NetworkAliasArgs())
-    .WaitFor(stepca);
+    .WithHttpsEndpoint(targetPort: 8443, name: "https");
 
 foreach (BackendSpec backend in BackendCatalog.All)
 {
@@ -66,16 +66,3 @@ foreach (BackendSpec backend in BackendCatalog.All)
 }
 
 await builder.Build().RunAsync();
-
-// Each TLS host resolves to DockYarp so step-ca can reach it on 8080 during HTTP-01 validation.
-static string[] NetworkAliasArgs()
-{
-    List<string> args = new(BackendCatalog.TlsHosts.Count * 2);
-    foreach (string host in BackendCatalog.TlsHosts)
-    {
-        args.Add("--network-alias");
-        args.Add(host);
-    }
-
-    return [.. args];
-}

@@ -17,9 +17,6 @@ internal static class BackendCatalog
     /// <summary>The virtual host routed to the default backend when no other host matches.</summary>
     internal const string DefaultHost = "default.local";
 
-    /// <summary>The TLS virtual hosts (each with a <c>LETSENCRYPT_HOST</c>), used to alias DockYarp for HTTP-01.</summary>
-    internal static IReadOnlyList<string> TlsHosts { get; } = ["tls.local", "hsts.local", "mtls.local"];
-
     private const string WhoamiImage = "traefik/whoami";
     private const string EchoTag = "local";
     private const string EchoPort = "8080";
