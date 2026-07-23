@@ -68,6 +68,11 @@ Bound from the `Routing` configuration section:
 { "Routing": { "DefaultHost": "app.local", "DefaultResponseStatusCode": 503 } }
 ```
 
+- **Custom error pages**: `ErrorPages:Directory` may hold `{statusCode}.html` files (e.g. `404.html`,
+  `503.html`). A middleware writes the matching page as the body of a DockYarp-generated error response
+  (status ≥ 400) that has not started and has no body — covering the default response, the `nohttps`
+  refusal, and auth rejections. Bodies already streamed by a backend are left untouched.
+
 ## Configuration sources & precedence — `RouteConfigMerger`
 
 Routes/clusters can come from several `ConfigContribution`s, each tagged with a `ConfigSource`

@@ -18,6 +18,11 @@ internal static class ObservabilityServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        AdminApiOptions adminApiOptions = new();
+        configuration.GetSection("AdminApi").Bind(adminApiOptions);
+        services.AddSingleton(adminApiOptions);
+        services.AddSingleton<ICertificateInventory, CertificateInventoryAdapter>();
+
         AccessLogOptions accessLog = new();
         configuration.GetSection("AccessLog").Bind(accessLog);
         services.AddSingleton(accessLog);

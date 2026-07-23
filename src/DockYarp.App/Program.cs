@@ -1,6 +1,7 @@
 using System;
 
 using DockYarp.AdminApi;
+using DockYarp.App.ErrorPages;
 using DockYarp.App.Observability;
 using DockYarp.App.ReverseProxy;
 using DockYarp.App.Security;
@@ -23,6 +24,9 @@ builder.Services.Configure<HostOptions>(host => host.ShutdownTimeout = TimeSpan.
 
 // Static (file-based) configuration source, merged with discovery (static wins).
 builder.Services.AddDockYarpStaticConfig(builder.Configuration);
+
+// Custom error pages for DockYarp-generated error responses.
+builder.Services.AddDockYarpErrorPages(builder.Configuration);
 
 // Docker discovery is opt-in (kept off in tests / local runs without a daemon).
 if (builder.Configuration.GetValue("Docker:Enabled", defaultValue: false))
@@ -64,11 +68,7 @@ TlsOptions tlsOptions = new();
 builder.Configuration.GetSection("Tls").Bind(tlsOptions);
 builder.Services.AddDockYarpTls(tlsOptions);
 
-// Admin API + observability.
-AdminApiOptions adminApiOptions = new();
-builder.Configuration.GetSection("AdminApi").Bind(adminApiOptions);
-builder.Services.AddSingleton(adminApiOptions);
-builder.Services.AddSingleton<ICertificateInventory, CertificateInventoryAdapter>();
+// Admin API + observability (admin options, certificate inventory, metrics, access logging).
 builder.Services.AddDockYarpObservability(builder.Configuration);
 
 var app = builder.Build();
@@ -78,6 +78,9 @@ _ = app.Services.GetRequiredService<DockYarpMetrics>();
 
 // Access logging wraps the whole pipeline so redirects and unmatched responses are logged too.
 app.UseMiddleware<AccessLogMiddleware>();
+
+// Overlay a configured error page onto DockYarp-generated error responses.
+app.UseMiddleware<ErrorPageMiddleware>();
 
 // ACME HTTP-01 challenge must be reachable over HTTP, before HTTPS enforcement.
 app.UseDockYarpAcmeChallenge();
