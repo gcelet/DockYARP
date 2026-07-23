@@ -14,7 +14,6 @@ using DockYarp.Tls;
 
 using OpenTelemetry.Metrics;
 
-using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Transforms;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -47,10 +46,7 @@ builder.Configuration.GetSection("Routing").Bind(routingOptions);
 builder.Services.AddSingleton(routingOptions);
 
 builder.Services.AddSingleton<IRouteConfigStore, RouteConfigStore>();
-builder.Services.AddReverseProxy()
-    .LoadFromMemory([], [])
-    .AddTransforms(context => ForwardedHeadersTransform.Apply(context, xForwardedAction));
-builder.Services.AddHostedService<YarpConfigBridge>();
+builder.Services.AddDockYarpReverseProxy(xForwardedAction);
 
 // Security options bound from the "Security" section (defaults preserved when unset).
 SecurityHeadersOptions securityOptions = new();
@@ -85,6 +81,9 @@ app.UseDockYarpAcmeChallenge();
 
 // Security (headers, HTTPS enforcement, Basic Auth) runs before the reverse proxy.
 app.UseDockYarpSecurity();
+
+// Apply per-route request limits before proxying.
+app.UseMiddleware<RequestBodySizeMiddleware>();
 
 // Explicit endpoints take routing precedence over YARP's catch-all.
 app.MapAdminApi();

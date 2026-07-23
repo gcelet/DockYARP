@@ -6,6 +6,7 @@ using System.Linq;
 
 using DockYarp.Core.Models;
 using Yarp.ReverseProxy.Configuration;
+using Yarp.ReverseProxy.Forwarder;
 
 using CoreHealthCheck = DockYarp.Core.Models.HealthCheckConfig;
 using YarpHealthCheck = Yarp.ReverseProxy.Configuration.HealthCheckConfig;
@@ -104,6 +105,9 @@ public static class YarpConfigMapper
                 endpoint => new DestinationConfig { Address = endpoint.Address },
                 StringComparer.Ordinal),
             HealthCheck = BuildHealth(cluster.HealthCheck),
+            HttpRequest = cluster.RequestTimeout is { } timeout
+                ? new ForwarderRequestConfig { ActivityTimeout = timeout }
+                : null,
         };
 
     private static string? BuildPath(string? prefix)

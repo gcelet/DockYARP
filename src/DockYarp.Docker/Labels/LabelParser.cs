@@ -55,6 +55,8 @@ public static class LabelParser
             LoadBalancingPolicy = ParsePolicy(GetOrNull(labels, DockerLabels.LoadBalancing)),
             Priority = ParsePriority(GetOrNull(labels, DockerLabels.Priority)),
             ClientCertificate = ParseClientCertificate(GetOrNull(labels, DockerLabels.ClientCert)),
+            ProxyTimeout = ParseTimeoutSeconds(GetOrNull(labels, DockerLabels.ProxyTimeout)),
+            MaxRequestBodySize = ParsePositiveLong(GetOrNull(labels, DockerLabels.MaxBodySize)),
             Auth = ParseAuth(labels),
         };
         return true;
@@ -123,6 +125,34 @@ public static class LabelParser
 
     private static int ParsePriority(string? value) =>
         int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int priority) ? priority : 0;
+
+    /// <summary>Reports whether <c>DOCKYARP_PROXY_TIMEOUT</c> is present but not a positive integer.</summary>
+    /// <param name="labels">The container labels.</param>
+    /// <returns><see langword="true"/> when the value cannot be parsed as a positive number of seconds.</returns>
+    public static bool HasInvalidProxyTimeout(IReadOnlyDictionary<string, string> labels)
+    {
+        ArgumentNullException.ThrowIfNull(labels);
+        return GetOrNull(labels, DockerLabels.ProxyTimeout) is { } raw && ParseTimeoutSeconds(raw) is null;
+    }
+
+    /// <summary>Reports whether <c>DOCKYARP_MAX_BODY_SIZE</c> is present but not a positive integer.</summary>
+    /// <param name="labels">The container labels.</param>
+    /// <returns><see langword="true"/> when the value cannot be parsed as a positive number of bytes.</returns>
+    public static bool HasInvalidMaxBodySize(IReadOnlyDictionary<string, string> labels)
+    {
+        ArgumentNullException.ThrowIfNull(labels);
+        return GetOrNull(labels, DockerLabels.MaxBodySize) is { } raw && ParsePositiveLong(raw) is null;
+    }
+
+    private static TimeSpan? ParseTimeoutSeconds(string? value) =>
+        int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int seconds) && seconds > 0
+            ? TimeSpan.FromSeconds(seconds)
+            : null;
+
+    private static long? ParsePositiveLong(string? value) =>
+        long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out long parsed) && parsed > 0
+            ? parsed
+            : null;
 
     /// <summary>Reports whether <c>HTTPS_METHOD</c> is present but not a recognized value.</summary>
     /// <param name="labels">The container labels.</param>

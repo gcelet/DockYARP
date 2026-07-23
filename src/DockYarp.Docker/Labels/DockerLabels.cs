@@ -40,6 +40,12 @@ public static class DockerLabels
     /// <summary>Client-certificate (mutual TLS) requirement: <c>required</c>, <c>optional</c>, or <c>none</c>/<c>off</c>.</summary>
     public const string ClientCert = "DOCKYARP_CLIENT_CERT";
 
+    /// <summary>Proxy request timeout in seconds applied to the cluster's outgoing requests.</summary>
+    public const string ProxyTimeout = "DOCKYARP_PROXY_TIMEOUT";
+
+    /// <summary>Maximum request body size in bytes accepted for the route.</summary>
+    public const string MaxBodySize = "DOCKYARP_MAX_BODY_SIZE";
+
     /// <summary>Basic Auth username protecting the route.</summary>
     public const string AuthUser = "DOCKYARP_AUTH_USER";
 

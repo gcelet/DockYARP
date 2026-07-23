@@ -83,6 +83,16 @@ public static class ContainerMapper
                 warnings.Add($"{container.Name} ({Short(container.Id)}): unrecognized {DockerLabels.ClientCert}; requiring no client certificate.");
             }
 
+            if (LabelParser.HasInvalidProxyTimeout(container.Labels))
+            {
+                warnings.Add($"{container.Name} ({Short(container.Id)}): invalid {DockerLabels.ProxyTimeout}; no timeout applied.");
+            }
+
+            if (LabelParser.HasInvalidMaxBodySize(container.Labels))
+            {
+                warnings.Add($"{container.Name} ({Short(container.Id)}): invalid {DockerLabels.MaxBodySize}; no body-size limit applied.");
+            }
+
             // A comma-separated VIRTUAL_HOST fans the container out to one route/cluster per host.
             foreach (string host in config.Hosts)
             {
@@ -133,6 +143,7 @@ public static class ContainerMapper
                 Tls = tls,
                 Auth = first.Auth,
                 ClientCertificate = first.ClientCertificate,
+                MaxRequestBodySize = first.MaxRequestBodySize,
                 Transforms = transforms,
             };
         }
@@ -143,6 +154,7 @@ public static class ContainerMapper
                 Id = host,
                 Endpoints = [.. endpoints],
                 LoadBalancingPolicy = first.LoadBalancingPolicy ?? LoadBalancingPolicy.RoundRobin,
+                RequestTimeout = first.ProxyTimeout,
             };
     }
 }

@@ -158,6 +158,24 @@ public sealed class YarpConfigMapperTests
         routes.Single(route => route.RouteId == "default.local|").Order.Should().BeNull();
     }
 
+    /// <summary>A cluster request timeout maps to the YARP activity timeout.</summary>
+    [Test]
+    public void ClusterTimeoutMapsToActivityTimeout()
+    {
+        Cluster withTimeout = Cluster("app", LoadBalancingPolicy.RoundRobin) with
+        {
+            RequestTimeout = System.TimeSpan.FromSeconds(30),
+        };
+        RouteConfigSnapshot snapshot = new(
+            [new RouteRule { HostPattern = "app.local", ClusterId = "app" }],
+            [withTimeout],
+            1);
+
+        (_, System.Collections.Generic.IReadOnlyList<ClusterConfig> clusters) = YarpConfigMapper.Map(snapshot);
+
+        clusters.Single().HttpRequest!.ActivityTimeout.Should().Be(System.TimeSpan.FromSeconds(30));
+    }
+
     private static Cluster Cluster(string id, LoadBalancingPolicy policy) =>
         new()
         {

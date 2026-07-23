@@ -332,6 +332,43 @@ public sealed class ContainerMapperTests
         result.Warnings.Should().Contain(warning => warning.Contains(DockerLabels.ClientCert, System.StringComparison.Ordinal));
     }
 
+    /// <summary>Proxy-tuning labels set the cluster timeout and the route body-size limit.</summary>
+    [Test]
+    public void ProxyTuningLabelsAreCarried()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.ProxyTimeout, "30"),
+                (DockerLabels.MaxBodySize, "1048576")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Clusters.Single().RequestTimeout.Should().Be(System.TimeSpan.FromSeconds(30));
+        result.Contribution.Routes.Single().MaxRequestBodySize.Should().Be(1048576);
+    }
+
+    /// <summary>An invalid proxy-timeout value is ignored and reported.</summary>
+    [Test]
+    public void InvalidProxyTimeoutWarnsAndIsIgnored()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.ProxyTimeout, "soon")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Clusters.Single().RequestTimeout.Should().BeNull();
+        result.Warnings.Should().Contain(warning => warning.Contains(DockerLabels.ProxyTimeout, System.StringComparison.Ordinal));
+    }
+
     /// <summary>An invalid container is skipped and reported as a warning.</summary>
     [Test]
     public void InvalidContainerIsSkippedWithWarning()

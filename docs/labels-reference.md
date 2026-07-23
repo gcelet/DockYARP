@@ -19,6 +19,8 @@ are **nginx-proxy compatible**; DockYarp-specific labels use the `DOCKYARP_` pre
 | `DOCKYARP_LB` | No | Load-balancing policy: `round-robin` (default) or `least-requests`. | `least-requests` |
 | `DOCKYARP_PRIORITY` | No | Route priority; higher wins when several routes could match (default `0`). | `10` |
 | `DOCKYARP_CLIENT_CERT` | No | Client-certificate (mTLS) requirement: `required`, `optional`, or `none`/`off` (default). | `required` |
+| `DOCKYARP_PROXY_TIMEOUT` | No | Proxy request timeout in seconds (cluster activity timeout). | `30` |
+| `DOCKYARP_MAX_BODY_SIZE` | No | Maximum request body size in bytes for the route. | `1048576` |
 | `DOCKYARP_AUTH_USER` | No | Basic Auth username protecting the route (with `DOCKYARP_AUTH_PASSWORD`). | `admin` |
 | `DOCKYARP_AUTH_PASSWORD` | No | Basic Auth password. | `s3cret` |
 | `DOCKYARP_AUTH_REALM` | No | Optional Basic Auth realm shown in the challenge. | `Admin area` |
@@ -35,6 +37,9 @@ are **nginx-proxy compatible**; DockYarp-specific labels use the `DOCKYARP_` pre
   `https`. Unsupported values (e.g. `fastcgi`) fall back to `http` and are logged.
 - **Priority**: `DOCKYARP_PRIORITY` orders routes when several could match — a higher value wins (it
   maps to a lower YARP route order). A non-numeric value falls back to `0` and is logged.
+- **Proxy tuning**: `DOCKYARP_PROXY_TIMEOUT` (seconds) sets the cluster's YARP activity timeout;
+  `DOCKYARP_MAX_BODY_SIZE` (bytes) caps the request body for the route. Non-numeric or non-positive
+  values are ignored and logged.
 - **Path rewrite**: `VIRTUAL_DEST` rewrites the matched path before forwarding. Currently the supported
   form is `VIRTUAL_DEST=/`, which strips the `VIRTUAL_PATH` prefix (so `/api/x` reaches the backend as
   `/x`); richer rewrites are not yet supported.

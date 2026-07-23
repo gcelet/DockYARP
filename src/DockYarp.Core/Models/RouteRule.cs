@@ -25,6 +25,9 @@ public sealed record RouteRule
     /// <summary>Gets the client-certificate (mutual TLS) requirement for this route.</summary>
     public ClientCertificateRequirement ClientCertificate { get; init; } = ClientCertificateRequirement.None;
 
+    /// <summary>Gets the optional maximum request body size (bytes) allowed before proxying this route.</summary>
+    public long? MaxRequestBodySize { get; init; }
+
     /// <summary>Gets the optional request transforms.</summary>
     public RouteTransforms? Transforms { get; init; }
 }

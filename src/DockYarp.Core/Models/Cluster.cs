@@ -1,5 +1,6 @@
 namespace DockYarp.Core.Models;
 
+using System;
 using System.Collections.Immutable;
 
 /// <summary>A backend service made of one or more interchangeable endpoints.</summary>
@@ -18,4 +19,7 @@ public sealed record Cluster
 
     /// <summary>Gets the optional health-check configuration.</summary>
     public HealthCheckConfig? HealthCheck { get; init; }
+
+    /// <summary>Gets the optional request timeout applied to the cluster's outgoing (proxied) requests.</summary>
+    public TimeSpan? RequestTimeout { get; init; }
 }

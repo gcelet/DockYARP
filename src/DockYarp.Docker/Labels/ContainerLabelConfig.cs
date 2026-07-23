@@ -1,5 +1,6 @@
 namespace DockYarp.Docker.Labels;
 
+using System;
 using System.Collections.Immutable;
 
 using DockYarp.Core.Models;
@@ -42,6 +43,12 @@ public sealed record ContainerLabelConfig
 
     /// <summary>Gets the client-certificate requirement (<c>DOCKYARP_CLIENT_CERT</c>); defaults to none.</summary>
     public ClientCertificateRequirement ClientCertificate { get; init; } = ClientCertificateRequirement.None;
+
+    /// <summary>Gets the optional proxy request timeout (<c>DOCKYARP_PROXY_TIMEOUT</c>).</summary>
+    public TimeSpan? ProxyTimeout { get; init; }
+
+    /// <summary>Gets the optional maximum request body size in bytes (<c>DOCKYARP_MAX_BODY_SIZE</c>).</summary>
+    public long? MaxRequestBodySize { get; init; }
 
     /// <summary>Gets the Basic Auth credentials (<c>DOCKYARP_AUTH_*</c>), set only when complete.</summary>
     public BasicAuthCredentials? Auth { get; init; }
