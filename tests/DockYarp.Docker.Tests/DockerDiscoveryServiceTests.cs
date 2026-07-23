@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 
 using AwesomeAssertions;
 
+using DockYarp.Core.Configuration;
 using DockYarp.Core.Stores;
 using DockYarp.Docker.Discovery;
 using DockYarp.Docker.Labels;
@@ -66,7 +67,7 @@ public sealed class DockerDiscoveryServiceTests
 
     private static DockerDiscoveryService CreateService(FakeContainerSource source, RouteConfigStore store)
     {
-        DiscoveryReconciler reconciler = new(source, store, NullLogger<DiscoveryReconciler>.Instance);
+        DiscoveryReconciler reconciler = new(source, store, new EmptyStaticConfigProvider(), NullLogger<DiscoveryReconciler>.Instance);
         DockerDiscoveryOptions options = new()
         {
             InitialReconnectDelay = TimeSpan.FromMilliseconds(5),

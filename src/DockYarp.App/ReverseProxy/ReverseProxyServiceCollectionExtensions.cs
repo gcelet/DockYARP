@@ -1,5 +1,8 @@
 namespace DockYarp.App.ReverseProxy;
 
+using DockYarp.Core.Interfaces;
+using DockYarp.Core.Stores;
+
 using Microsoft.Extensions.DependencyInjection;
 
 using Yarp.ReverseProxy.Configuration;
@@ -16,6 +19,7 @@ internal static class ReverseProxyServiceCollectionExtensions
         this IServiceCollection services,
         ForwardedTransformActions xForwardedAction)
     {
+        services.AddSingleton<IRouteConfigStore, RouteConfigStore>();
         services.AddReverseProxy()
             .LoadFromMemory([], [])
             .AddTransforms(context => ForwardedHeadersTransform.Apply(context, xForwardedAction));

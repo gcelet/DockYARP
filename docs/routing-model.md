@@ -81,3 +81,21 @@ Routes/clusters can come from several `ConfigContribution`s, each tagged with a 
   `route.conflict`, `route.invalid`, `route.cluster-missing`); callers that own an `ILogger` log them.
 
 The merged routes/clusters are then published via `IRouteConfigStore.Apply`.
+
+## Static configuration source — `StaticConfig`
+
+Operators can declare routes/clusters that aren't Docker-discovered (e.g. external backends) in a JSON file
+at `StaticConfig:Path`, read via `System.IO.Abstractions`. It becomes a `Static` contribution and is merged
+with discovery (static wins). With discovery **enabled**, the reconciler merges it on every pass; with
+discovery **disabled**, a startup service applies it once. A missing/invalid file fails open to no static
+config.
+
+```jsonc
+// StaticConfig:Path, e.g. /config/dockyarp.json
+{
+  "clusters": [ { "id": "api", "addresses": ["http://10.0.0.9:8080"], "loadBalancing": "round-robin" } ],
+  "routes":   [ { "host": "api.local", "path": "/", "cluster": "api", "priority": 0 } ]
+}
+```
+
+Advanced per-route fields (TLS/auth/transforms) and hot-reload are not yet supported in the static file.

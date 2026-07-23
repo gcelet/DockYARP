@@ -19,10 +19,12 @@ using Microsoft.Extensions.Logging;
 /// </remarks>
 /// <param name="source">The container source.</param>
 /// <param name="store">The route configuration store to publish into.</param>
+/// <param name="staticConfig">The static configuration source, merged with (and winning over) discovery.</param>
 /// <param name="logger">Logger for reconciliation diagnostics.</param>
 public sealed class DiscoveryReconciler(
     IContainerSource source,
     IRouteConfigStore store,
+    IStaticConfigProvider staticConfig,
     ILogger<DiscoveryReconciler> logger)
 {
     /// <summary>Performs one reconciliation pass.</summary>
@@ -39,7 +41,7 @@ public sealed class DiscoveryReconciler(
             DiscoveryLog.ContainerSkipped(logger, warning);
         }
 
-        MergeResult merge = RouteConfigMerger.Merge([mapResult.Contribution]);
+        MergeResult merge = RouteConfigMerger.Merge([staticConfig.GetContribution(), mapResult.Contribution]);
         foreach (MergeDiagnostic diagnostic in merge.Diagnostics)
         {
             DiscoveryLog.MergeDiagnostic(logger, diagnostic.Code, diagnostic.Message);

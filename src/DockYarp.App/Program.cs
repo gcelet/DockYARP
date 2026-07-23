@@ -4,9 +4,8 @@ using DockYarp.AdminApi;
 using DockYarp.App.Observability;
 using DockYarp.App.ReverseProxy;
 using DockYarp.App.Security;
+using DockYarp.App.StaticConfig;
 using DockYarp.Core.Configuration;
-using DockYarp.Core.Interfaces;
-using DockYarp.Core.Stores;
 using DockYarp.Docker;
 using DockYarp.Docker.Discovery;
 using DockYarp.Security;
@@ -22,6 +21,9 @@ var builder = WebApplication.CreateBuilder(args);
 int shutdownSeconds = builder.Configuration.GetValue("Host:ShutdownTimeoutSeconds", 30);
 builder.Services.Configure<HostOptions>(host => host.ShutdownTimeout = TimeSpan.FromSeconds(shutdownSeconds));
 
+// Static (file-based) configuration source, merged with discovery (static wins).
+builder.Services.AddDockYarpStaticConfig(builder.Configuration);
+
 // Docker discovery is opt-in (kept off in tests / local runs without a daemon).
 if (builder.Configuration.GetValue("Docker:Enabled", defaultValue: false))
 {
@@ -32,7 +34,9 @@ if (builder.Configuration.GetValue("Docker:Enabled", defaultValue: false))
 }
 else
 {
+    // No discovery: apply the static configuration to the store at startup.
     builder.Services.AddSingleton<IDiscoveryHealth>(new DisabledDiscoveryHealth());
+    builder.Services.AddHostedService<StaticConfigService>();
 }
 
 // The routing store is the single source of truth; YARP is driven from it via the bridge.
@@ -45,7 +49,6 @@ RoutingOptions routingOptions = new();
 builder.Configuration.GetSection("Routing").Bind(routingOptions);
 builder.Services.AddSingleton(routingOptions);
 
-builder.Services.AddSingleton<IRouteConfigStore, RouteConfigStore>();
 builder.Services.AddDockYarpReverseProxy(xForwardedAction);
 
 // Security options bound from the "Security" section (defaults preserved when unset).
