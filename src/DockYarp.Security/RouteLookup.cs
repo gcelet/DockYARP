@@ -8,14 +8,40 @@ using DockYarp.Core.Interfaces;
 using DockYarp.Core.Models;
 using DockYarp.Core.Routing;
 
+using Microsoft.AspNetCore.Http;
+
 /// <summary>Resolves the route matching a request, caching a matcher until the store version changes.</summary>
 /// <param name="store">The route configuration store.</param>
 /// <param name="routing">Routing options supplying the optional default host.</param>
 public sealed class RouteLookup(IRouteConfigStore store, RoutingOptions routing)
 {
+    private static readonly object RouteCacheKey = new();
+    private static readonly object NoRoute = new();
+
     private readonly Lock gate = new();
     private RouteMatcher? matcher;
     private long version = -1;
+
+    /// <summary>Resolves the matched route once per request, caching the result in <see cref="HttpContext.Items"/>.</summary>
+    /// <param name="context">The request context.</param>
+    /// <param name="route">The matched route when found.</param>
+    /// <returns><see langword="true"/> when a route matches.</returns>
+    public bool TryGetRoute(HttpContext context, [MaybeNullWhen(false)] out RouteRule route)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        if (context.Items.TryGetValue(RouteCacheKey, out object? cached))
+        {
+            route = cached as RouteRule;
+            return route is not null;
+        }
+
+        HttpRequest request = context.Request;
+        route = request.Host.Host is { Length: > 0 } host && TryMatch(host, request.Path, out RouteRule? matched)
+            ? matched
+            : null;
+        context.Items[RouteCacheKey] = (object?)route ?? NoRoute;
+        return route is not null;
+    }
 
     /// <summary>Attempts to find the route matching the host and path.</summary>
     /// <param name="host">Request host (without port).</param>

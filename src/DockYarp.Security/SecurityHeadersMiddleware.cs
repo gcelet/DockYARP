@@ -23,7 +23,7 @@ public sealed class SecurityHeadersMiddleware(SecurityHeadersOptions options, Ro
         headers["X-Frame-Options"] = options.FrameOptions;
         headers["Referrer-Policy"] = options.ReferrerPolicy;
 
-        if (context.Request.IsHttps && ResolveHsts(context.Request) is { } hsts)
+        if (context.Request.IsHttps && ResolveHsts(context) is { } hsts)
         {
             headers["Strict-Transport-Security"] = hsts;
         }
@@ -31,12 +31,10 @@ public sealed class SecurityHeadersMiddleware(SecurityHeadersOptions options, Ro
         return next(context);
     }
 
-    private string? ResolveHsts(HttpRequest request)
+    private string? ResolveHsts(HttpContext context)
     {
         // A per-host override wins: a value replaces the header, "off"/empty suppresses it for the host.
-        if (request.Host.Host is { Length: > 0 } host
-            && routes.TryMatch(host, request.Path, out RouteRule? route)
-            && route.Tls?.Hsts is { } perHost)
+        if (routes.TryGetRoute(context, out RouteRule? route) && route.Tls?.Hsts is { } perHost)
         {
             return perHost.Length == 0 || string.Equals(perHost, HstsOff, StringComparison.OrdinalIgnoreCase)
                 ? null

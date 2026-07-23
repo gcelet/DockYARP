@@ -19,8 +19,7 @@ public sealed class BasicAuthMiddleware(RouteLookup routes) : IMiddleware
     public Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
         HttpRequest request = context.Request;
-        if (request.Host.Host is { Length: > 0 } host
-            && routes.TryMatch(host, request.Path, out RouteRule? route)
+        if (routes.TryGetRoute(context, out RouteRule? route)
             && route.Auth is { } credentials
             && !IsAuthorized(request, credentials))
         {

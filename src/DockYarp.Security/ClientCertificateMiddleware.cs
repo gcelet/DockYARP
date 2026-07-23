@@ -14,9 +14,7 @@ public sealed class ClientCertificateMiddleware(RouteLookup routes) : IMiddlewar
     /// <inheritdoc />
     public Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
-        HttpRequest request = context.Request;
-        if (request.Host.Host is { Length: > 0 } host
-            && routes.TryMatch(host, request.Path, out RouteRule? route)
+        if (routes.TryGetRoute(context, out RouteRule? route)
             && route.ClientCertificate == ClientCertificateRequirement.Required
             && context.Connection.ClientCertificate is null)
         {

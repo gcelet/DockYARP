@@ -16,8 +16,7 @@ public sealed class RequestBodySizeMiddleware(RouteLookup routes) : IMiddleware
     /// <inheritdoc />
     public Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
-        if (context.Request.Host.Host is { Length: > 0 } host
-            && routes.TryMatch(host, context.Request.Path, out RouteRule? route)
+        if (routes.TryGetRoute(context, out RouteRule? route)
             && route.MaxRequestBodySize is { } maxBytes
             && context.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } feature)
         {

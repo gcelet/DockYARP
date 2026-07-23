@@ -16,7 +16,7 @@ public sealed class HttpsRedirectionMiddleware(RouteLookup routes, ICertificateA
     {
         HttpRequest request = context.Request;
         if (request.Host.Host is not { Length: > 0 } host
-            || !routes.TryMatch(host, request.Path, out RouteRule? route)
+            || !routes.TryGetRoute(context, out RouteRule? route)
             || route.Tls is not { } tls)
         {
             return next(context);
