@@ -2,6 +2,7 @@ namespace DockYarp.App.ReverseProxy;
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 
 using DockYarp.Core.Models;
@@ -100,15 +101,25 @@ public static class YarpConfigMapper
         {
             ClusterId = cluster.Id,
             LoadBalancingPolicy = MapPolicy(cluster.LoadBalancingPolicy),
-            Destinations = cluster.Endpoints.ToDictionary(
-                endpoint => endpoint.Id,
-                endpoint => new DestinationConfig { Address = endpoint.Address },
-                StringComparer.Ordinal),
+            Destinations = BuildDestinations(cluster.Endpoints),
             HealthCheck = BuildHealth(cluster.HealthCheck),
             HttpRequest = cluster.RequestTimeout is { } timeout
                 ? new ForwarderRequestConfig { ActivityTimeout = timeout }
                 : null,
         };
+
+    private static IReadOnlyDictionary<string, DestinationConfig> BuildDestinations(
+        ImmutableArray<ClusterEndpoint> endpoints)
+    {
+        // Last-wins by endpoint id so duplicate endpoints (e.g. a repeated host or static address) never throw.
+        Dictionary<string, DestinationConfig> destinations = new(StringComparer.Ordinal);
+        foreach (ClusterEndpoint endpoint in endpoints)
+        {
+            destinations[endpoint.Id] = new DestinationConfig { Address = endpoint.Address };
+        }
+
+        return destinations;
+    }
 
     private static string? BuildPath(string? prefix)
     {

@@ -176,6 +176,29 @@ public sealed class YarpConfigMapperTests
         clusters.Single().HttpRequest!.ActivityTimeout.Should().Be(System.TimeSpan.FromSeconds(30));
     }
 
+    /// <summary>Endpoints sharing an id collapse to one destination instead of throwing.</summary>
+    [Test]
+    public void DuplicateEndpointsCollapseToOneDestination()
+    {
+        Cluster cluster = new()
+        {
+            Id = "app",
+            Endpoints =
+            [
+                new ClusterEndpoint("dup", "http://10.0.0.1:8080"),
+                new ClusterEndpoint("dup", "http://10.0.0.2:8080"),
+            ],
+        };
+        RouteConfigSnapshot snapshot = new(
+            [new RouteRule { HostPattern = "app.local", ClusterId = "app" }],
+            [cluster],
+            1);
+
+        (_, System.Collections.Generic.IReadOnlyList<ClusterConfig> clusters) = YarpConfigMapper.Map(snapshot);
+
+        clusters.Single().Destinations.Should().ContainSingle();
+    }
+
     private static Cluster Cluster(string id, LoadBalancingPolicy policy) =>
         new()
         {

@@ -26,6 +26,22 @@ public sealed class LabelParserTests
         config.Port.Should().Be(8080);
     }
 
+    /// <summary>A repeated host in VIRTUAL_HOST is de-duplicated.</summary>
+    [Test]
+    public void DuplicateHostsAreDeduplicated()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local,app.local"),
+                (DockerLabels.VirtualPort, "8080")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.Hosts.Should().ContainSingle().Which.Should().Be("app.local");
+    }
+
     /// <summary>A comma-separated VIRTUAL_HOST yields one entry per host.</summary>
     [Test]
     public void CommaSeparatedHostsAreSplit()

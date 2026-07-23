@@ -255,10 +255,11 @@ public static class LabelParser
     private static ImmutableArray<string> SplitHosts(string raw)
     {
         ImmutableArray<string>.Builder hosts = ImmutableArray.CreateBuilder<string>();
+        HashSet<string> seen = new(StringComparer.OrdinalIgnoreCase);
         foreach (string part in raw.Split(','))
         {
             string trimmed = part.Trim();
-            if (trimmed.Length > 0)
+            if (trimmed.Length > 0 && seen.Add(trimmed))
             {
                 hosts.Add(trimmed);
             }
