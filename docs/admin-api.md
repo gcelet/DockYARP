@@ -45,7 +45,8 @@ first scrape.
 
 `AccessLogMiddleware` runs first in the pipeline and emits a **structured** access-log entry per request
 (method, scheme, host, path, response status, elapsed ms) via source-generated logging — covering proxied
-requests, redirects, and unmatched responses. Disable it with `AccessLog:Enabled=false`. The rendered format
+requests, redirects, and unmatched responses. Disable it with `AccessLog:Enabled=false`, and exclude
+infrastructure paths with `AccessLog:ExcludedPathPrefixes` (default `/metrics`, `/api`). The rendered format
 follows the configured logging provider: enable JSON with the console logger, e.g.
 
 ```jsonc

@@ -52,13 +52,32 @@ public sealed class AccessLogMiddlewareTests
         logger.Entries.Should().BeEmpty();
     }
 
-    private static DefaultHttpContext Context()
+    /// <summary>A request under an excluded prefix (e.g. /metrics) is not logged.</summary>
+    [Test]
+    public async Task DoesNotLogExcludedPath()
+    {
+        RecordingLogger logger = new();
+        AccessLogMiddleware middleware = new(new AccessLogOptions { Enabled = true }, logger);
+        DefaultHttpContext context = Context("/metrics");
+        bool nextCalled = false;
+
+        await middleware.InvokeAsync(context, _ =>
+        {
+            nextCalled = true;
+            return Task.CompletedTask;
+        });
+
+        nextCalled.Should().BeTrue();
+        logger.Entries.Should().BeEmpty();
+    }
+
+    private static DefaultHttpContext Context(string path = "/orders")
     {
         DefaultHttpContext context = new();
         context.Request.Method = "GET";
         context.Request.Scheme = "http";
         context.Request.Host = new HostString("app.local");
-        context.Request.Path = "/orders";
+        context.Request.Path = path;
         return context;
     }
 
