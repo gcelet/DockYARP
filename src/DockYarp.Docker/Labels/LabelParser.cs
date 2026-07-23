@@ -62,6 +62,29 @@ public static class LabelParser
         return true;
     }
 
+    /// <summary>Parses the container-level attributes (no host/port/path) shared by classic and multiports routes.</summary>
+    /// <param name="labels">The container labels.</param>
+    /// <returns>A configuration carrying auth, TLS, load balancing, and limit attributes.</returns>
+    public static ContainerLabelConfig ParseCommon(IReadOnlyDictionary<string, string> labels)
+    {
+        ArgumentNullException.ThrowIfNull(labels);
+        return new ContainerLabelConfig
+        {
+            Hosts = [],
+            Port = 0,
+            LetsEncryptHost = GetOrNull(labels, DockerLabels.LetsEncryptHost),
+            LetsEncryptEmail = GetOrNull(labels, DockerLabels.LetsEncryptEmail),
+            LoadBalancingPolicy = ParsePolicy(GetOrNull(labels, DockerLabels.LoadBalancing)),
+            Priority = ParsePriority(GetOrNull(labels, DockerLabels.Priority)),
+            ClientCertificate = ParseClientCertificate(GetOrNull(labels, DockerLabels.ClientCert)),
+            ProxyTimeout = ParseTimeoutSeconds(GetOrNull(labels, DockerLabels.ProxyTimeout)),
+            MaxRequestBodySize = ParsePositiveLong(GetOrNull(labels, DockerLabels.MaxBodySize)),
+            HttpsMethod = ParseHttpsMethod(GetOrNull(labels, DockerLabels.HttpsMethod)),
+            Hsts = GetOrNull(labels, DockerLabels.Hsts),
+            Auth = ParseAuth(labels),
+        };
+    }
+
     /// <summary>Reports whether exactly one of the auth user/password labels is present (incomplete).</summary>
     /// <param name="labels">The container labels.</param>
     /// <returns><see langword="true"/> when auth labels are present but incomplete.</returns>

@@ -7,7 +7,8 @@ are **nginx-proxy compatible**; DockYarp-specific labels use the `DOCKYARP_` pre
 
 | Label | Required | Description | Example |
 |---|---|---|---|
-| `VIRTUAL_HOST` | **Yes** | Host(s) the container is exposed on; comma-separated for several. | `app.local,www.app.local` |
+| `VIRTUAL_HOST` | **Yes**\* | Host(s) the container is exposed on; comma-separated for several. | `app.local,www.app.local` |
+| `VIRTUAL_HOST_MULTIPORTS` | No | YAML `host: { path: { port, proto, dest } }`; replaces `VIRTUAL_HOST`/`VIRTUAL_PORT` for multi-port containers. | _(see below)_ |
 | `VIRTUAL_PORT` | Conditional | Target container port. Required when the container exposes more than one port; inferred when exactly one is exposed. | `8080` |
 | `VIRTUAL_PATH` | No | Path prefix the route matches (empty = all paths). | `/api` |
 | `VIRTUAL_PROTO` | No | Backend transport scheme: `http` (default) or `https`. | `https` |
@@ -33,6 +34,21 @@ are **nginx-proxy compatible**; DockYarp-specific labels use the `DOCKYARP_` pre
 
 - **Multiple hosts**: a comma-separated `VIRTUAL_HOST` (whitespace trimmed, empty entries ignored) maps the
   container to one route per host, each sharing its port, path, TLS, and auth settings.
+- **Multi-port** (\*): `VIRTUAL_HOST_MULTIPORTS` supersedes `VIRTUAL_HOST`/`VIRTUAL_PORT` — a YAML mapping of
+  `host → path → { port, proto, dest }` maps each entry to its own route/cluster (on the entry's port and
+  scheme). Container-level attributes (auth, LB, priority, timeout, body size, client cert, and TLS when the
+  host is a `LETSENCRYPT_HOST`) apply to the generated routes; a non-empty `dest` strips the path prefix.
+
+  ```yaml
+  # VIRTUAL_HOST_MULTIPORTS
+  app.local:
+    "/":
+      port: 8080
+    "/api":
+      port: 9000
+      proto: https
+      dest: "/"
+  ```
 - **Backend scheme**: `VIRTUAL_PROTO` selects how the proxy reaches the container — `http` (default) or
   `https`. Unsupported values (e.g. `fastcgi`) fall back to `http` and are logged.
 - **Priority**: `DOCKYARP_PRIORITY` orders routes when several could match — a higher value wins (it

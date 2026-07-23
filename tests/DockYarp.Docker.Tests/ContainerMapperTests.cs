@@ -369,6 +369,69 @@ public sealed class ContainerMapperTests
         result.Warnings.Should().Contain(warning => warning.Contains(DockerLabels.ProxyTimeout, System.StringComparison.Ordinal));
     }
 
+    /// <summary>VIRTUAL_HOST_MULTIPORTS maps one host to several paths on different ports.</summary>
+    [Test]
+    public void MultiportsMapsMultiplePortsOnOneHost()
+    {
+        const string Yaml =
+            """
+            app.local:
+              "/":
+                port: 8080
+              "/api":
+                port: 9000
+            """;
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels((DockerLabels.VirtualHostMultiports, Yaml)));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Routes.Should().HaveCount(2);
+        result.Contribution.Routes.Should().Contain(route => route.PathPrefix == "/api" && route.ClusterId == "app.local/api");
+        result.Contribution.Clusters.Single(cluster => cluster.Id == "app.local/api")
+            .Endpoints.Single().Address.Should().Be("http://10.0.0.1:9000");
+    }
+
+    /// <summary>VIRTUAL_HOST_MULTIPORTS can expose several hosts from one container.</summary>
+    [Test]
+    public void MultiportsMapsMultipleHosts()
+    {
+        const string Yaml =
+            """
+            a.local:
+              "/":
+                port: 8080
+            b.local:
+              "/":
+                port: 8081
+            """;
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels((DockerLabels.VirtualHostMultiports, Yaml)));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Routes.Select(route => route.HostPattern).Should().BeEquivalentTo("a.local", "b.local");
+    }
+
+    /// <summary>An invalid VIRTUAL_HOST_MULTIPORTS value is skipped with a warning.</summary>
+    [Test]
+    public void InvalidMultiportsYamlWarns()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels((DockerLabels.VirtualHostMultiports, "app.local:\n  \"/\": [1, 2")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Routes.Should().BeEmpty();
+        result.Warnings.Should().Contain(warning => warning.Contains(DockerLabels.VirtualHostMultiports, System.StringComparison.Ordinal));
+    }
+
     /// <summary>An invalid container is skipped and reported as a warning.</summary>
     [Test]
     public void InvalidContainerIsSkippedWithWarning()

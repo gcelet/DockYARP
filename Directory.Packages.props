@@ -13,6 +13,7 @@
     <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.17.0-beta.1" />
     <PackageVersion Include="Certes" Version="3.0.4" />
     <PackageVersion Include="System.IO.Abstractions" Version="22.2.0" />
+    <PackageVersion Include="YamlDotNet" Version="18.1.0" />
   </ItemGroup>
   <!-- Code quality analyzers -->
   <ItemGroup>

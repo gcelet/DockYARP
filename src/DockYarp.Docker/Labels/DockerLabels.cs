@@ -7,6 +7,9 @@ public static class DockerLabels
     /// <summary>Host the container should be exposed on.</summary>
     public const string VirtualHost = "VIRTUAL_HOST";
 
+    /// <summary>YAML mapping of host → path → <c>{ port, proto, dest }</c> for multi-port containers.</summary>
+    public const string VirtualHostMultiports = "VIRTUAL_HOST_MULTIPORTS";
+
     /// <summary>Target container port.</summary>
     public const string VirtualPort = "VIRTUAL_PORT";
 
