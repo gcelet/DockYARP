@@ -119,14 +119,22 @@ class Build : NukeBuild
         .Executes(() =>
         {
             ProcessTasks.StartProcess("docker", "compose up -d --build", RootDirectory).AssertZeroExitCode();
+            bool reachable;
             try
             {
-                Assert.True(ProbeSampleService(), "Sample service was not reachable through DockYarp.");
+                reachable = ProbeSampleService();
             }
             finally
             {
                 ProcessTasks.StartProcess("docker", "compose down -v", RootDirectory).AssertWaitForExit();
             }
+
+            if (reachable)
+            {
+                Serilog.Log.Information("Smoke OK: sample service reachable through DockYarp.");
+            }
+
+            Assert.True(reachable, "Smoke KO: sample service was not reachable through DockYarp.");
         });
 
     static bool ProbeSampleService()

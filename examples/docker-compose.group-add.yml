@@ -1,0 +1,36 @@
+# Alternative to the recommended socket-proxy stack (docker-compose.yml): DockYarp mounts the Docker
+# socket directly and joins the socket's owning group so the non-root process can read it.
+#
+# DockYarp stays non-root; the trade-off is that the group id is host-specific. Provide it before running:
+#
+#   export DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)
+#   docker compose -f examples/docker-compose.group-add.yml up -d --build
+#
+# The build context is the repository root (one level up from this file).
+services:
+  dockyarp:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: dockyarp:local
+    ports:
+      - "80:8080"
+      - "443:8443"
+    environment:
+      Docker__Enabled: "true"
+      AdminApi__ApiKey: "change-me"
+    # Add the container to the group that owns the Docker socket so the non-root user can read it.
+    group_add:
+      - "${DOCKER_GID}"
+    volumes:
+      # Direct, read-only access to the Docker socket for container discovery.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ../certs:/certs
+      - ../config:/config
+    restart: unless-stopped
+
+  whoami:
+    image: traefik/whoami
+    labels:
+      VIRTUAL_HOST: "whoami.local"
+      VIRTUAL_PORT: "80"

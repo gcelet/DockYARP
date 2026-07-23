@@ -1,6 +1,20 @@
 # Reference stack: DockYarp in front of a labeled sample service.
 # Local demo uses HTTP (real ACME/TLS needs public DNS). See docs/deployment.md.
+#
+# DockYarp runs as a non-root container and reaches the Docker API through a read-only socket proxy
+# (recommended). Only the proxy mounts the Docker socket. For the direct-socket alternative (group_add),
+# see examples/docker-compose.group-add.yml.
 services:
+  # Minimal, read-only Docker API gateway; the only component that touches the socket.
+  dockerproxy:
+    image: tecnativa/docker-socket-proxy
+    environment:
+      # Discovery needs to list/inspect containers; the image enables the event stream by default.
+      CONTAINERS: "1"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+
   dockyarp:
     build:
       context: .
@@ -12,12 +26,14 @@ services:
     environment:
       # Enable Docker discovery (off by default outside the reference stack).
       Docker__Enabled: "true"
+      # Reach the Docker API via the proxy, so DockYarp needs no socket mount and stays non-root.
+      Docker__DockerEndpoint: "tcp://dockerproxy:2375"
       AdminApi__ApiKey: "change-me"
     volumes:
-      # Read-only access to the Docker socket for container discovery.
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./certs:/certs
       - ./config:/config
+    depends_on:
+      - dockerproxy
     restart: unless-stopped
 
   whoami:

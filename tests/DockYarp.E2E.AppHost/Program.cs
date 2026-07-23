@@ -21,15 +21,22 @@ var stepca = builder.AddContainer("stepca", "smallstep/step-ca")
     .WithEnvironment("DOCKER_STEPCA_INIT_REMOTE_MANAGEMENT", "false")
     .WithHttpsEndpoint(targetPort: 9000, name: "acme");
 
-// DockYarp runs as a container mounting the Docker socket read-only; /metrics gates readiness and
-// Routing__DefaultHost sends unknown hosts to the default backend (exercised by a scenario).
-var proxy = builder.AddContainer("dockyarp", "dockyarp", "local")
+// Read-only Docker API gateway; the only component that mounts the socket. DockYarp reaches the API
+// through it over TCP, so the proxy container itself stays non-root (matching the reference stack).
+var dockerproxy = builder.AddContainer("dockerproxy", "tecnativa/docker-socket-proxy")
     .WithBindMount("/var/run/docker.sock", "/var/run/docker.sock", isReadOnly: true)
+    .WithEnvironment("CONTAINERS", "1");
+
+// DockYarp runs as a non-root container reaching the Docker API via the socket proxy; /metrics gates
+// readiness and Routing__DefaultHost sends unknown hosts to the default backend (exercised by a scenario).
+var proxy = builder.AddContainer("dockyarp", "dockyarp", "local")
     .WithEnvironment("Docker__Enabled", "true")
+    .WithEnvironment("Docker__DockerEndpoint", "tcp://dockerproxy:2375")
     .WithEnvironment("AdminApi__ApiKey", apiKey)
     .WithEnvironment("Routing__DefaultHost", BackendCatalog.DefaultHost)
     .WithHttpEndpoint(targetPort: 8080, name: "http")
-    .WithHttpHealthCheck("/metrics");
+    .WithHttpHealthCheck("/metrics")
+    .WaitFor(dockerproxy);
 
 // TLS: point DockYarp's ACME client at step-ca, trust its root (Certes uses the default HttpClient, so the
 // container OS must trust the CA via SSL_CERT_FILE), enable mutual TLS, and expose the HTTPS listener. The

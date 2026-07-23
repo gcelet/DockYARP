@@ -17,7 +17,7 @@ docker build -t dockyarp:local .
 ## Reference Compose stack
 
 [`docker-compose.yml`](../docker-compose.yml) runs DockYarp in front of a labeled sample service
-(`traefik/whoami`, `VIRTUAL_HOST=whoami.local`). DockYarp discovers containers via the Docker socket.
+(`traefik/whoami`, `VIRTUAL_HOST=whoami.local`).
 
 ```bash
 docker compose up -d --build
@@ -27,7 +27,34 @@ docker compose down -v
 
 - **Docker discovery is opt-in**: enabled here via `Docker__Enabled=true`. It is off by default (so tests
   and local `dotnet run` need no daemon).
-- The Docker socket is mounted **read-only** (`/var/run/docker.sock:ro`) — same model as nginx-proxy.
+- **DockYarp runs as a non-root container** and must not run as root, so it does **not** read the Docker
+  socket directly (it is owned `root:docker 660`). See *Docker API access* below.
+
+### Docker API access (non-root)
+
+DockYarp needs the Docker API but runs unprivileged. Two supported modes:
+
+**Socket proxy (recommended, the default in `docker-compose.yml`).** A minimal
+[`tecnativa/docker-socket-proxy`](https://github.com/Tecnativa/docker-socket-proxy) container mounts the
+socket and exposes a **read-only** Docker API over TCP; DockYarp points at it and mounts no socket:
+
+```yaml
+dockerproxy:
+  image: tecnativa/docker-socket-proxy
+  environment: { CONTAINERS: "1" }        # + the image's default event stream
+  volumes: [ "/var/run/docker.sock:/var/run/docker.sock:ro" ]
+dockyarp:
+  environment:
+    Docker__DockerEndpoint: "tcp://dockerproxy:2375"
+```
+
+**Group membership (alternative).** [`examples/docker-compose.group-add.yml`](../examples/docker-compose.group-add.yml)
+keeps a direct socket mount and adds the container to the socket's owning group. Provide the host GID first:
+
+```bash
+export DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)
+docker compose -f examples/docker-compose.group-add.yml up -d --build
+```
 - **TLS**: the local demo uses HTTP + the self-signed fallback. Real ACME certificates need public DNS and
   the production ACME directory (see [tls-acme.md](tls-acme.md)).
 
