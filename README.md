@@ -171,6 +171,7 @@ openspec/                # spec-driven development (specs + changes)
 
 | Topic | Document |
 |---|---|
+| **Architecture & nginx-proxy parity** | [architecture.md](docs/architecture.md) |
 | Routing model | [routing-model.md](docs/routing-model.md) |
 | Docker discovery | [docker-discovery.md](docs/docker-discovery.md) |
 | YARP integration | [yarp-integration.md](docs/yarp-integration.md) |
