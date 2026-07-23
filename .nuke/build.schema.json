@@ -30,7 +30,9 @@
         "DockerPublish",
         "E2E",
         "Publish",
+        "Release",
         "Restore",
+        "Smoke",
         "Test"
       ]
     },
@@ -124,6 +126,10 @@
         "Registry": {
           "type": "string",
           "description": "Container registry host; empty targets Docker Hub"
+        },
+        "Version": {
+          "type": "string",
+          "description": "Version validated by a release run"
         }
       }
     },

@@ -25,6 +25,9 @@
   </Folder>
   <Folder Name="/02-tests/">
     <Project Path="tests/DockYarp.AdminApi.Tests/DockYarp.AdminApi.Tests.csproj" />
+    <Project Path="tests/DockYarp.E2E.AppHost/DockYarp.E2E.AppHost.csproj" />
+    <Project Path="tests/DockYarp.E2E.Backend/DockYarp.E2E.Backend.csproj" />
+    <Project Path="tests/DockYarp.E2E.Tests/DockYarp.E2E.Tests.csproj" />
     <Project Path="tests/DockYarp.Core.Tests/DockYarp.Core.Tests.csproj" />
     <Project Path="tests/DockYarp.Docker.Tests/DockYarp.Docker.Tests.csproj" />
     <Project Path="tests/DockYarp.IntegrationTests/DockYarp.IntegrationTests.csproj" />

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <!-- Consistent with the app; the echo backend only uses invariant/ordinal operations. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- SDK container publishing: `dotnet publish -t:PublishContainer` produces dockyarp-e2e-backend:local,
+         consumed by the Aspire AppHost as a discoverable backend container. Avoids a separate Dockerfile. -->
+    <ContainerRepository>dockyarp-e2e-backend</ContainerRepository>
+    <ContainerImageTag>local</ContainerImageTag>
+  </PropertyGroup>
+
+</Project>

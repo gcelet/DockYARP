@@ -138,11 +138,17 @@ Legend: ✅ implemented · ⚠️ partial / config-only (runtime-unvalidated) ·
 | Per-vhost config overrides (`vhost.d`) | ⛔ | Deferred. |
 | PROXY protocol, Docker Swarm, IPv6 listeners | ⛔ | Runtime-heavy; deferred to a runtime-capable session. |
 
-## Not yet real end to end
+## End to end
 
-Several features are unit/integration-tested but not validated against a running proxy on this machine (no
-local Docker): the SNI handshake, mutual-TLS handshake, cipher/HTTP-3 wiring, and multi-port/provided-cert
-proxying. A planned **Aspire-based end-to-end suite** will exercise these in real conditions.
+An **Aspire-based end-to-end suite** (`tests/DockYarp.E2E.*`) boots DockYarp as a container in front of
+labeled backend containers on a real Docker daemon and asserts the HTTP behaviour — discovery, multi-host,
+path rewrite, multi-port, priority, default host, Basic Auth, proxy tuning, health-aware exclusion, forwarded
+headers, and the admin API. It runs via `./build.ps1 E2E` (and as part of `./build.ps1 Release`), and is
+excluded from the default build/test so the developer loop needs no Docker. See [deployment](deployment.md).
+
+TLS-facing paths are still validated only by unit/integration tests on this machine (no local ACME/CA): the
+SNI handshake, mutual-TLS handshake, and cipher/HTTP-3 wiring. A follow-up change (`add-e2e-tls-acme`) will
+add a step-ca ACME server and the HTTPS/mTLS end-to-end scenarios.
 
 ## Where to go next
 

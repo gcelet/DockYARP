@@ -58,17 +58,31 @@ and `Tls__ContactEmail`.
 
 | Target | Action |
 |---|---|
-| `Restore` / `Compile` / `Test` | Restore, build, and test `DockYarp.slnx`. |
+| `Restore` / `Compile` / `Test` | Restore, build, and test `DockYarp.slnx`. `Test` **excludes** the end-to-end suite (`TestCategory!=EndToEnd`), so the default flow needs no Docker. |
 | `Publish` | Publish `DockYarp.App` to `artifacts/publish`. |
 | `DockerImage` | `docker build` the image (depends on `Test`; the build stage runs the Nuke build). |
 | `DockerPublish` | Build then `docker push` to the configured registry (depends on `DockerImage`). |
-| `E2E` | `docker compose up`, probe the sample service by `VIRTUAL_HOST`, then tear down. |
+| `E2E` | Build the `dockyarp:local` and echo-backend images, then run the **Aspire** end-to-end suite (`TestCategory=EndToEnd`). Opt-in; never a dependency of the default flow. |
+| `Smoke` | Bring up the reference Compose stack, probe the sample service by its `VIRTUAL_HOST`, then tear it down. Opt-in; never a dependency of the default flow. |
+| `Release` | Validate a version through the full gate: depends on `Test`, `E2E`, and `DockerImage`. |
 
 ```bash
-./build.sh Test          # or ./build.ps1 Test
+./build.sh Test          # or ./build.ps1 Test  — no Docker required
 ./build.sh DockerImage
-./build.sh E2E           # requires Docker (with compose) on PATH
+./build.sh E2E           # requires a Docker daemon reachable by Aspire's DCP
+./build.sh Smoke         # requires Docker (with the compose plugin) on PATH
+./build.sh Release --version 1.2.3
 ```
+
+### End-to-end tests (Aspire)
+
+The `tests/DockYarp.E2E.*` projects boot a real distributed system with [.NET Aspire](https://learn.microsoft.com/dotnet/aspire/):
+DockYarp runs as a container mounting the Docker socket, in front of labeled `traefik/whoami` and a small
+custom echo backend, and the NUnit harness asserts the proxy behaviour over HTTP. The suite is tagged
+`[Category("EndToEnd")]` so it only runs under `E2E`/`Release`, never in the default `Test`.
+
+> **Prerequisite**: a Docker daemon reachable by Aspire's orchestrator (DCP). When Docker runs in WSL, point
+> `DOCKER_HOST`/the Docker context at it before running `E2E`/`Release`.
 
 ### Publishing to a registry
 
@@ -90,4 +104,5 @@ docker login <registry>                 # once, outside the build
 ./build.sh DockerPublish --registry registry.example.com --image-repository team/dockyarp --image-tag 1.2.3
 ```
 
-`scripts/e2e-compose.sh` runs the same E2E smoke test standalone.
+The `Smoke` target runs the Compose smoke test (`docker compose up` + a single `VIRTUAL_HOST` probe, then
+teardown) — a lightweight check independent of the Aspire `E2E` suite described above.

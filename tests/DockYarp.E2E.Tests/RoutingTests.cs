@@ -1,0 +1,45 @@
+namespace DockYarp.E2E.Tests;
+
+using System.Net.Http;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+using AwesomeAssertions;
+
+/// <summary>Routing scenarios: path rewriting, multi-port mapping, and route precedence.</summary>
+[Category("EndToEnd")]
+public sealed class RoutingTests : E2ETestBase
+{
+    /// <summary><c>VIRTUAL_PATH=/api</c> with <c>VIRTUAL_DEST=/</c> strips the prefix before forwarding.</summary>
+    [Test]
+    public async Task PathRewrite_StripsPrefix()
+    {
+        using HttpResponseMessage response = await PollUntilSuccessAsync("echo.local", "/api/orders");
+
+        JsonElement echo = await ReadJsonAsync(response);
+        echo.GetProperty("path").GetString().Should().Be("/orders");
+    }
+
+    /// <summary><c>VIRTUAL_HOST_MULTIPORTS</c> routes different paths to different container ports.</summary>
+    [Test]
+    public async Task MultiPort_RoutesPerPath()
+    {
+        using HttpResponseMessage root = await PollUntilSuccessAsync("multiport.local", "/");
+        using HttpResponseMessage api = await PollUntilSuccessAsync("multiport.local", "/api");
+
+        JsonElement rootEcho = await ReadJsonAsync(root);
+        JsonElement apiEcho = await ReadJsonAsync(api);
+        rootEcho.GetProperty("port").GetInt32().Should().Be(8080);
+        apiEcho.GetProperty("port").GetInt32().Should().Be(8081);
+    }
+
+    /// <summary>When two backends share a host, the higher <c>DOCKYARP_PRIORITY</c> wins.</summary>
+    [Test]
+    public async Task Priority_HigherWins()
+    {
+        using HttpResponseMessage response = await PollUntilSuccessAsync("priority.local", "/");
+
+        JsonElement echo = await ReadJsonAsync(response);
+        EchoId(echo).Should().Be("high");
+    }
+}

@@ -25,12 +25,23 @@ class Build : NukeBuild
     [Parameter("Image tag")]
     readonly string ImageTag = "latest";
 
+    [Parameter("Version validated by a release run")]
+    readonly string Version = "";
+
+    // NUnit category tagging the Aspire end-to-end suite; excluded by default, run by E2E/Release only.
+    const string EndToEndCategory = "EndToEnd";
+
+    // The AppHost consumes these fixed image names; E2E builds them before booting the distributed system.
+    const string LocalProxyImage = "dockyarp:local";
+
     string FullImage => string.IsNullOrEmpty(Registry)
         ? $"{ImageRepository}:{ImageTag}"
         : $"{Registry}/{ImageRepository}:{ImageTag}";
 
     AbsolutePath SolutionFile => RootDirectory / "DockYarp.slnx";
     AbsolutePath AppProject => RootDirectory / "src" / "DockYarp.App" / "DockYarp.App.csproj";
+    AbsolutePath BackendProject => RootDirectory / "tests" / "DockYarp.E2E.Backend" / "DockYarp.E2E.Backend.csproj";
+    AbsolutePath E2EProject => RootDirectory / "tests" / "DockYarp.E2E.Tests" / "DockYarp.E2E.Tests.csproj";
     AbsolutePath ArtifactsDirectory => RootDirectory / "artifacts";
 
     Target Clean => _ => _
@@ -47,11 +58,13 @@ class Build : NukeBuild
             .SetConfiguration(Configuration)
             .EnableNoRestore()));
 
+    // Unit/integration suite. The end-to-end tests are excluded so the default build needs no Docker daemon.
     Target Test => _ => _
         .DependsOn(Compile)
         .Executes(() => DotNetTest(s => s
             .SetProjectFile(SolutionFile)
             .SetConfiguration(Configuration)
+            .SetFilter($"TestCategory!={EndToEndCategory}")
             .EnableNoBuild()));
 
     Target Publish => _ => _
@@ -77,8 +90,32 @@ class Build : NukeBuild
             .StartProcess("docker", $"push {FullImage}", RootDirectory)
             .AssertZeroExitCode());
 
-    // Requires Docker (with the compose plugin) on PATH.
+    // Opt-in end-to-end suite: builds the images the Aspire AppHost consumes (the proxy image and the echo
+    // backend image), then runs the EndToEnd-categorized tests, which boot the distributed system on a real
+    // Docker daemon. Requires Docker reachable by Aspire's DCP. Never a dependency of the default flow.
     Target E2E => _ => _
+        .DependsOn(Compile)
+        .Executes(() =>
+        {
+            ProcessTasks.StartProcess("docker", $"build -t {LocalProxyImage} .", RootDirectory).AssertZeroExitCode();
+            DotNet($"publish \"{BackendProject}\" --configuration {Configuration} -t:PublishContainer");
+            DotNetTest(s => s
+                .SetProjectFile(E2EProject)
+                .SetConfiguration(Configuration)
+                .SetFilter($"TestCategory={EndToEndCategory}"));
+        });
+
+    // Validates a version through the full quality gate, including the end-to-end suite.
+    Target Release => _ => _
+        .DependsOn(Test, E2E, DockerImage)
+        .Executes(() => Serilog.Log.Information(
+            "Release gate passed for version {Version}.",
+            string.IsNullOrEmpty(Version) ? "(unspecified)" : Version));
+
+    // Opt-in Compose smoke test: bring up the reference stack and probe the sample service by its
+    // VIRTUAL_HOST, then tear it down. Not part of the default flow. Requires Docker (with the compose
+    // plugin) on PATH.
+    Target Smoke => _ => _
         .Executes(() =>
         {
             ProcessTasks.StartProcess("docker", "compose up -d --build", RootDirectory).AssertZeroExitCode();

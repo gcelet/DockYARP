@@ -1,0 +1,16 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.4.6">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <UserSecretsId>DockYarp.E2E.AppHost</UserSecretsId>
+    <!-- Aspire's DCP/OTLP graph pulls transitive packages (e.g. MessagePack) whose advisories we do not
+         control; this is a test-only orchestrator that never ships. Audit our direct picks, not the whole
+         Aspire transitive tree, so those advisories don't fail the build under TreatWarningsAsErrors. -->
+    <NuGetAuditMode>direct</NuGetAuditMode>
+    <!-- This host only orchestrates prebuilt container images (dockyarp:local + the echo backend),
+         so it needs no project references; the Aspire SDK provides Aspire.Hosting. -->
+  </PropertyGroup>
+
+</Project>
