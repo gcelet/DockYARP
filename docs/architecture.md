@@ -146,9 +146,11 @@ path rewrite, multi-port, priority, default host, Basic Auth, proxy tuning, heal
 headers, and the admin API. It runs via `./build.ps1 E2E` (and as part of `./build.ps1 Release`), and is
 excluded from the default build/test so the developer loop needs no Docker. See [deployment](deployment.md).
 
-TLS-facing paths are still validated only by unit/integration tests on this machine (no local ACME/CA): the
-SNI handshake, mutual-TLS handshake, and cipher/HTTP-3 wiring. A follow-up change (`add-e2e-tls-acme`) will
-add a step-ca ACME server and the HTTPS/mTLS end-to-end scenarios.
+The suite also covers **TLS**: a `smallstep/step-ca` ACME server issues real certificates over HTTP-01, and
+scenarios assert ACME provisioning, the self-signed fallback, HTTP→HTTPS redirect, per-host HSTS, and mutual
+TLS. These are authored and run under `E2E`, pending validation in a Docker-capable session (the CA-trust
+bridge, HTTP-01 host aliasing, and mutual-TLS client-cert wiring are the parts to confirm at runtime).
+Cipher-suite and HTTP-3 wiring remain unit/integration-tested only.
 
 ## Where to go next
 

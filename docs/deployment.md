@@ -78,7 +78,9 @@ and `Tls__ContactEmail`.
 
 The `tests/DockYarp.E2E.*` projects boot a real distributed system with [.NET Aspire](https://learn.microsoft.com/dotnet/aspire/):
 DockYarp runs as a container mounting the Docker socket, in front of labeled `traefik/whoami` and a small
-custom echo backend, and the NUnit harness asserts the proxy behaviour over HTTP. The suite is tagged
+custom echo backend, and the NUnit harness asserts the proxy behaviour over HTTP. It also runs a
+`smallstep/step-ca` ACME server to assert TLS end to end (real certificate provisioning over HTTP-01, the
+self-signed fallback, HTTP→HTTPS redirect, per-host HSTS, and mutual TLS). The suite is tagged
 `[Category("EndToEnd")]` so it only runs under `E2E`/`Release`, never in the default `Test`.
 
 > **Prerequisite**: a Docker daemon reachable by Aspire's orchestrator (DCP). When Docker runs in WSL, point

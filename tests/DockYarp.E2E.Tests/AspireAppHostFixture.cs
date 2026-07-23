@@ -21,6 +21,7 @@ public static class AspireAppHostFixture
 
     private const string ProxyResource = "dockyarp";
     private const string ProxyEndpoint = "http";
+    private const string ProxyHttpsEndpoint = "https";
     private const int StartupTimeoutSeconds = 180;
 
     private static DistributedApplication? application;
@@ -28,10 +29,16 @@ public static class AspireAppHostFixture
     /// <summary>Gets the HTTP client targeting DockYarp's proxy endpoint.</summary>
     internal static HttpClient Proxy { get; private set; } = null!;
 
+    /// <summary>Gets the base address of DockYarp's HTTPS endpoint (TLS clients are built against it).</summary>
+    internal static Uri HttpsBaseAddress { get; private set; } = null!;
+
     /// <summary>Builds the AppHost, starts it, and waits for DockYarp to report healthy.</summary>
     [OneTimeSetUp]
     public static async Task StartAsync()
     {
+        // The client CA must exist before DockYarp starts (it is mounted as Tls__ClientCaCertificatePath).
+        TlsHarness.PrepareClientCa();
+
         using CancellationTokenSource cts = new(TimeSpan.FromSeconds(StartupTimeoutSeconds));
         CancellationToken token = cts.Token;
 
@@ -43,6 +50,8 @@ public static class AspireAppHostFixture
         await application.ResourceNotifications.WaitForResourceHealthyAsync(ProxyResource, token);
 
         Proxy = application.CreateHttpClient(ProxyResource, ProxyEndpoint);
+        using HttpClient httpsProbe = application.CreateHttpClient(ProxyResource, ProxyHttpsEndpoint);
+        HttpsBaseAddress = httpsProbe.BaseAddress!;
     }
 
     /// <summary>Stops and disposes the distributed application.</summary>
@@ -50,6 +59,7 @@ public static class AspireAppHostFixture
     public static async Task StopAsync()
     {
         Proxy?.Dispose();
+        TlsHarness.Cleanup();
         if (application is not null)
         {
             await application.StopAsync();

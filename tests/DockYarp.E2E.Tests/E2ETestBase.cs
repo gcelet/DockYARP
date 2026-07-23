@@ -27,22 +27,35 @@ public abstract class E2ETestBase
         return request;
     }
 
-    /// <summary>Sends requests from <paramref name="factory"/> until <paramref name="accept"/> holds or it times out.</summary>
+    /// <summary>Sends requests through the proxy client until <paramref name="accept"/> holds or it times out.</summary>
+    /// <param name="factory">Creates a new request per attempt (a request cannot be resent).</param>
+    /// <param name="accept">Predicate deciding whether a response is the awaited one.</param>
+    /// <param name="timeoutSeconds">Overall polling budget.</param>
+    /// <returns>The first accepted response, or the last one received when the budget elapses.</returns>
+    protected static Task<HttpResponseMessage> PollAsync(
+        Func<HttpRequestMessage> factory,
+        Func<HttpResponseMessage, bool> accept,
+        int timeoutSeconds = DefaultPollSeconds) =>
+        PollAsync(Proxy, factory, accept, timeoutSeconds);
+
+    /// <summary>Sends requests through <paramref name="client"/> until <paramref name="accept"/> holds or it times out.</summary>
+    /// <param name="client">The HTTP client to send through (for example a TLS-aware HTTPS client).</param>
     /// <param name="factory">Creates a new request per attempt (a request cannot be resent).</param>
     /// <param name="accept">Predicate deciding whether a response is the awaited one.</param>
     /// <param name="timeoutSeconds">Overall polling budget.</param>
     /// <returns>The first accepted response, or the last one received when the budget elapses.</returns>
     protected static async Task<HttpResponseMessage> PollAsync(
+        HttpClient client,
         Func<HttpRequestMessage> factory,
         Func<HttpResponseMessage, bool> accept,
-        int timeoutSeconds = DefaultPollSeconds)
+        int timeoutSeconds)
     {
         long deadline = Environment.TickCount64 + (timeoutSeconds * 1000L);
         HttpResponseMessage? last = null;
         while (true)
         {
             using HttpRequestMessage request = factory();
-            HttpResponseMessage response = await Proxy.SendAsync(request);
+            HttpResponseMessage response = await client.SendAsync(request);
             if (accept(response))
             {
                 last?.Dispose();

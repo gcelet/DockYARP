@@ -17,6 +17,9 @@ internal static class BackendCatalog
     /// <summary>The virtual host routed to the default backend when no other host matches.</summary>
     internal const string DefaultHost = "default.local";
 
+    /// <summary>The TLS virtual hosts (each with a <c>LETSENCRYPT_HOST</c>), used to alias DockYarp for HTTP-01.</summary>
+    internal static IReadOnlyList<string> TlsHosts { get; } = ["tls.local", "hsts.local", "mtls.local"];
+
     private const string WhoamiImage = "traefik/whoami";
     private const string EchoTag = "local";
     private const string EchoPort = "8080";
@@ -34,6 +37,9 @@ internal static class BackendCatalog
     private const string AuthPassword = "DOCKYARP_AUTH_PASSWORD";
     private const string MaxBodySize = "DOCKYARP_MAX_BODY_SIZE";
     private const string ProxyTimeout = "DOCKYARP_PROXY_TIMEOUT";
+    private const string LetsEncryptHost = "LETSENCRYPT_HOST";
+    private const string Hsts = "HSTS";
+    private const string ClientCert = "DOCKYARP_CLIENT_CERT";
 
     /// <summary>Gets every backend the AppHost adds to the distributed system.</summary>
     public static IReadOnlyList<BackendSpec> All { get; } =
@@ -134,6 +140,42 @@ internal static class BackendCatalog
             ExtraRuntimeArgs =
                 ["--health-cmd", "exit 1", "--health-interval", "2s", "--health-retries", "1", "--health-timeout", "1s"],
             WaitForRunning = false,
+        },
+        new BackendSpec
+        {
+            Name = "echo-tls", // ACME: a certificate is provisioned for LETSENCRYPT_HOST and served over HTTPS
+            Image = EchoImage,
+            Tag = EchoTag,
+            Labels = [Kv(VirtualHost, "tls.local"), Kv(VirtualPort, EchoPort), Kv(LetsEncryptHost, "tls.local")],
+            Environment = EchoEnv(EchoPort, id: "tls"),
+        },
+        new BackendSpec
+        {
+            Name = "echo-hsts", // per-host HSTS: the HTTPS response carries Strict-Transport-Security
+            Image = EchoImage,
+            Tag = EchoTag,
+            Labels =
+            [
+                Kv(VirtualHost, "hsts.local"),
+                Kv(VirtualPort, EchoPort),
+                Kv(LetsEncryptHost, "hsts.local"),
+                Kv(Hsts, "max-age=31536000"),
+            ],
+            Environment = EchoEnv(EchoPort, id: "hsts"),
+        },
+        new BackendSpec
+        {
+            Name = "echo-mtls", // mutual TLS: a valid client certificate is required
+            Image = EchoImage,
+            Tag = EchoTag,
+            Labels =
+            [
+                Kv(VirtualHost, "mtls.local"),
+                Kv(VirtualPort, EchoPort),
+                Kv(LetsEncryptHost, "mtls.local"),
+                Kv(ClientCert, "required"),
+            ],
+            Environment = EchoEnv(EchoPort, id: "mtls"),
         },
     ];
 
