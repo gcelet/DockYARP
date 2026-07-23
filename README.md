@@ -17,6 +17,12 @@ security middleware, and an admin API — an `nginx-proxy`-style experience, in 
 
 </div>
 
+> [!WARNING]
+> **This project is built 100% by AI.** Every line of code, spec, and document in DockYarp was produced
+> by an AI agent. It is **highly experimental**, provided **as-is with no guarantees**, and is **not intended
+> for production** or any environment that matters to your business. Treat it as a learning/demonstration
+> project — do not run it where an outage, a security flaw, or data loss would have real consequences.
+
 ---
 
 ## Overview
@@ -27,11 +33,21 @@ routable; request a certificate with `LETSENCRYPT_HOST` and HTTPS is provisioned
 
 ## Features
 
-- 🐳 **Docker auto-discovery** — routes and clusters derived from container labels (nginx-proxy compatible).
-- 🔀 **Dynamic routing on YARP** — host/path matching, clusters, load balancing, health checks; reloaded live.
-- 🔐 **Automatic TLS (ACME)** — certificate acquisition, renewal, and SNI selection with a self-signed fallback.
-- 🛡️ **Security middleware** — per-host HTTPS enforcement, Basic Auth, and hardening headers (HSTS, …).
-- 📊 **Admin API & metrics** — read-only `/api/*` endpoints and Prometheus `/metrics`.
+- 🐳 **Docker auto-discovery** — routes/clusters from container labels (nginx-proxy compatible): multi-host,
+  multi-port (`VIRTUAL_HOST_MULTIPORTS`), backend scheme (`VIRTUAL_PROTO`), path rewrite (`VIRTUAL_DEST`),
+  priority, and **health-aware** + **network-aware** selection.
+- 🔀 **Dynamic routing on YARP** — host/path matching, clusters, load balancing, health checks, a default
+  (catch-all) host, per-cluster request timeout and per-route body-size limit; reloaded live.
+- 🧾 **Configuration sources** — Docker discovery **and** a static JSON file, merged with precedence
+  (static wins); works with or without Docker.
+- 🔐 **TLS & certificates** — automatic ACME (acquire/renew), **operator-provided** PEM/PFX certs with
+  **wildcard-parent** SNI selection, `HTTPS_METHOD` (redirect/noredirect/nohttp/nohttps) gated on real cert
+  availability, TLS hardening (min version, ciphers, protocols), and **mutual TLS** (client-cert auth).
+- 🛡️ **Security middleware** — HTTPS enforcement, Basic Auth (from labels), per-host **HSTS** (+preload),
+  client-certificate enforcement, and hardening headers.
+- 📊 **Admin API & observability** — read-only `/api/*` endpoints, Prometheus `/metrics`, and structured
+  per-request **access logging**.
+- 🧯 **Custom error pages** & **proxy tuning** — configurable error pages and request limits/timeouts.
 - 📦 **Container-native** — minimal, non-root **chiseled** image; reference Docker Compose stack.
 
 ## Architecture
@@ -79,12 +95,18 @@ DockYarp needs read-only access to the Docker socket (`/var/run/docker.sock`) to
 
 | Label | Description |
 |---|---|
-| `VIRTUAL_HOST` | Host the container is exposed on (**required**). |
+| `VIRTUAL_HOST` | Host(s) the container is exposed on — comma-separated for several (**required**\*). |
 | `VIRTUAL_PORT` | Target port (inferred when a single port is exposed). |
-| `VIRTUAL_PATH` | Optional path prefix. |
+| `VIRTUAL_PATH` / `VIRTUAL_DEST` | Path prefix matched, and destination rewrite (strip the prefix). |
+| `VIRTUAL_PROTO` | Backend scheme: `http` (default) or `https`. |
+| `VIRTUAL_HOST_MULTIPORTS` | \*YAML `host → path → { port, proto, dest }`; supersedes `VIRTUAL_HOST`/`VIRTUAL_PORT`. |
 | `LETSENCRYPT_HOST` / `LETSENCRYPT_EMAIL` | Request an ACME certificate for the host. |
-| `DOCKYARP_LB` | Load-balancing policy (`round-robin`, `least-requests`). |
-| `DOCKYARP_AUTH_USER` / `DOCKYARP_AUTH_PASSWORD` | Basic Auth credentials (planned label wiring). |
+| `HTTPS_METHOD` | `redirect` (default), `noredirect`, `nohttp`, `nohttps`. |
+| `HSTS` | Per-host `Strict-Transport-Security` value, or `off`. |
+| `DOCKYARP_LB` / `DOCKYARP_PRIORITY` | Load-balancing policy and route priority. |
+| `DOCKYARP_AUTH_USER` / `DOCKYARP_AUTH_PASSWORD` / `DOCKYARP_AUTH_REALM` | Basic Auth credentials. |
+| `DOCKYARP_CLIENT_CERT` | Mutual-TLS requirement: `required`, `optional`, `none`. |
+| `DOCKYARP_PROXY_TIMEOUT` / `DOCKYARP_MAX_BODY_SIZE` | Per-cluster request timeout and per-route body-size limit. |
 
 Full reference: [`docs/labels-reference.md`](docs/labels-reference.md).
 
@@ -96,10 +118,11 @@ Protected by an `X-Api-Key` header (`AdminApi:ApiKey`):
 |---|---|
 | `GET /api/routes` | Active routes (sanitized). |
 | `GET /api/clusters` | Active clusters and endpoints. |
-| `GET /api/certs` | Certificates (populated as TLS matures). |
-| `GET /api/health` | Overall status. |
+| `GET /api/certs` | Stored certificates (host + expiry, no private keys). |
+| `GET /api/health` | Overall status with route/cluster/certificate counts and discovery status. |
 | `GET /metrics` | Prometheus metrics (unauthenticated). |
 
+Every request is also written to a structured **access log** (`AccessLog:Enabled`).
 See [`docs/admin-api.md`](docs/admin-api.md).
 
 ## Build & test
