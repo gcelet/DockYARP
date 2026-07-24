@@ -85,6 +85,9 @@ internal static class TlsHarness
         Uri endpoint = AspireAppHostFixture.HttpsBaseAddress;
         SocketsHttpHandler handler = new()
         {
+            // No connection reuse: force a fresh TLS handshake per request so a poll observes a certificate
+            // provisioned after the first request (a pooled connection keeps the initial fallback certificate).
+            PooledConnectionLifetime = TimeSpan.Zero,
             SslOptions = new SslClientAuthenticationOptions
             {
                 RemoteCertificateValidationCallback = (_, certificate, _, _) =>
