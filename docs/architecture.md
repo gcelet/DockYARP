@@ -89,10 +89,11 @@ Legend: ✅ implemented · ⚠️ partial / config-only (runtime-unvalidated) ·
 | Replica aggregation | ✅ | One endpoint per container per cluster. |
 | Multiple hosts per container (`VIRTUAL_HOST=a,b`) | ✅ | Comma-separated. |
 | Wildcard host | ⚠️ | Single-level `*.suffix`; multi-level/regex ⛔. |
+| Host precedence (exact over wildcard) | ✅ | Same as nginx `server_name`; longest path prefix wins. |
 | `VIRTUAL_HOST_MULTIPORTS` | ✅ | YAML host→path→{port,proto,dest}. |
 | `VIRTUAL_DEST` path rewrite | ⚠️ | Prefix-strip only; arbitrary rewrites ⛔. |
 | `DEFAULT_HOST` / catch-all + default response | ✅ | Default status configurable. |
-| Priority (`DOCKYARP_PRIORITY`) | ✅ | Maps to YARP order. |
+| Priority (`DOCKYARP_PRIORITY`) | ➕ | **DockYarp extension** (no nginx-proxy equivalent). Orders routes *within a host*; does not override host specificity (exact still beats a higher-priority wildcard). Maps to YARP order. |
 
 ### Protocols
 | Feature | Status | Notes |
@@ -142,7 +143,7 @@ Legend: ✅ implemented · ⚠️ partial / config-only (runtime-unvalidated) ·
 
 An **Aspire-based end-to-end suite** (`tests/DockYarp.E2E.*`) boots DockYarp as a container in front of
 labeled backend containers on a real Docker daemon and asserts the HTTP behaviour — discovery, multi-host,
-path rewrite, multi-port, priority, default host, Basic Auth, proxy tuning, health-aware exclusion, forwarded
+path rewrite, multi-port, default host, Basic Auth, proxy tuning, health-aware exclusion, forwarded
 headers, and the admin API. It runs via `./build.ps1 E2E` (and as part of `./build.ps1 Release`), and is
 excluded from the default build/test so the developer loop needs no Docker. See [deployment](deployment.md).
 

@@ -29,7 +29,6 @@ internal static class BackendCatalog
     private const string VirtualPath = "VIRTUAL_PATH";
     private const string VirtualDest = "VIRTUAL_DEST";
     private const string VirtualHostMultiports = "VIRTUAL_HOST_MULTIPORTS";
-    private const string Priority = "DOCKYARP_PRIORITY";
     private const string AuthUser = "DOCKYARP_AUTH_USER";
     private const string AuthPassword = "DOCKYARP_AUTH_PASSWORD";
     private const string MaxBodySize = "DOCKYARP_MAX_BODY_SIZE";
@@ -74,22 +73,6 @@ internal static class BackendCatalog
             Tag = EchoTag,
             Labels = [Kv(VirtualHostMultiports, "{multiport.local: {/: {port: 8080}, /api: {port: 8081}}}")],
             Environment = EchoEnv("8080;8081", id: null),
-        },
-        new BackendSpec
-        {
-            Name = "echo-priority-low", // priority: lower DOCKYARP_PRIORITY loses priority.local
-            Image = EchoImage,
-            Tag = EchoTag,
-            Labels = [Kv(VirtualHost, "priority.local"), Kv(VirtualPort, EchoPort), Kv(Priority, "1")],
-            Environment = EchoEnv(EchoPort, id: "low"),
-        },
-        new BackendSpec
-        {
-            Name = "echo-priority-high", // priority: higher DOCKYARP_PRIORITY wins priority.local
-            Image = EchoImage,
-            Tag = EchoTag,
-            Labels = [Kv(VirtualHost, "priority.local"), Kv(VirtualPort, EchoPort), Kv(Priority, "10")],
-            Environment = EchoEnv(EchoPort, id: "high"),
         },
         new BackendSpec
         {

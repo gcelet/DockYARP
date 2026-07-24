@@ -18,7 +18,7 @@ are **nginx-proxy compatible**; DockYarp-specific labels use the `DOCKYARP_` pre
 | `HTTPS_METHOD` | No | HTTP↔HTTPS behavior: `redirect` (default), `noredirect`, `nohttp`, `nohttps`. | `noredirect` |
 | `HSTS` | No | Per-host `Strict-Transport-Security` value, or `off` to disable HSTS for the host. | `off` |
 | `DOCKYARP_LB` | No | Load-balancing policy: `round-robin` (default) or `least-requests`. | `least-requests` |
-| `DOCKYARP_PRIORITY` | No | Route priority; higher wins when several routes could match (default `0`). | `10` |
+| `DOCKYARP_PRIORITY` | No | Route priority (DockYarp extension); orders same-host routes, higher wins (default `0`). | `10` |
 | `DOCKYARP_CLIENT_CERT` | No | Client-certificate (mTLS) requirement: `required`, `optional`, or `none`/`off` (default). | `required` |
 | `DOCKYARP_PROXY_TIMEOUT` | No | Proxy request timeout in seconds (cluster activity timeout). | `30` |
 | `DOCKYARP_MAX_BODY_SIZE` | No | Maximum request body size in bytes for the route. | `1048576` |
@@ -51,8 +51,10 @@ are **nginx-proxy compatible**; DockYarp-specific labels use the `DOCKYARP_` pre
   ```
 - **Backend scheme**: `VIRTUAL_PROTO` selects how the proxy reaches the container — `http` (default) or
   `https`. Unsupported values (e.g. `fastcgi`) fall back to `http` and are logged.
-- **Priority**: `DOCKYARP_PRIORITY` orders routes when several could match — a higher value wins (it
-  maps to a lower YARP route order). A non-numeric value falls back to `0` and is logged.
+- **Priority** *(DockYarp extension — no nginx-proxy equivalent)*: `DOCKYARP_PRIORITY` orders routes
+  **for the same host** when several could match — a higher value wins (it maps to a lower YARP route order).
+  It does **not** override host specificity: an exact host still beats a higher-priority wildcard (matching
+  nginx `server_name`). A non-numeric value falls back to `0` and is logged.
 - **Proxy tuning**: `DOCKYARP_PROXY_TIMEOUT` (seconds) sets the cluster's YARP activity timeout;
   `DOCKYARP_MAX_BODY_SIZE` (bytes) caps the request body for the route. Non-numeric or non-positive
   values are ignored and logged.

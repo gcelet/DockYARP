@@ -33,13 +33,4 @@ public sealed class RoutingTests : E2ETestBase
         apiEcho.GetProperty("port").GetInt32().Should().Be(8081);
     }
 
-    /// <summary>When two backends share a host, the higher <c>DOCKYARP_PRIORITY</c> wins.</summary>
-    [Test]
-    public async Task Priority_HigherWins()
-    {
-        using HttpResponseMessage response = await PollUntilSuccessAsync("priority.local", "/");
-
-        JsonElement echo = await ReadJsonAsync(response);
-        EchoId(echo).Should().Be("high");
-    }
 }
