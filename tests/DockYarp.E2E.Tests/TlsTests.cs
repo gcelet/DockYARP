@@ -1,5 +1,6 @@
 namespace DockYarp.E2E.Tests;
 
+using System;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -11,7 +12,7 @@ using AwesomeAssertions;
 public sealed class TlsTests : E2ETestBase
 {
     // Provisioning is asynchronous (ACME round-trip against step-ca), so TLS scenarios poll generously.
-    private const int TlsPollSeconds = 150;
+    private const int TlsPollSeconds = 60;
 
     // The step-ca CA name (DOCKER_STEPCA_INIT_NAME) appears in the issuer of ACME-issued certificates.
     private const string CaIssuerMarker = "DockYarp E2E";
@@ -23,13 +24,14 @@ public sealed class TlsTests : E2ETestBase
         TlsHarness.ServerCertificateHolder capture = new();
         using HttpClient client = TlsHarness.CreateClient(capture);
 
+        // Poll until the served certificate is the ACME-issued one (provisioning is asynchronous); a plain
+        // success would accept the self-signed fallback served before the certificate is provisioned.
         using HttpResponseMessage response = await PollAsync(
             client,
             static () => new HttpRequestMessage(HttpMethod.Get, "https://tls.local/"),
-            static message => message.IsSuccessStatusCode,
+            _ => capture.ServerCertificate?.Issuer.Contains(CaIssuerMarker, StringComparison.Ordinal) == true,
             TlsPollSeconds);
 
-        response.IsSuccessStatusCode.Should().BeTrue();
         capture.ServerCertificate.Should().NotBeNull();
         capture.ServerCertificate!.Issuer.Should().Contain(CaIssuerMarker);
     }

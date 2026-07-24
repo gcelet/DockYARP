@@ -12,10 +12,12 @@ using System.IO;
 public static class E2EPaths
 {
     /// <summary>The directory step-ca initialises its PKI into (bind-mounted at the container's <c>/home/step</c>).</summary>
+    /// <remarks>
+    /// The <c>ca-bundle</c> container also mounts this directory to write <c>ca-bundle.crt</c> (root+intermediate),
+    /// which DockYarp trusts via <c>SSL_CERT_FILE</c> — the root alone yields a <c>PartialChain</c> error
+    /// because step-ca does not send its intermediate.
+    /// </remarks>
     public static string StepCaDirectory { get; } = Path.Combine(Path.GetTempPath(), "dockyarp-e2e", "stepca");
-
-    /// <summary>The step-ca root certificate file, written by step-ca on first boot.</summary>
-    public static string StepCaRootFile { get; } = Path.Combine(StepCaDirectory, "certs", "root_ca.crt");
 
     /// <summary>The directory holding the ephemeral client CA used for the mutual-TLS scenario.</summary>
     public static string ClientCaDirectory { get; } = Path.Combine(Path.GetTempPath(), "dockyarp-e2e", "clientca");
