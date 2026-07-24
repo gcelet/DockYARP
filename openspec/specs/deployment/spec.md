@@ -123,8 +123,10 @@ Docker daemon.
 The end-to-end test suite SHALL additionally cover TLS: with a local ACME certificate authority in the Aspire
 distributed system, it SHALL assert that DockYarp provisions a real certificate over the ACME HTTP-01
 challenge, serves it over HTTPS, falls back to the self-signed certificate for unknown hosts, and enforces
-mutual TLS on hosts that require a client certificate. These scenarios SHALL remain part of the end-to-end
-suite (runnable on demand and in release validation, excluded from the default build).
+mutual TLS on hosts that require a client certificate. The harness SHALL start DockYarp independently of
+the ACME authority's readiness (DockYarp provisions in the background with retries). These scenarios SHALL
+remain part of the end-to-end suite (runnable on demand and in release validation, excluded from the default
+build).
 
 #### Scenario: Certificate provisioned over ACME
 - **WHEN** a backend labeled with `LETSENCRYPT_HOST` is discovered and a client connects over HTTPS with that
@@ -144,6 +146,11 @@ suite (runnable on demand and in release validation, excluded from the default b
 - **WHEN** a host requires a client certificate (`DOCKYARP_CLIENT_CERT=required`)
 - **THEN** a request presenting a certificate that chains to the configured client CA is proxied, while a
   request presenting none is rejected
+
+#### Scenario: DockYarp starts without waiting for the ACME authority
+- **WHEN** the distributed application starts and the ACME authority is not yet ready
+- **THEN** DockYarp still starts and becomes healthy, provisioning certificates in the background once the
+  authority is reachable
 
 ### Requirement: Non-root Docker API access
 The system SHALL support Docker discovery from a non-root DockYarp container through two documented modes:
