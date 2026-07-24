@@ -10,4 +10,4 @@
 
 - [x] 2.1 `./build.ps1 Test` green (existing unit/integration suite; no regression)
 - [x] 2.2 `openspec validate fix-acme-private-ca-chain --strict`
-- [ ] 2.3 Runtime: `./build.ps1 E2E` — the two ACME scenarios now pass (Docker session)
+- [x] 2.3 Runtime: `./build.ps1 E2E` — validated in WSL, all 21 e2e tests pass (both ACME scenarios green)
