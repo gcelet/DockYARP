@@ -2,7 +2,11 @@
   "mcpServers": {
     "git": {
       "command": "uvx",
-      "args": ["mcp-server-git", "--repository", "."]
+      "args": [
+        "mcp-server-git",
+        "--repository",
+        "."
+      ]
     },
     "microsoft-docs": {
       "type": "http",
@@ -10,7 +14,18 @@
     },
     "docker": {
       "command": "docker",
-      "args": ["mcp", "gateway", "run"]
+      "args": [
+        "mcp",
+        "gateway",
+        "run"
+      ]
+    },
+    "aspire": {
+      "command": "aspire",
+      "args": [
+        "agent",
+        "mcp"
+      ]
     }
   }
 }
