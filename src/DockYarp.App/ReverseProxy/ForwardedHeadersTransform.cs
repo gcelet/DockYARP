@@ -42,6 +42,9 @@ public static class ForwardedHeadersTransform
                 "X-Forwarded-Port",
                 localPort.ToString(CultureInfo.InvariantCulture));
 
+            // httpoxy mitigation: never forward a client-supplied `Proxy` header to the backend.
+            transformContext.ProxyRequest.Headers.Remove("Proxy");
+
             return ValueTask.CompletedTask;
         });
     }

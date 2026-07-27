@@ -40,6 +40,9 @@ docker-discovery / static config ──> IRouteConfigStore.Apply(...)
 - `X-Real-IP` and `X-Forwarded-Port` (from the connection),
 - and forwards the **original `Host`** (`AddOriginalHost`) — YARP suppresses it by default.
 
+It also **strips the inbound `Proxy` request header** before forwarding (httpoxy mitigation), so a
+client-supplied `Proxy` value can never reach a backend — the equivalent of nginx-proxy unsetting `Proxy`.
+
 `Proxy:TrustDownstreamProxy` (default `true`) controls the `X-Forwarded-*` action: **Append** (trust and
 extend the client's chain) when true, **Set** (replace with the connection's values) when false — the
 equivalent of nginx-proxy's `TRUST_DOWNSTREAM_PROXY`.

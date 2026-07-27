@@ -47,6 +47,35 @@ public sealed class ForwardedHeadersIntegrationTests
         }
     }
 
+    /// <summary>A client-supplied <c>Proxy</c> header is stripped and never reaches the backend (httpoxy).</summary>
+    [Test]
+    public async Task ProxyHeaderIsStripped()
+    {
+        await using WebApplication backend = BuildEchoBackend();
+        await backend.StartAsync();
+
+        try
+        {
+            using WebApplicationFactory<Program> factory = new();
+            using HttpClient client = factory.CreateClient();
+            IRouteConfigStore store = factory.Services.GetRequiredService<IRouteConfigStore>();
+            store.Apply(
+                [new RouteRule { HostPattern = "backend.local", ClusterId = "backend" }],
+                [new Cluster { Id = "backend", Endpoints = [new ClusterEndpoint("b1", backend.Urls.First())] }]);
+            client.DefaultRequestHeaders.Host = "backend.local";
+            client.DefaultRequestHeaders.TryAddWithoutValidation("Proxy", "http://attacker.example");
+
+            string body = await PollForBodyAsync(client);
+
+            body.Should().NotContain("attacker");
+            body.Should().EndWith("proxy=");
+        }
+        finally
+        {
+            await backend.StopAsync();
+        }
+    }
+
     private static WebApplication BuildEchoBackend()
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
@@ -55,7 +84,8 @@ public sealed class ForwardedHeadersIntegrationTests
         app.MapFallback((HttpContext context) => Results.Text(
             $"proto={context.Request.Headers["X-Forwarded-Proto"]};"
             + $"host={context.Request.Headers.Host};"
-            + $"xfhost={context.Request.Headers["X-Forwarded-Host"]}"));
+            + $"xfhost={context.Request.Headers["X-Forwarded-Host"]};"
+            + $"proxy={context.Request.Headers["Proxy"]}"));
         return app;
     }
 
