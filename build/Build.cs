@@ -44,6 +44,7 @@ class Build : NukeBuild
     AbsolutePath BackendProject => RootDirectory / "tests" / "DockYarp.E2E.Backend" / "DockYarp.E2E.Backend.csproj";
     AbsolutePath E2EProject => RootDirectory / "tests" / "DockYarp.E2E.Tests" / "DockYarp.E2E.Tests.csproj";
     AbsolutePath ArtifactsDirectory => RootDirectory / "artifacts";
+    AbsolutePath E2ELogDirectory => ArtifactsDirectory / "e2e-logs";
 
     Target Clean => _ => _
         .Before(Restore)
@@ -103,10 +104,31 @@ class Build : NukeBuild
         {
             ProcessTasks.StartProcess("docker", $"build -t {LocalProxyImage} .", RootDirectory).AssertZeroExitCode();
             DotNet($"publish \"{BackendProject}\" --configuration {Configuration} -t:PublishContainer");
-            DotNetTest(s => s
-                .SetProjectFile(E2EProject)
-                .SetConfiguration(Configuration)
-                .SetFilter($"TestCategory={EndToEndCategory}"));
+
+            // Capture per-resource logs to a durable directory so failures can be diagnosed after the
+            // containers are torn down (cleaned at the start of each run so only the last run is kept).
+            E2ELogDirectory.CreateOrCleanDirectory();
+            try
+            {
+                DotNetTest(s => s
+                    .SetProjectFile(E2EProject)
+                    .SetConfiguration(Configuration)
+                    .SetFilter($"TestCategory={EndToEndCategory}")
+                    .SetProcessEnvironmentVariable("DOCKYARP_E2E_LOG_DIR", E2ELogDirectory));
+            }
+            catch
+            {
+                Serilog.Log.Error("E2E failed. Per-resource logs: {Directory}", E2ELogDirectory);
+                AbsolutePath proxyLog = E2ELogDirectory / "dockyarp.log";
+                if (proxyLog.FileExists())
+                {
+                    Serilog.Log.Error(
+                        "---- dockyarp.log (tail) ----\n{Tail}",
+                        string.Join("\n", proxyLog.ReadAllLines().TakeLast(60)));
+                }
+
+                throw;
+            }
         });
 
     // Validates a version through the full quality gate, including the end-to-end suite.

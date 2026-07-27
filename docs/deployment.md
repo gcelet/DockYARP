@@ -113,6 +113,12 @@ self-signed fallback, HTTP→HTTPS redirect, per-host HSTS, and mutual TLS). The
 > **Prerequisite**: a Docker daemon reachable by Aspire's orchestrator (DCP). When Docker runs in WSL, point
 > `DOCKER_HOST`/the Docker context at it before running `E2E`/`Release`.
 
+**Diagnostics.** The containers are torn down at the end of a run, so the suite streams **each Aspire
+resource's logs to `artifacts/e2e-logs/<resource>.log`** during the run (e.g. `dockyarp.log`, `stepca.log`).
+The directory is recreated at the start of each `E2E` run (only the last run is kept) and is git-ignored. On
+failure the `E2E` target prints the directory and a tail of `dockyarp.log`. Running the suite directly with
+`dotnet test` writes the logs next to the test assembly unless `DOCKYARP_E2E_LOG_DIR` is set.
+
 ### Publishing to a registry
 
 `DockerPublish` builds the image (the Docker build stage runs the Nuke build) and pushes it. The image
