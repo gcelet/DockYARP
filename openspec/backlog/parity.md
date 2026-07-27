@@ -100,7 +100,7 @@ parser.
 | Admin API (`/api/*`) + Prometheus `/metrics` | ✅ | |
 | Graceful shutdown | ✅ | |
 | `vhost.d`-style per-vhost/global/location raw config + override | ⛔ | → [`add-vhost-config-overrides`](items/add-vhost-config-overrides.md). |
-| `SERVER_TOKENS` (hide/adjust `Server`) | ⛔ | → [`add-server-tokens-toggle`](items/add-server-tokens-toggle.md). |
+| `SERVER_TOKENS` (hide/adjust `Server`) | ✅ | Suppressed by default; set `Security:ServerHeader` for a custom value. |
 | `DEBUG_ENDPOINT`-style config dump | ⛔ | Admin API covers most → [`add-config-dump-debug`](items/add-config-dump-debug.md). |
 | Custom `LOG_FORMAT` template | ⚠️ | JSON/disable done; custom template → [`refine-access-log-formats`](items/refine-access-log-formats.md). |
 

@@ -4,7 +4,7 @@ capability: security
 agent: AG-SEC
 tier: A-structural
 priority: low
-status: backlog
+status: done
 nginx-proxy: SERVER_TOKENS
 provenance: this parity pass (untracked feature)
 ---
