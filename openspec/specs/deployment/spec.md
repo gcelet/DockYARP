@@ -98,11 +98,17 @@ The system SHALL provide an end-to-end test suite that boots DockYarp and labele
 real Docker daemon (via .NET Aspire) and asserts, over HTTP, that containers are discovered and requests are
 proxied according to their labels. The suite SHALL be runnable through the build pipeline and included in
 release validation, and SHALL be excluded from the ordinary build/test so the default developer loop needs no
-Docker daemon.
+Docker daemon. The default build/test SHALL exclude the end-to-end suite by project (not by a category filter
+that matches no tests) so it runs deterministically.
 
 #### Scenario: End-to-end suite excluded from the default build
 - **WHEN** the default build/test target runs (no explicit end-to-end request)
 - **THEN** the end-to-end tests do not execute and no Docker daemon is required
+
+#### Scenario: Default build/test runs deterministically
+- **WHEN** the default build/test target runs
+- **THEN** it runs the unit/integration test projects (excluding the end-to-end project) and does not fail on
+  projects that match no tests
 
 #### Scenario: End-to-end suite runnable on demand
 - **WHEN** the dedicated end-to-end target is invoked with a Docker daemon available
