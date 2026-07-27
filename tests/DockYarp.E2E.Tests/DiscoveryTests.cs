@@ -19,6 +19,10 @@ public sealed class DiscoveryTests : E2ETestBase
         response.IsSuccessStatusCode.Should().BeTrue();
         string body = await response.Content.ReadAsStringAsync();
         body.Should().Contain("Hostname:");
+
+        // Server-header suppression (Kestrel AddServerHeader=false) is only observable against a real
+        // Kestrel front-end, so it is asserted here rather than in-process.
+        response.Headers.Contains("Server").Should().BeFalse();
     }
 
     /// <summary>A comma-separated <c>VIRTUAL_HOST</c> exposes one container under both hosts.</summary>

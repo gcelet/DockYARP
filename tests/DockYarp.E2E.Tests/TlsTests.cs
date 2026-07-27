@@ -66,7 +66,7 @@ public sealed class TlsTests : E2ETestBase
             static message => (int)message.StatusCode is >= 300 and < 400,
             TlsPollSeconds);
 
-        ((int)response.StatusCode).Should().BeInRange(300, 399);
+        response.StatusCode.Should().Be(HttpStatusCode.PermanentRedirect);
         response.Headers.Location.Should().NotBeNull();
         response.Headers.Location!.Scheme.Should().Be("https");
     }
