@@ -42,6 +42,21 @@ public sealed class RouteMatcherTests
         route!.ClusterId.Should().Be("api");
     }
 
+    /// <summary>A route whose host is a bare IPv4 address matches a request to that IP (raw-IP vhost).</summary>
+    [Test]
+    public void RawIpv4HostMatchedExactly()
+    {
+        RouteMatcher matcher = new(
+        [
+            new RouteRule { HostPattern = "192.0.2.10", ClusterId = "ip" },
+        ]);
+
+        bool matched = matcher.TryMatch("192.0.2.10", "/", out RouteRule? route);
+
+        matched.Should().BeTrue();
+        route!.ClusterId.Should().Be("ip");
+    }
+
     /// <summary>A wildcard subdomain route matches a matching host.</summary>
     [Test]
     public void WildcardMatchesSubdomain()

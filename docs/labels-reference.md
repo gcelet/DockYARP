@@ -34,6 +34,8 @@ are **nginx-proxy compatible**; DockYarp-specific labels use the `DOCKYARP_` pre
 
 - **Multiple hosts**: a comma-separated `VIRTUAL_HOST` (whitespace trimmed, empty entries ignored) maps the
   container to one route per host, each sharing its port, path, TLS, and auth settings.
+- **Raw IP host**: `VIRTUAL_HOST` may be a bare IPv4 address (e.g. `192.0.2.10`); it is matched exactly against
+  the request `Host`. IPv6 literals are not yet supported (the bracketed `Host` form needs normalization).
 - **Multi-port** (\*): `VIRTUAL_HOST_MULTIPORTS` supersedes `VIRTUAL_HOST`/`VIRTUAL_PORT` — a YAML mapping of
   `host → path → { port, proto, dest }` maps each entry to its own route/cluster (on the entry's port and
   scheme). Container-level attributes (auth, LB, priority, timeout, body size, client cert, and TLS when the
