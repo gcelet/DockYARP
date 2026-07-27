@@ -21,7 +21,7 @@ authoritative statement.
 ```
 backlog item ──/opsx:propose <id>──▶ change ──/opsx:apply──▶ implement ──▶ commit
      ▲                                                                        │
-     └────────── flip status: done + parity row ✅ ◀──/opsx:archive◀──────────┘
+     └──── remove items/<id>.md + parity row ✅ ◀──/opsx:archive◀─────────────┘
 ```
 
 1. **Backlog** — ensure the work has an item `items/<id>.md` (add one if it is new).
@@ -30,8 +30,9 @@ backlog item ──/opsx:propose <id>──▶ change ──/opsx:apply──▶
 3. **Apply** — `/opsx:apply`; implement with the Nuke gate green (`build.ps1 Test` / `build.sh Test`).
 4. **Commit + archive** — present the commit (the user commits), then `/opsx:archive <id>` (syncs
    `openspec/specs/`); present the archive commit.
-5. **Close the loop** — set the item's `status: done` (or delete it) and flip its `parity.md` row `⛔/⚠️ → ✅`;
-   update `docs/` if user-facing.
+5. **Close the loop** — **remove** the item file `items/<id>.md` from the backlog (a completed item does not
+   linger here) and flip its `parity.md` row `⛔/⚠️ → ✅`; update `docs/` if user-facing. The `parity.md` row
+   is the permanent record — do not link it back to the deleted item.
 
 ## Item front-matter
 
@@ -42,7 +43,7 @@ backlog item ──/opsx:propose <id>──▶ change ──/opsx:apply──▶
 | `agent` | Owning domain agent: `AG-RP` · `AG-DD` · `AG-AT` · `AG-SEC` · `AG-AA` · `AG-DEP`. |
 | `tier` | `A-structural` (in-process, spec-able now) · `B-runtime` (Kestrel/listener/Docker-heavy) · `C-doc` (small/polish). |
 | `priority` | `high` · `medium` · `low`. |
-| `status` | `backlog` (not started) · `proposed` (a change exists) · `done` (archived; parity flipped ✅). |
+| `status` | `backlog` (not started) · `proposed` (an active change exists). A completed item is **removed** from the backlog on archive — the `parity.md` ✅ row is its permanent record. |
 
 ## Adding an item
 

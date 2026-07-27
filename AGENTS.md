@@ -43,8 +43,8 @@ between work sessions. The entry point is the parity backlog `openspec/backlog/`
    `specs/<capability>/spec.md`.
 3. **Apply** — `/opsx:apply` → implement; Nuke `Test` gate green.
 4. **Commit + archive** — commit, then `/opsx:archive <id>` (syncs `openspec/specs/`).
-5. **Close the loop** — set the item `status: done` (or remove it) and flip its `parity.md` row to ✅
-   (update `docs/` if user-facing).
+5. **Close the loop** — **remove** the item file `openspec/backlog/items/<id>.md` from the backlog and flip
+   its `parity.md` row to ✅ (the parity matrix keeps the permanent record; update `docs/` if user-facing).
 
 ## Layout
 

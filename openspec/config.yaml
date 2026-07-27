@@ -42,7 +42,7 @@ context: |
   source-of-truth parity matrix and each gap has an items/<id>.md stub, promotable 1:1 via /opsx:propose <id>.
 
   Change lifecycle (every change): backlog item -> /opsx:propose <id> -> /opsx:apply -> commit ->
-  /opsx:archive -> mark the item done and flip its parity.md row. See AGENTS.md "Change lifecycle".
+  /opsx:archive -> remove the item from the backlog and flip its parity.md row. See AGENTS.md "Change lifecycle".
 
 rules:
   proposal:
