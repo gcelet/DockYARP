@@ -47,5 +47,7 @@ backlog item ──/opsx:propose <id>──▶ change ──/opsx:apply──▶
 
 ## Adding an item
 
-Copy an existing `items/<id>.md`, pick a kebab verb-first `id`, fill every section, and add a row/link in
-`parity.md`. Keep `parity.md` and the item files in sync: a `⚠️`/`⛔` matrix row must always point to an item.
+Copy an existing `items/<id>.md`, pick a kebab verb-first `id`, and fill every section. Most items track an
+nginx-proxy parity gap — add a row/link in `parity.md` and keep the two in sync (a `⚠️`/`⛔` matrix row must
+always point to an item). Items may **also** capture internal findings (e.g. from an e2e log review) that are
+not parity gaps: set `nginx-proxy: (internal finding …)` and give them **no** `parity.md` row.
