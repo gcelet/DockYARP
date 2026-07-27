@@ -22,7 +22,7 @@ parser.
 | Wildcard host — multi-level / regex `VIRTUAL_HOST` | ⚠️ | Single-level `*.suffix` only → [`add-wildcard-regex-hosts`](items/add-wildcard-regex-hosts.md). |
 | `VIRTUAL_DEST` path rewrite (arbitrary) + regex `VIRTUAL_PATH` | ⚠️ | Prefix-strip only → [`add-virtual-dest-rewrite`](items/add-virtual-dest-rewrite.md). |
 | `DEFAULT_ROOT` arbitrary fallback (return/redirect) | ⛔ | Status-code default only → [`add-default-root-response`](items/add-default-root-response.md). |
-| Raw-IP `VIRTUAL_HOST` | ⛔ | → [`add-raw-ip-vhost`](items/add-raw-ip-vhost.md). |
+| Raw-IP `VIRTUAL_HOST` | ✅ | Bare IPv4 matched exactly; IPv6 literal is a caveat. |
 | Custom LB algorithms (e.g. IP-hash, `loadbalance` label) | ⛔ | RR/least-requests only → [`add-loadbalance-policies`](items/add-loadbalance-policies.md). |
 
 ## Protocols

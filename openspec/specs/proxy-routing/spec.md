@@ -65,7 +65,8 @@ never observe a partially applied update.
 ### Requirement: Host and path matching
 The system SHALL select, for a given request host and path, the matching route by **host specificity first** —
 an exact host match takes precedence over a wildcard subdomain match (as in nginx-proxy) — and then, among
-routes for the same host, by highest priority and then the longest matching path prefix.
+routes for the same host, by highest priority and then the longest matching path prefix. An exact host match
+SHALL support a bare IPv4 address as the host, matching a request whose `Host` is that address.
 
 #### Scenario: Exact host preferred over wildcard
 - **WHEN** routes exist for host `app.local` and for wildcard `*.local`, and a request targets `app.local`
@@ -84,6 +85,10 @@ routes for the same host, by highest priority and then the longest matching path
 #### Scenario: No matching route
 - **WHEN** no route matches the request host
 - **THEN** matching yields no route and the caller can return a not-found/no-route response
+
+#### Scenario: Raw IPv4 host is matched exactly
+- **WHEN** a route's host is a bare IPv4 address and a request targets that address as its `Host`
+- **THEN** the route is selected
 
 ### Requirement: Configuration sources and precedence
 The system SHALL build the active configuration by merging routes and clusters from a static
