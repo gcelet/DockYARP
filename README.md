@@ -1,10 +1,11 @@
 <div align="center">
 
-<img src="assets/logo.svg" alt="DockYarp" width="120" height="120" />
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/wordmark-dark.svg">
+  <img src="assets/wordmark.svg" alt="DockYARP" width="360">
+</picture>
 
-# DockYarp
-
-**A dynamic reverse proxy for Docker containers, built on YARP and .NET 10.**
+**A dynamic reverse proxy for Docker containers, built on YARP and .NET**
 
 Automatic service discovery from container labels, dynamic routing, automatic TLS (ACME),
 security middleware, and an admin API — an `nginx-proxy`-style experience, in modern .NET.

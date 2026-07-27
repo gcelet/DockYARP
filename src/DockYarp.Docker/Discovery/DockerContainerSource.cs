@@ -9,10 +9,10 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
+using DockYarp.Docker.Models;
+
 using global::Docker.DotNet;
 using global::Docker.DotNet.Models;
-
-using DockYarp.Docker.Models;
 
 /// <summary><see cref="IContainerSource"/> backed by the Docker daemon via Docker.DotNet.</summary>
 public sealed class DockerContainerSource : IContainerSource, IDisposable

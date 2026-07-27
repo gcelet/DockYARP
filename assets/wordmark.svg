@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="120" viewBox="0 0 420 120" fill="none" role="img" aria-label="DockYARP">
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="60,26 92,44 92,80 60,98 28,80 28,44" stroke="#3B82F6" stroke-width="6"></polygon>
+    <path d="M47 51 L60 69 L73 51" stroke="#7C3AED" stroke-width="6"></path>
+    <path d="M60 69 V93" stroke="#14B8A6" stroke-width="6"></path>
+    <circle cx="60" cy="69" r="4.5" fill="#7C3AED"></circle>
+  </g>
+  <text x="128" y="72" font-family="'Space Grotesk',Arial,sans-serif" font-size="42" font-weight="700" letter-spacing="-0.5" fill="#1E1B4B">Dock<tspan fill="#7C3AED">YARP</tspan></text>
+</svg>
