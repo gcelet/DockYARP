@@ -16,7 +16,9 @@ by the matched route from the `proxy-routing` store (see [routing-model.md](rout
 2. **`HttpsRedirectionMiddleware`** — applies the route's HTTPS method. On HTTP: if the method is redirecting
    (`redirect`/`nohttp`) **and** a certificate is available for the host, redirects to the HTTPS URL for the
    same host/path (308); `noredirect`/`nohttps` and a certless host are served over HTTP. On HTTPS: a
-   `nohttps` host is refused (404), since it is served over HTTP only.
+   `nohttps` host is refused (404), since it is served over HTTP only. The 308 is **permanent and
+   method-preserving**, so a non-GET request (e.g. `POST`) keeps its method and body — DockYarp does not need
+   nginx-proxy's `NON_GET_REDIRECT` knob (whose purpose is to avoid the method downgrade of a `301`).
 3. **`ClientCertificateMiddleware`** — if the matched route requires a client certificate
    (`RouteRule.ClientCertificate == Required`) and none was presented on the connection, responds 403.
    Certificates are validated against the configured CA at the TLS handshake; this enforces presence per host.

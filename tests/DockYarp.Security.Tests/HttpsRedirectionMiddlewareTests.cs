@@ -107,6 +107,20 @@ public sealed class HttpsRedirectionMiddlewareTests
         nextCalled.Should().BeFalse();
     }
 
+    /// <summary>A non-GET request is redirected with a method-preserving 308 (no method downgrade).</summary>
+    [Test]
+    public async Task NonGetRequestRedirectedWith308()
+    {
+        HttpsRedirectionMiddleware middleware = Middleware(HttpsMethod.Redirect, certificateAvailable: true);
+        DefaultHttpContext context = SecurityTestHelpers.Context("http", "app.local", "/orders");
+        context.Request.Method = "POST";
+
+        await middleware.InvokeAsync(context, _ => Task.CompletedTask);
+
+        context.Response.StatusCode.Should().Be(StatusCodes.Status308PermanentRedirect);
+        context.Response.Headers.Location.ToString().Should().Be("https://app.local/orders");
+    }
+
     private static HttpsRedirectionMiddleware Middleware(HttpsMethod method, bool certificateAvailable)
     {
         RouteConfigStore store = SecurityTestHelpers.StoreWith(new RouteRule
