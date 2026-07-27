@@ -30,6 +30,22 @@ Domain agents referenced in tasks: `AG-RP` (proxy/YARP), `AG-DD` (Docker discove
 checklist.** Use `npx @fission-ai/openspec@latest list` to see changes and the `/opsx:*` slash commands
 (propose, apply, archive) to drive the workflow.
 
+## Change lifecycle
+
+Every change to DockYarp — feature, fix, or refinement — follows the **same loop**, so nothing is lost
+between work sessions. The entry point is the parity backlog `openspec/backlog/` (see its `README.md`);
+`openspec/backlog/parity.md` is the source-of-truth nginx-proxy ↔ DockYarp parity matrix that
+`docs/architecture.md` links to.
+
+1. **Backlog** — ensure the work has an item `openspec/backlog/items/<id>.md` (add one if it is new). The
+   item's `id` is the future change id; its *Why* + *Acceptance criteria* seed the proposal.
+2. **Propose** — `/opsx:propose <id>` → author `proposal.md` / `design.md` / `tasks.md` /
+   `specs/<capability>/spec.md`.
+3. **Apply** — `/opsx:apply` → implement; Nuke `Test` gate green.
+4. **Commit + archive** — commit, then `/opsx:archive <id>` (syncs `openspec/specs/`).
+5. **Close the loop** — set the item `status: done` (or remove it) and flip its `parity.md` row to ✅
+   (update `docs/` if user-facing).
+
 ## Layout
 
 ```

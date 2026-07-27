@@ -11,6 +11,10 @@ specific to Claude Code.
   change's `proposal.md`, `specs/<capability>/spec.md`, and `design.md`, then follow its `tasks.md`
   checklist. Do not code beyond the scope of the current change. Use the `/opsx:*` slash commands
   (propose, apply, archive) and `npx @fission-ai/openspec@latest list|validate <id> --strict`.
+- **Change lifecycle & backlog**: every change follows the loop in `AGENTS.md` ("Change lifecycle"); the
+  entry point is the parity backlog `openspec/backlog/` (start at its `README.md`, pick an
+  `items/<id>.md`). On archive, close the loop by setting the item `status: done` and flipping its row in
+  `openspec/backlog/parity.md` to ✅.
 - **Build/tests**: `dotnet build DockYarp.slnx`, `dotnet test DockYarp.slnx`. A warning breaks the
   build (`TreatWarningsAsErrors`) — fix it, don't disable the rule.
 - **Packages**: versions are centralized in `Directory.Packages.props` (CPM), never a `Version=` in a

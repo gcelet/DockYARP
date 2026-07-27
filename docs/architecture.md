@@ -78,66 +78,20 @@ TLS runs at the Kestrel layer: the SNI selector picks the certificate per host (
 self-signed fallback); min TLS version, protocols, ciphers, and client-certificate validation are configured
 on the HTTPS defaults.
 
-## nginx-proxy parity matrix
+## nginx-proxy parity
 
-Legend: ✅ implemented · ⚠️ partial / config-only (runtime-unvalidated) · ⛔ deferred / not implemented.
+DockYarp implements the core of nginx-proxy — host/path routing, clusters and load balancing, multi-host,
+`VIRTUAL_HOST_MULTIPORTS`, `VIRTUAL_PROTO` (http/https), `DEFAULT_HOST`, ACME HTTP-01 + provided certs + SNI +
+HSTS + mutual TLS, forwarded headers, per-route body-size and per-cluster timeout, Basic Auth, access logging,
+an admin API, and a container-native image — plus the `DOCKYARP_PRIORITY` extension.
 
-### Routing
-| Feature | Status | Notes |
-|---|---|---|
-| Host/path routing, clusters, load balancing | ✅ | Round-robin / least-requests. |
-| Replica aggregation | ✅ | One endpoint per container per cluster. |
-| Multiple hosts per container (`VIRTUAL_HOST=a,b`) | ✅ | Comma-separated. |
-| Wildcard host | ⚠️ | Single-level `*.suffix`; multi-level/regex ⛔. |
-| Host precedence (exact over wildcard) | ✅ | Same as nginx `server_name`; longest path prefix wins. |
-| `VIRTUAL_HOST_MULTIPORTS` | ✅ | YAML host→path→{port,proto,dest}. |
-| `VIRTUAL_DEST` path rewrite | ⚠️ | Prefix-strip only; arbitrary rewrites ⛔. |
-| `DEFAULT_HOST` / catch-all + default response | ✅ | Default status configurable. |
-| Priority (`DOCKYARP_PRIORITY`) | ➕ | **DockYarp extension** (no nginx-proxy equivalent). Orders routes *within a host*; does not override host specificity (exact still beats a higher-priority wildcard). Maps to YARP order. |
-
-### Protocols
-| Feature | Status | Notes |
-|---|---|---|
-| `VIRTUAL_PROTO` http/https | ✅ | grpc/fastcgi/uwsgi ⛔. |
-| WebSocket | ✅ | YARP default. |
-| HTTP/2 | ✅ | Configurable protocols. |
-| HTTP/3 | ⚠️ | Config toggle; needs MsQuic (runtime). |
-
-### TLS
-| Feature | Status | Notes |
-|---|---|---|
-| ACME HTTP-01, renewal, SNI, self-signed fallback | ✅ | HTTPS endpoint on 8443. |
-| Provided certs (PEM/PFX), wildcard-parent selection | ✅ | Mounted into the certs dir. |
-| `HTTPS_METHOD` (redirect/noredirect/nohttp/nohttps) | ✅ | Redirect gated on real cert availability. |
-| Min TLS version / ciphers / protocols | ⚠️ | Wired as config; ciphers Linux/macOS only. |
-| HSTS (preload + per-host `HSTS`) | ✅ | |
-| Mutual TLS (`DOCKYARP_CLIENT_CERT` + CA) | ⚠️ | CA validation + per-host enforcement; handshake runtime-unvalidated. |
-| `CERT_NAME` shared cert, DNS-01, OCSP stapling | ⛔ | Deferred. |
-
-### Headers & proxying
-| Feature | Status | Notes |
-|---|---|---|
-| `X-Forwarded-*`, `X-Real-IP`, Host, downstream-proxy trust | ✅ | |
-| `client_max_body_size` (`DOCKYARP_MAX_BODY_SIZE`) | ✅ | Per-route. |
-| Proxy timeouts (`DOCKYARP_PROXY_TIMEOUT`) | ✅ | Per-cluster activity timeout. |
-| Response buffering, gzip, httpoxy mitigation | ⛔ | YARP streams by default; rest deferred. |
-
-### Discovery & network
-| Feature | Status | Notes |
-|---|---|---|
-| Network selection (preferred network, skip `ingress`) | ✅ | Deterministic. |
-| Health-aware (exclude unhealthy/starting) | ✅ | Reacts to `health_status` events. |
-| `NETWORK_ACCESS=internal`, host-mode, prefer-IPv6 | ⛔ | Deferred. |
-
-### Extensibility & ops
-| Feature | Status | Notes |
-|---|---|---|
-| Static configuration source (file) | ✅ | JSON (our variant), merged with precedence. |
-| Custom error pages | ✅ | DockYarp-generated errors only (no backend buffering). |
-| Basic Auth (`DOCKYARP_AUTH_*`) | ✅ | Label-based; htpasswd files ⛔. |
-| Access logging | ✅ | Structured; JSON via the logging provider. |
-| Per-vhost config overrides (`vhost.d`) | ⛔ | Deferred. |
-| PROXY protocol, Docker Swarm, IPv6 listeners | ⛔ | Runtime-heavy; deferred to a runtime-capable session. |
+The **full, authoritative parity matrix** (implemented / partial / deferred, with a backlog item per gap) is
+the single source of truth and lives in **[`openspec/backlog/parity.md`](../openspec/backlog/parity.md)**.
+Known gaps — multi-level/regex hosts, arbitrary `VIRTUAL_DEST` rewrite, `CERT_NAME`/DNS-01/OCSP, gzip, PROXY
+protocol, `NETWORK_ACCESS=internal`, htpasswd files, `vhost.d` overrides, IPv6, Docker Swarm, … — are each
+tracked as a promotable stub under [`openspec/backlog/items/`](../openspec/backlog/items/), and architectural
+non-goals (fastcgi/uwsgi, L4 stream, split docker-gen mode) are documented there too. See
+[`openspec/backlog/README.md`](../openspec/backlog/README.md) for the change lifecycle.
 
 ## End to end
 

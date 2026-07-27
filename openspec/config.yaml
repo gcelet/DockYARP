@@ -36,10 +36,13 @@ context: |
   admin-api, deployment. Dependency note: the Core routing/cluster model (proxy-routing) is a
   prerequisite for docker-discovery (label mapping writes into that model), so it comes first.
 
-  Cross-cutting requirements to keep on the backlog (added beyond the original scope):
-  startup reconciliation (scan already-running containers, not only events), static configuration
-  (file/env + precedence), backend health checks (YARP active/passive), observability (structured
-  logs + /metrics), TLS default/fallback certificate, HSTS + security headers, graceful shutdown.
+  The original cross-cutting requirements are delivered (startup reconciliation, static configuration,
+  backend health checks, observability, TLS default/fallback cert, HSTS + security headers, graceful
+  shutdown). The live feature backlog vs nginx-proxy now lives in openspec/backlog/: parity.md is the
+  source-of-truth parity matrix and each gap has an items/<id>.md stub, promotable 1:1 via /opsx:propose <id>.
+
+  Change lifecycle (every change): backlog item -> /opsx:propose <id> -> /opsx:apply -> commit ->
+  /opsx:archive -> mark the item done and flip its parity.md row. See AGENTS.md "Change lifecycle".
 
 rules:
   proposal:
