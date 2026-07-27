@@ -76,6 +76,30 @@ public sealed class SecurityHeadersMiddlewareTests
         context.Response.Headers.ContainsKey("Strict-Transport-Security").Should().BeFalse();
     }
 
+    /// <summary>No <c>Server</c> header is emitted when none is configured.</summary>
+    [Test]
+    public async Task ServerHeaderAbsentByDefault()
+    {
+        SecurityHeadersMiddleware middleware = new(new SecurityHeadersOptions(), Lookup());
+        DefaultHttpContext context = SecurityTestHelpers.Context("http", "app.local", "/");
+
+        await middleware.InvokeAsync(context, _ => Task.CompletedTask);
+
+        context.Response.Headers.ContainsKey("Server").Should().BeFalse();
+    }
+
+    /// <summary>A configured <c>Server</c> header value is emitted.</summary>
+    [Test]
+    public async Task ServerHeaderEmittedWhenConfigured()
+    {
+        SecurityHeadersMiddleware middleware = new(new SecurityHeadersOptions { ServerHeader = "DockYarp" }, Lookup());
+        DefaultHttpContext context = SecurityTestHelpers.Context("http", "app.local", "/");
+
+        await middleware.InvokeAsync(context, _ => Task.CompletedTask);
+
+        context.Response.Headers["Server"].ToString().Should().Be("DockYarp");
+    }
+
     private static RouteLookup Lookup(params RouteRule[] routes) =>
         new(SecurityTestHelpers.StoreWith(routes), new RoutingOptions());
 }

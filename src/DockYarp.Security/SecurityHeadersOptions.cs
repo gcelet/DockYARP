@@ -22,4 +22,8 @@ public sealed class SecurityHeadersOptions
 
     /// <summary>Gets or sets the <c>Referrer-Policy</c> value.</summary>
     public string ReferrerPolicy { get; set; } = "no-referrer";
+
+    /// <summary>Gets or sets the <c>Server</c> response header value; <see langword="null"/> or empty suppresses it.</summary>
+    /// <remarks>The built-in Kestrel <c>Server</c> header is disabled at the host; this value, when set, is emitted instead.</remarks>
+    public string? ServerHeader { get; set; }
 }

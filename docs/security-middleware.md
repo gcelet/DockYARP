@@ -11,6 +11,8 @@ by the matched route from the `proxy-routing` store (see [routing-model.md](rout
    (`X-Content-Type-Options: nosniff`, `X-Frame-Options`, `Referrer-Policy`) and, on HTTPS responses,
    `Strict-Transport-Security` (HSTS). Configurable via `SecurityHeadersOptions` (including `HstsPreload`).
    A matched route's per-host `HSTS` override replaces the header (or `off` suppresses it for that host).
+   The `Server` response header is **suppressed by default** (Kestrel's built-in header is disabled at the
+   host); set `Security:ServerHeader` to a value to advertise a custom one instead.
 2. **`HttpsRedirectionMiddleware`** — applies the route's HTTPS method. On HTTP: if the method is redirecting
    (`redirect`/`nohttp`) **and** a certificate is available for the host, redirects to the HTTPS URL for the
    same host/path (308); `noredirect`/`nohttps` and a certless host are served over HTTP. On HTTPS: a

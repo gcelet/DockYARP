@@ -18,6 +18,10 @@ using Yarp.ReverseProxy.Transforms;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Do not advertise the server technology: disable Kestrel's built-in `Server` header (hardening).
+// A configured value can still be emitted via Security:ServerHeader.
+builder.WebHost.ConfigureKestrel(kestrel => kestrel.AddServerHeader = false);
+
 // Graceful shutdown: drain in-flight requests and stop background workers within a bounded timeout.
 int shutdownSeconds = builder.Configuration.GetValue("Host:ShutdownTimeoutSeconds", 30);
 builder.Services.Configure<HostOptions>(host => host.ShutdownTimeout = TimeSpan.FromSeconds(shutdownSeconds));

@@ -23,6 +23,12 @@ public sealed class SecurityHeadersMiddleware(SecurityHeadersOptions options, Ro
         headers["X-Frame-Options"] = options.FrameOptions;
         headers["Referrer-Policy"] = options.ReferrerPolicy;
 
+        // The built-in Kestrel `Server` header is disabled at the host; emit a configured value only when set.
+        if (!string.IsNullOrEmpty(options.ServerHeader))
+        {
+            headers["Server"] = options.ServerHeader;
+        }
+
         if (context.Request.IsHttps && ResolveHsts(context) is { } hsts)
         {
             headers["Strict-Transport-Security"] = hsts;
