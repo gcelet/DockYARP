@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 
@@ -58,14 +59,17 @@ class Build : NukeBuild
             .SetConfiguration(Configuration)
             .EnableNoRestore()));
 
-    // Unit/integration suite. The end-to-end tests are excluded so the default build needs no Docker daemon.
+    // Unit/integration suite. The end-to-end project is excluded by project (not by a filter that would match
+    // no tests, which makes a solution-wide `dotnet test` flake on the exit code), so the default build is
+    // deterministic and needs no Docker daemon.
     Target Test => _ => _
         .DependsOn(Compile)
         .Executes(() => DotNetTest(s => s
-            .SetProjectFile(SolutionFile)
             .SetConfiguration(Configuration)
-            .SetFilter($"TestCategory!={EndToEndCategory}")
-            .EnableNoBuild()));
+            .EnableNoBuild()
+            .CombineWith(
+                RootDirectory.GlobFiles("tests/**/*Tests.csproj").Where(project => project != E2EProject),
+                (settings, project) => settings.SetProjectFile(project))));
 
     Target Publish => _ => _
         .DependsOn(Compile)

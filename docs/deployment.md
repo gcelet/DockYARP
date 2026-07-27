@@ -85,7 +85,7 @@ and `Tls__ContactEmail`.
 
 | Target | Action |
 |---|---|
-| `Restore` / `Compile` / `Test` | Restore, build, and test `DockYarp.slnx`. `Test` **excludes** the end-to-end suite (`TestCategory!=EndToEnd`), so the default flow needs no Docker. |
+| `Restore` / `Compile` / `Test` | Restore, build, and test `DockYarp.slnx`. `Test` runs the unit/integration test projects and **excludes** the end-to-end project (by project, so it needs no Docker and runs deterministically). |
 | `Publish` | Publish `DockYarp.App` to `artifacts/publish`. |
 | `DockerImage` | `docker build` the image (depends on `Test`; the build stage runs the Nuke build). |
 | `DockerPublish` | Build then `docker push` to the configured registry (depends on `DockerImage`). |
