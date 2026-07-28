@@ -35,3 +35,9 @@ parser and the model→YARP cluster mapping.
 
 ## Notes / risks / references
 - nginx `ip_hash` ≠ YARP affinity exactly; document the mapping and any behavioral differences.
+- **Data Protection gate (deferred from `secure-data-protection-keys`)**: YARP **session affinity** protects its
+  affinity cookie with Data Protection — the first real DP consumer. When affinity is implemented here, it MUST
+  **require** the DP encryption certificate (`DataProtection:CertificatePath`) and **fail fast** at startup if it
+  is absent, so a real payload is never protected by an unencrypted key ring. Today `secure-data-protection-keys`
+  suppresses the benign `XmlKeyManager[35]` warning precisely because no DP consumer exists; enabling affinity
+  removes that justification.
