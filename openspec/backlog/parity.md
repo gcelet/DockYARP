@@ -22,7 +22,8 @@ parser.
 | Wildcard host — leading `*.suffix` (any depth) | ✅ | Multi-level: `*.local` matches `app.local` and `a.b.local` (YARP + RouteMatcher). |
 | Wildcard host — trailing `foo.bar.*` | ⛔ | Needs a custom non-YARP matcher → [`add-trailing-wildcard-hosts`](items/add-trailing-wildcard-hosts.md). |
 | Regex host `~^…$` (`VIRTUAL_HOST`) | ⛔ | YARP has no regex host match → [`add-regex-hosts`](items/add-regex-hosts.md). |
-| `VIRTUAL_DEST` path rewrite (arbitrary) + regex `VIRTUAL_PATH` | ⚠️ | Prefix-strip only → [`add-virtual-dest-rewrite`](items/add-virtual-dest-rewrite.md). |
+| `VIRTUAL_DEST` path rewrite (arbitrary, e.g. `/api`→`/v2`) | ✅ | Strip + prepend via YARP transforms. |
+| Regex `VIRTUAL_PATH` (location) | ⛔ | YARP path is route-template only → [`add-regex-virtual-path`](items/add-regex-virtual-path.md). |
 | `DEFAULT_ROOT` arbitrary fallback (return/redirect) | ⛔ | Status-code default only → [`add-default-root-response`](items/add-default-root-response.md). |
 | Raw-IP `VIRTUAL_HOST` | ✅ | Bare IPv4 matched exactly; IPv6 literal is a caveat. |
 | Custom LB algorithms (e.g. IP-hash, `loadbalance` label) | ⛔ | RR/least-requests only → [`add-loadbalance-policies`](items/add-loadbalance-policies.md). |
