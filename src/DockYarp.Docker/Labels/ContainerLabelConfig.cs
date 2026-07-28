@@ -23,6 +23,9 @@ public sealed record ContainerLabelConfig
     /// <summary>Gets the optional prefix stripped before forwarding (derived from <c>VIRTUAL_DEST</c>).</summary>
     public string? PathRemovePrefix { get; init; }
 
+    /// <summary>Gets the optional destination prefix prepended after stripping (derived from <c>VIRTUAL_DEST</c>).</summary>
+    public string? PathAddPrefix { get; init; }
+
     /// <summary>Gets the certificate host (<c>LETSENCRYPT_HOST</c>), if any.</summary>
     public string? LetsEncryptHost { get; init; }
 

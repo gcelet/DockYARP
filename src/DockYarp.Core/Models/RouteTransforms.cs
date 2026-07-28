@@ -6,4 +6,7 @@ public sealed record RouteTransforms
 {
     /// <summary>Gets the optional path prefix stripped before forwarding.</summary>
     public string? PathRemovePrefix { get; init; }
+
+    /// <summary>Gets the optional path prefix prepended after stripping (the <c>VIRTUAL_DEST</c> destination).</summary>
+    public string? PathAddPrefix { get; init; }
 }

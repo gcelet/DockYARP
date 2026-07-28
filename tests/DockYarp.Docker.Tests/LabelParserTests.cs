@@ -26,6 +26,62 @@ public sealed class LabelParserTests
         config.Port.Should().Be(8080);
     }
 
+    /// <summary>A VIRTUAL_DEST destination rewrites the matched prefix: strip VIRTUAL_PATH and prepend the dest.</summary>
+    [Test]
+    public void VirtualDestRewritesPrefix()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.VirtualPath, "/api"),
+                (DockerLabels.VirtualDest, "/v2")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.PathRemovePrefix.Should().Be("/api");
+        config.PathAddPrefix.Should().Be("/v2");
+    }
+
+    /// <summary>A root VIRTUAL_DEST strips the matched prefix without prepending (unchanged behavior).</summary>
+    [Test]
+    public void RootVirtualDestStripsOnly()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.VirtualPath, "/api"),
+                (DockerLabels.VirtualDest, "/")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.PathRemovePrefix.Should().Be("/api");
+        config.PathAddPrefix.Should().BeNull();
+    }
+
+    /// <summary>Without VIRTUAL_DEST the original path is forwarded (no rewrite).</summary>
+    [Test]
+    public void NoVirtualDestForwardsOriginalPath()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.VirtualPath, "/api")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.PathRemovePrefix.Should().BeNull();
+        config.PathAddPrefix.Should().BeNull();
+    }
+
     /// <summary>A repeated host in VIRTUAL_HOST is de-duplicated.</summary>
     [Test]
     public void DuplicateHostsAreDeduplicated()

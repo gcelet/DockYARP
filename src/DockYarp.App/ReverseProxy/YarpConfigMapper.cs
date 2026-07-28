@@ -87,13 +87,25 @@ public static class YarpConfigMapper
 
     private static IReadOnlyList<IReadOnlyDictionary<string, string>>? BuildTransforms(RouteTransforms? transforms)
     {
-        if (transforms?.PathRemovePrefix is not { Length: > 0 } prefix)
+        if (transforms is null)
         {
             return null;
         }
 
-        // Built-in YARP request transform: strips the matching prefix (on segment boundaries) before forwarding.
-        return [new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["PathRemovePrefix"] = prefix }];
+        // Built-in YARP request transforms, applied in order: strip the matched prefix (on segment boundaries),
+        // then prepend the destination — so "/api" + dest "/v2" rewrites "/api/orders" to "/v2/orders".
+        List<IReadOnlyDictionary<string, string>> list = [];
+        if (transforms.PathRemovePrefix is { Length: > 0 } remove)
+        {
+            list.Add(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["PathRemovePrefix"] = remove });
+        }
+
+        if (transforms.PathAddPrefix is { Length: > 0 } add)
+        {
+            list.Add(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["PathPrefix"] = add });
+        }
+
+        return list.Count > 0 ? list : null;
     }
 
     private static ClusterConfig BuildCluster(Cluster cluster) =>

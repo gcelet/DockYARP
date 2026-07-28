@@ -93,6 +93,34 @@ public sealed class YarpConfigMapperTests
                 new System.Collections.Generic.KeyValuePair<string, string>("PathRemovePrefix", "/api"));
     }
 
+    /// <summary>A destination rewrite maps to a PathRemovePrefix transform followed by a PathPrefix transform.</summary>
+    [Test]
+    public void PathRewriteMapsToRemoveThenPrefix()
+    {
+        RouteConfigSnapshot snapshot = new(
+            [
+                new RouteRule
+                {
+                    HostPattern = "app.local",
+                    PathPrefix = "/api",
+                    ClusterId = "app",
+                    Transforms = new RouteTransforms { PathRemovePrefix = "/api", PathAddPrefix = "/v2" },
+                },
+            ],
+            [Cluster("app", LoadBalancingPolicy.RoundRobin)],
+            1);
+
+        (System.Collections.Generic.IReadOnlyList<RouteConfig> routes, _) = YarpConfigMapper.Map(snapshot);
+
+        System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyDictionary<string, string>> transforms =
+            routes.Single().Transforms!;
+        transforms.Should().HaveCount(2);
+        transforms[0].Should().Contain(
+            new System.Collections.Generic.KeyValuePair<string, string>("PathRemovePrefix", "/api"));
+        transforms[1].Should().Contain(
+            new System.Collections.Generic.KeyValuePair<string, string>("PathPrefix", "/v2"));
+    }
+
     /// <summary>A route with no transform maps to a null transform list (original path forwarded).</summary>
     [Test]
     public void NoTransformProducesNullTransforms()

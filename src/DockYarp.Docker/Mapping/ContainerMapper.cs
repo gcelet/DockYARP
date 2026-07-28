@@ -190,9 +190,10 @@ public static class ContainerMapper
                 }
                 : null;
 
-            RouteTransforms? transforms = first.PathRemovePrefix is { Length: > 0 } prefix
-                ? new RouteTransforms { PathRemovePrefix = prefix }
-                : null;
+            RouteTransforms? transforms =
+                first.PathRemovePrefix is { Length: > 0 } || first.PathAddPrefix is { Length: > 0 }
+                    ? new RouteTransforms { PathRemovePrefix = first.PathRemovePrefix, PathAddPrefix = first.PathAddPrefix }
+                    : null;
 
             return new RouteRule
             {
@@ -242,9 +243,10 @@ public static class ContainerMapper
                 }
                 : null;
 
-            // A non-empty dest strips the matched path prefix before forwarding (as with VIRTUAL_DEST).
-            RouteTransforms? transforms = dest is { Length: > 0 } && routePath is { } strip
-                ? new RouteTransforms { PathRemovePrefix = strip }
+            // VIRTUAL_DEST strips the matched path prefix and, for a non-root dest, prepends the destination.
+            (string? remove, string? add) = PathRewrite.Resolve(dest, routePath);
+            RouteTransforms? transforms = remove is { Length: > 0 } || add is { Length: > 0 }
+                ? new RouteTransforms { PathRemovePrefix = remove, PathAddPrefix = add }
                 : null;
 
             return new RouteRule
