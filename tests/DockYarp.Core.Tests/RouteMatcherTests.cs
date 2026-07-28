@@ -69,6 +69,34 @@ public sealed class RouteMatcherTests
         route!.ClusterId.Should().Be("wild");
     }
 
+    /// <summary>A wildcard matches a nested (multi-level) subdomain, not just a single level.</summary>
+    [Test]
+    public void WildcardMatchesNestedSubdomain()
+    {
+        RouteMatcher matcher = new([new RouteRule { HostPattern = "*.local", ClusterId = "wild" }]);
+
+        bool matched = matcher.TryMatch("a.b.local", "/", out RouteRule? route);
+
+        matched.Should().BeTrue();
+        route!.ClusterId.Should().Be("wild");
+    }
+
+    /// <summary>An exact host still wins over a matching multi-level wildcard.</summary>
+    [Test]
+    public void ExactHostWinsOverNestedWildcard()
+    {
+        RouteMatcher matcher = new(
+        [
+            new RouteRule { HostPattern = "a.b.local", ClusterId = "exact" },
+            new RouteRule { HostPattern = "*.local", ClusterId = "wild" },
+        ]);
+
+        bool matched = matcher.TryMatch("a.b.local", "/", out RouteRule? route);
+
+        matched.Should().BeTrue();
+        route!.ClusterId.Should().Be("exact");
+    }
+
     /// <summary>A configured default host serves requests whose host matches no other route.</summary>
     [Test]
     public void DefaultHostServesUnknownHosts()
