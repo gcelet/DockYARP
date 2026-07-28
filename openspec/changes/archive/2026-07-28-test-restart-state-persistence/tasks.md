@@ -20,5 +20,6 @@
 
 ## 4. Verify (AG-DEP)
 - [x] 4.1 `dotnet build` green (all projects compile, incl. the E2E suite)
-- [ ] 4.2 At the next `E2E` run: `RestartPersistenceTests` passes and `dockyarp.log` shows a second startup
-      (the restart) with neither `FileSystemXmlRepository[60]` nor `XmlKeyManager[35]`
+- [x] 4.2 `E2E` run green (21/21): `RestartPersistenceTests` passes — `dockyarp.log` shows two startups,
+      `tls.local` provisioned once **before** the restart and reused after (no re-provision), and neither
+      `FileSystemXmlRepository[60]` nor `XmlKeyManager[35]`
