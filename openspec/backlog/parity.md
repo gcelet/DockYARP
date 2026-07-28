@@ -19,7 +19,9 @@ parser.
 | `VIRTUAL_HOST_MULTIPORTS` | ✅ | YAML host→path→{port,proto,dest}. |
 | `DEFAULT_HOST` / catch-all + default response | ✅ | Default status configurable. |
 | Priority (`DOCKYARP_PRIORITY`) | ➕ | Extension; orders within a host (does not override host specificity). |
-| Wildcard host — multi-level / regex `VIRTUAL_HOST` | ⚠️ | Single-level `*.suffix` only → [`add-wildcard-regex-hosts`](items/add-wildcard-regex-hosts.md). |
+| Wildcard host — leading `*.suffix` (any depth) | ✅ | Multi-level: `*.local` matches `app.local` and `a.b.local` (YARP + RouteMatcher). |
+| Wildcard host — trailing `foo.bar.*` | ⛔ | Needs a custom non-YARP matcher → [`add-trailing-wildcard-hosts`](items/add-trailing-wildcard-hosts.md). |
+| Regex host `~^…$` (`VIRTUAL_HOST`) | ⛔ | YARP has no regex host match → [`add-regex-hosts`](items/add-regex-hosts.md). |
 | `VIRTUAL_DEST` path rewrite (arbitrary) + regex `VIRTUAL_PATH` | ⚠️ | Prefix-strip only → [`add-virtual-dest-rewrite`](items/add-virtual-dest-rewrite.md). |
 | `DEFAULT_ROOT` arbitrary fallback (return/redirect) | ⛔ | Status-code default only → [`add-default-root-response`](items/add-default-root-response.md). |
 | Raw-IP `VIRTUAL_HOST` | ✅ | Bare IPv4 matched exactly; IPv6 literal is a caveat. |
