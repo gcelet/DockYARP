@@ -2,6 +2,7 @@ namespace DockYarp.Tls;
 
 using System;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Net.Security;
 
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -55,7 +56,27 @@ public sealed class KestrelTlsConfigurator(
             }
         });
 
+        int? httpPort = ResolveHttpPort();
         serverOptions.ConfigureEndpointDefaults(listen =>
-            listen.Protocols = TlsHardening.ParseHttpProtocols(options.HttpProtocols));
+        {
+            // HTTP/2 requires TLS: the plaintext HTTP endpoint (ACME challenges + redirects) negotiates HTTP/1.1
+            // only, while the HTTPS endpoint keeps the configured protocols. Matching on the known HTTP port
+            // never downgrades the TLS endpoint; if the port is unknown, protocols are left as configured.
+            listen.Protocols = httpPort is { } port && listen.IPEndPoint?.Port == port
+                ? HttpProtocols.Http1
+                : TlsHardening.ParseHttpProtocols(options.HttpProtocols);
+        });
+    }
+
+    private static int? ResolveHttpPort()
+    {
+        string? value = Environment.GetEnvironmentVariable("ASPNETCORE_HTTP_PORTS");
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        string[] ports = value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return ports.Length > 0 && int.TryParse(ports[0], CultureInfo.InvariantCulture, out int port) ? port : null;
     }
 }
