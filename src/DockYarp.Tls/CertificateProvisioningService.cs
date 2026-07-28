@@ -27,6 +27,9 @@ public sealed class CertificateProvisioningService(
     TlsOptions options,
     ILogger<CertificateProvisioningService> logger) : BackgroundService
 {
+    // Bounded so concurrent ACME orders do not trip the authority's rate limits.
+    private const int MaxConcurrentProvisions = 8;
+
     /// <summary>Performs one provisioning/renewal pass.</summary>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     /// <returns>A task that completes when the pass finishes.</returns>
@@ -34,28 +37,40 @@ public sealed class CertificateProvisioningService(
         "Design",
         "CA1031:Do not catch general exception types",
         Justification = "One host's provisioning failure must be logged and must not stop the others or crash the service.")]
-    public async Task ReconcileAsync(CancellationToken cancellationToken)
+    public Task ReconcileAsync(CancellationToken cancellationToken)
     {
         RouteConfigSnapshot snapshot = store.Current;
-        foreach (DesiredCertificate desired in TlsDomains.Desired(snapshot))
+        ParallelOptions parallelOptions = new()
+        {
+            MaxDegreeOfParallelism = MaxConcurrentProvisions,
+            CancellationToken = cancellationToken,
+        };
+
+        // Provision hosts concurrently (bounded) so one host's slow/failing ACME validation does not block the
+        // others. Per-host failures stay isolated; cancellation propagates so a shutdown stops the pass.
+        return Parallel.ForEachAsync(TlsDomains.Desired(snapshot), parallelOptions, async (desired, token) =>
         {
             if (!NeedsCertificate(desired.Host))
             {
-                continue;
+                return;
             }
 
             try
             {
                 X509Certificate2 certificate =
-                    await acme.RequestCertificateAsync(desired.Host, desired.Email, cancellationToken).ConfigureAwait(false);
+                    await acme.RequestCertificateAsync(desired.Host, desired.Email, token).ConfigureAwait(false);
                 certificates.Save(desired.Host, certificate);
                 TlsLog.CertificateProvisioned(logger, desired.Host);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception exception)
             {
                 TlsLog.ProvisioningFailed(logger, desired.Host, exception);
             }
-        }
+        });
     }
 
     /// <inheritdoc />
