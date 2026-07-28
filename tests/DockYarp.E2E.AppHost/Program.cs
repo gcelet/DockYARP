@@ -63,6 +63,11 @@ proxy
     .WithEnvironment("Tls__ContactEmail", "e2e@dockyarp.local")
     .WithEnvironment("Tls__ClientCaCertificatePath", "/clientca/client-ca.crt")
     .WithEnvironment("Tls__CheckInterval", "00:00:05") // retry provisioning after discovery (startup pass races it; default 12h)
+
+    // step-ca issues ~24h certs while the default renewal margin is 30 days, so every 5s pass would renew and
+    // churn the served thumbprint. A short margin keeps a provisioned cert stable for the restart-reuse test
+    // (RestartPersistenceTests); the more coherent CA-side fix is deferred (backlog e2e-stepca-long-cert-duration).
+    .WithEnvironment("Tls__RenewBeforeExpiry", "00:01:00")
     .WithHttpsEndpoint(targetPort: 8443, name: "https");
 
 // ACME HTTP-01 front door. step-ca validates a challenge by fetching http://<LETSENCRYPT_HOST>/.well-known/...

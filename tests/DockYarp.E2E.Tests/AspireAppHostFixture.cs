@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Aspire.Hosting;
+using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -71,6 +72,28 @@ public static class AspireAppHostFixture
         Proxy = application.CreateHttpClient(ProxyResource, ProxyEndpoint);
         using HttpClient httpsProbe = application.CreateHttpClient(ProxyResource, ProxyHttpsEndpoint);
         HttpsBaseAddress = httpsProbe.BaseAddress!;
+    }
+
+    /// <summary>Restarts the DockYarp container and waits for it to report healthy again.</summary>
+    /// <param name="token">A token to cancel the wait.</param>
+    /// <remarks>
+    /// Recreates the container against the same volumes (the restart-persistence scenario asserts that persisted
+    /// state survives). The suite runs sequentially, and this leaves the shared proxy healthy for later tests.
+    /// </remarks>
+    internal static async Task RestartProxyAndWaitHealthyAsync(CancellationToken token)
+    {
+        DistributedApplication app =
+            application ?? throw new InvalidOperationException("The application has not been started.");
+
+        ResourceCommandService commands = app.Services.GetRequiredService<ResourceCommandService>();
+        ExecuteCommandResult result =
+            await commands.ExecuteCommandAsync(ProxyResource, KnownResourceCommands.RestartCommand, token);
+        if (!result.Success)
+        {
+            throw new InvalidOperationException($"Restarting '{ProxyResource}' failed: {result.Message}");
+        }
+
+        await app.ResourceNotifications.WaitForResourceHealthyAsync(ProxyResource, token);
     }
 
     /// <summary>Stops and disposes the distributed application, flushing the captured logs.</summary>

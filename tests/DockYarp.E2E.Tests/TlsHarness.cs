@@ -58,12 +58,28 @@ internal static class TlsHarness
 
     private static void PrepareCertsDirectory()
     {
-        // A fresh, world-writable directory DockYarp persists certs + DP keys into (bind-mounted at /certs).
-        // World-writable so the non-root container (the app user) can write to the host mount; recreated each
-        // run for isolation (deletion works because the directory is world-writable).
-        if (Directory.Exists(E2EPaths.CertsDirectory))
+        // A world-writable directory DockYarp persists certs + DP keys into (bind-mounted at /certs). World-writable
+        // so the non-root container (the app user) can write to the host mount.
+        //
+        // Best-effort reset: the container writes state here as a different uid (the app user), so the host cannot
+        // always delete it — a container-created dataprotection-keys/ subdir is owned by that uid with no write for
+        // the host, so its key files are not host-removable. Swallow those permission errors and reuse the leftover
+        // state: DockYarp reloads or overwrites it, and the top directory is recreated world-writable below so the
+        // container can still write. (Certificate .pfx files sit in this top directory and remain host-deletable.)
+        try
         {
-            Directory.Delete(E2EPaths.CertsDirectory, recursive: true);
+            if (Directory.Exists(E2EPaths.CertsDirectory))
+            {
+                Directory.Delete(E2EPaths.CertsDirectory, recursive: true);
+            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // A previous run's non-root container files remain; they are harmless and get reloaded/overwritten.
+        }
+        catch (IOException)
+        {
+            // Same rationale: a container-owned file may not be host-removable; proceed with the existing directory.
         }
 
         Directory.CreateDirectory(E2EPaths.CertsDirectory);
