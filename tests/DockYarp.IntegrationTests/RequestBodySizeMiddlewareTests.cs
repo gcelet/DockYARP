@@ -46,6 +46,48 @@ public sealed class RequestBodySizeMiddlewareTests
         feature.MaxRequestBodySize.Should().Be(42);
     }
 
+    /// <summary>A request declaring a body larger than the route limit is rejected with 413 before proxying.</summary>
+    [Test]
+    public async Task DeclaredOversizedRejectedBeforeProxy()
+    {
+        RequestBodySizeMiddleware middleware = Middleware(
+            new RouteRule { HostPattern = "app.local", ClusterId = "app", MaxRequestBodySize = 1000 });
+        DefaultHttpContext context = Context();
+        context.Request.ContentLength = 2000;
+        bool nextCalled = false;
+
+        await middleware.InvokeAsync(context, _ =>
+        {
+            nextCalled = true;
+            return Task.CompletedTask;
+        });
+
+        context.Response.StatusCode.Should().Be(StatusCodes.Status413PayloadTooLarge);
+        nextCalled.Should().BeFalse();
+    }
+
+    /// <summary>A within-limit request is proxied, with the limit applied as the streaming backstop.</summary>
+    [Test]
+    public async Task WithinLimitIsProxied()
+    {
+        RequestBodySizeMiddleware middleware = Middleware(
+            new RouteRule { HostPattern = "app.local", ClusterId = "app", MaxRequestBodySize = 1000 });
+        DefaultHttpContext context = Context();
+        context.Request.ContentLength = 500;
+        FakeBodySizeFeature feature = new();
+        context.Features.Set<IHttpMaxRequestBodySizeFeature>(feature);
+        bool nextCalled = false;
+
+        await middleware.InvokeAsync(context, _ =>
+        {
+            nextCalled = true;
+            return Task.CompletedTask;
+        });
+
+        nextCalled.Should().BeTrue();
+        feature.MaxRequestBodySize.Should().Be(1000);
+    }
+
     private static RequestBodySizeMiddleware Middleware(RouteRule route)
     {
         RouteConfigStore store = new();

@@ -16,11 +16,21 @@ public sealed class RequestBodySizeMiddleware(RouteLookup routes) : IMiddleware
     /// <inheritdoc />
     public Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
-        if (routes.TryGetRoute(context, out RouteRule? route)
-            && route.MaxRequestBodySize is { } maxBytes
-            && context.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } feature)
+        if (routes.TryGetRoute(context, out RouteRule? route) && route.MaxRequestBodySize is { } maxBytes)
         {
-            feature.MaxRequestBodySize = maxBytes;
+            // Reject a declared-oversized body up front, before opening a backend connection or letting the
+            // forwarder fail mid-copy (which logs a noisy stack trace). Chunked/undeclared bodies fall through
+            // to the Kestrel limit set below, which rejects them during the read.
+            if (context.Request.ContentLength is { } declaredLength && declaredLength > maxBytes)
+            {
+                context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
+                return Task.CompletedTask;
+            }
+
+            if (context.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } feature)
+            {
+                feature.MaxRequestBodySize = maxBytes;
+            }
         }
 
         return next(context);
