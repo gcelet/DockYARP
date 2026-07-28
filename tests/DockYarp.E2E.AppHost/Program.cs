@@ -56,6 +56,7 @@ var proxy = builder.AddContainer("dockyarp", "dockyarp", "local")
 proxy
     .WithBindMount(E2EPaths.StepCaDirectory, "/stepca", isReadOnly: true)
     .WithBindMount(E2EPaths.ClientCaDirectory, "/clientca", isReadOnly: true)
+    .WithBindMount(E2EPaths.CertsDirectory, "/certs") // writable: DockYarp persists certs + DP keys here
     .WithEnvironment("SSL_CERT_FILE", "/stepca/ca-bundle.crt")
     .WithEnvironment("Tls__AcmeDirectoryUri", "https://stepca:9000/acme/acme/directory")
     .WithEnvironment("Tls__AcceptTermsOfService", "true")

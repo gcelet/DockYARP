@@ -79,6 +79,13 @@ Options are bound from `appsettings.json` and environment variables (double-unde
 For production TLS, set `Tls__AcmeDirectoryUri` to the production ACME endpoint, `Tls__AcceptTermsOfService=true`,
 and `Tls__ContactEmail`.
 
+DockYarp runs non-root and persists its state — ACME certificates and (transitively-registered, via YARP) Data
+Protection keys — to the mounted **`/certs`** volume (`Tls__CertificateDirectory=/certs`, set in the image).
+The image creates `/certs` **owned by the app user** so the non-root process can write it; the reference
+Compose stack therefore uses a **named volume** (which inherits that ownership) rather than a host bind mount
+— a bind mount would re-impose the host directory's ownership and break the non-root write. Data Protection
+keys are stored under `/certs/dataprotection-keys`, so any protected data survives container recreation.
+
 ## CI/CD with Nuke
 
 [`build/Build.cs`](../build/Build.cs) defines the pipeline:

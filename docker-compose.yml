@@ -30,7 +30,9 @@ services:
       Docker__DockerEndpoint: "tcp://dockerproxy:2375"
       AdminApi__ApiKey: "change-me"
     volumes:
-      - ./certs:/certs
+      # Named volume for persistent state: it inherits the image's app-owned /certs, so the non-root
+      # container can write it (a host bind mount would re-impose host ownership and break the write).
+      - certs:/certs
       - ./config:/config
     depends_on:
       - dockerproxy
@@ -41,3 +43,8 @@ services:
     labels:
       VIRTUAL_HOST: "whoami.local"
       VIRTUAL_PORT: "80"
+
+volumes:
+  # DockYarp's persistent state (certificates + Data Protection keys). A named volume inherits the image's
+  # app-owned /certs so the non-root container can write it and the data survives container recreation.
+  certs:

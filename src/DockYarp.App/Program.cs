@@ -12,6 +12,8 @@ using DockYarp.Docker.Discovery;
 using DockYarp.Security;
 using DockYarp.Tls;
 
+using Microsoft.AspNetCore.DataProtection;
+
 using OpenTelemetry.Metrics;
 
 using Yarp.ReverseProxy.Transforms;
@@ -71,6 +73,12 @@ builder.Services.AddSingleton<ICertificateAvailability, CertificateAvailabilityA
 TlsOptions tlsOptions = new();
 builder.Configuration.GetSection("Tls").Bind(tlsOptions);
 builder.Services.AddDockYarpTls(tlsOptions);
+
+// Data Protection is registered transitively (YARP uses it for session affinity). Persist its keys next to the
+// certificates so any DP-protected data survives container restarts; the default key location is ephemeral.
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(tlsOptions.CertificateDirectory, "dataprotection-keys")))
+    .SetApplicationName("dockyarp");
 
 // Admin API + observability (admin options, certificate inventory, metrics, access logging).
 builder.Services.AddDockYarpObservability(builder.Configuration);

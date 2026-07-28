@@ -29,6 +29,7 @@ internal static class TlsHarness
     {
         Directory.CreateDirectory(E2EPaths.StepCaDirectory);
         Directory.CreateDirectory(E2EPaths.ClientCaDirectory);
+        PrepareCertsDirectory();
 
         DateTimeOffset from = DateTimeOffset.UtcNow.AddDays(-1);
         DateTimeOffset to = DateTimeOffset.UtcNow.AddDays(365);
@@ -53,6 +54,27 @@ internal static class TlsHarness
         byte[] serial = [1, 2, 3, 4, 5, 6, 7, 8];
         using X509Certificate2 leaf = leafRequest.Create(ca, from, to, serial);
         clientCertificate = leaf.CopyWithPrivateKey(leafKey);
+    }
+
+    private static void PrepareCertsDirectory()
+    {
+        // A fresh, world-writable directory DockYarp persists certs + DP keys into (bind-mounted at /certs).
+        // World-writable so the non-root container (the app user) can write to the host mount; recreated each
+        // run for isolation (deletion works because the directory is world-writable).
+        if (Directory.Exists(E2EPaths.CertsDirectory))
+        {
+            Directory.Delete(E2EPaths.CertsDirectory, recursive: true);
+        }
+
+        Directory.CreateDirectory(E2EPaths.CertsDirectory);
+        if (!OperatingSystem.IsWindows())
+        {
+            const UnixFileMode worldWritable =
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
+                | UnixFileMode.GroupRead | UnixFileMode.GroupWrite | UnixFileMode.GroupExecute
+                | UnixFileMode.OtherRead | UnixFileMode.OtherWrite | UnixFileMode.OtherExecute;
+            File.SetUnixFileMode(E2EPaths.CertsDirectory, worldWritable);
+        }
     }
 
     /// <summary>Disposes the generated client certificate.</summary>

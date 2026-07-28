@@ -24,4 +24,8 @@ public static class E2EPaths
 
     /// <summary>The client CA certificate file (PEM) mounted as <c>Tls__ClientCaCertificatePath</c>.</summary>
     public static string ClientCaFile { get; } = Path.Combine(ClientCaDirectory, "client-ca.crt");
+
+    /// <summary>The (writable) directory DockYarp persists certificates and Data Protection keys into,
+    /// bind-mounted at the container's <c>/certs</c>.</summary>
+    public static string CertsDirectory { get; } = Path.Combine(Path.GetTempPath(), "dockyarp-e2e", "certs");
 }
