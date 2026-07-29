@@ -48,13 +48,14 @@ else
 }
 
 // The routing store is the single source of truth; YARP is driven from it via the bridge.
-bool trustDownstreamProxy = builder.Configuration.GetValue("Proxy:TrustDownstreamProxy", defaultValue: true);
+// A trusted downstream proxy's X-Forwarded-* headers are appended to; otherwise they are replaced.
 ForwardedTransformActions xForwardedAction =
-    trustDownstreamProxy ? ForwardedTransformActions.Append : ForwardedTransformActions.Set;
+    builder.Configuration.GetValue("Proxy:TrustDownstreamProxy", defaultValue: true)
+        ? ForwardedTransformActions.Append
+        : ForwardedTransformActions.Set;
 
 // Routing options: default (catch-all) host and the response for genuinely unmatched requests.
-RoutingOptions routingOptions = new();
-builder.Configuration.GetSection("Routing").Bind(routingOptions);
+RoutingOptions routingOptions = builder.Configuration.GetSection("Routing").Get<RoutingOptions>() ?? new();
 builder.Services.AddSingleton(routingOptions);
 
 builder.Services.AddDockYarpReverseProxy(xForwardedAction);
@@ -82,6 +83,9 @@ builder.AddDockYarpDataProtection(
 // Admin API + observability (admin options, certificate inventory, metrics, access logging).
 builder.Services.AddDockYarpObservability(builder.Configuration);
 
+// Response compression (gzip/brotli) for compressible responses; on by default (Compression:Enabled).
+builder.AddDockYarpResponseCompression();
+
 var app = builder.Build();
 
 // Create the meter eagerly so its gauges are present for the first scrape.
@@ -89,6 +93,9 @@ _ = app.Services.GetRequiredService<DockYarpMetrics>();
 
 // Access logging wraps the whole pipeline so redirects and unmatched responses are logged too.
 app.UseMiddleware<AccessLogMiddleware>();
+
+// Compress compressible responses (before anything writes a body); no-op when disabled.
+app.UseDockYarpResponseCompression();
 
 // Overlay a configured error page onto DockYarp-generated error responses.
 app.UseMiddleware<ErrorPageMiddleware>();

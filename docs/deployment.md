@@ -76,6 +76,7 @@ Options are bound from `appsettings.json` and environment variables (double-unde
 | `AdminApi` | `ApiKey` (empty ⇒ admin API closed) |
 | `Host` | `ShutdownTimeoutSeconds` |
 | `DataProtection` | `CertificatePath`, `CertificatePassword` (optional PFX to encrypt the key ring at rest) |
+| `Compression` | `Enabled` (gzip/brotli response compression; default `true`) |
 
 For production TLS, set `Tls__AcmeDirectoryUri` to the production ACME endpoint, `Tls__AcceptTermsOfService=true`,
 and `Tls__ContactEmail`.
