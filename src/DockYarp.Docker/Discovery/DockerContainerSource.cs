@@ -19,21 +19,25 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
 {
     private readonly IDockerClient client;
     private readonly string? preferredNetwork;
+    private readonly IDictionary<string, IDictionary<string, bool>>? containerFilters;
 
     /// <summary>Initializes the source, creating a Docker client from the options.</summary>
-    /// <param name="options">Discovery options (endpoint, preferred network).</param>
+    /// <param name="options">Discovery options (endpoint, preferred network, container filters).</param>
     public DockerContainerSource(DockerDiscoveryOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
         client = CreateClient(options.DockerEndpoint);
         preferredNetwork = options.PreferredNetwork;
+        containerFilters = DockerFilters.Build(options.ContainerFilters);
     }
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<ContainerInfo>> ListRunningContainersAsync(CancellationToken cancellationToken)
     {
+        // Scope discovery to the configured containers; the listing is authoritative (every event reconciles
+        // against it), so the event stream itself stays unfiltered. See the change's design.md.
         IList<ContainerListResponse> responses = await client.Containers
-            .ListContainersAsync(new ContainersListParameters { All = false }, cancellationToken)
+            .ListContainersAsync(new ContainersListParameters { All = false, Filters = containerFilters }, cancellationToken)
             .ConfigureAwait(false);
 
         List<ContainerInfo> result = new(responses.Count);

@@ -1,6 +1,7 @@
 namespace DockYarp.Docker.Discovery;
 
 using System;
+using System.Collections.Generic;
 
 /// <summary>Options controlling Docker discovery.</summary>
 public sealed class DockerDiscoveryOptions
@@ -8,6 +9,15 @@ public sealed class DockerDiscoveryOptions
     /// <summary>Gets or sets the Docker endpoint URI; <see langword="null"/> uses the platform default.</summary>
     /// <remarks>For example <c>unix:///var/run/docker.sock</c> or <c>npipe://./pipe/docker_engine</c>.</remarks>
     public string? DockerEndpoint { get; set; }
+
+    /// <summary>Gets the Docker-native inclusion filters scoping which containers are discovered.</summary>
+    /// <remarks>
+    /// Maps a Docker filter key (<c>label</c>, <c>name</c>, <c>network</c>, …) to its accepted values; values
+    /// within a key are OR-combined and distinct keys are AND-combined. Empty selects all containers. Applied
+    /// to the authoritative container listing, e.g. <c>ContainerFilters:label:0 = dockyarp.enable=true</c>.
+    /// </remarks>
+    public IDictionary<string, IList<string>> ContainerFilters { get; } =
+        new Dictionary<string, IList<string>>(StringComparer.Ordinal);
 
     /// <summary>Gets or sets the Docker network whose IP is preferred when a container is attached to it.</summary>
     /// <remarks>Set this to the network the proxy shares with its backends; <see langword="null"/> selects deterministically.</remarks>
