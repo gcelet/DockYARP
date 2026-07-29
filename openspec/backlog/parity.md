@@ -64,7 +64,7 @@ parser.
 | Basic Auth (`DOCKYARP_AUTH_*` labels) | ✅ | Label-based. |
 | `ssl_verify_client=optional` passthrough + CRL + global CA | ⛔ | CRL/optional-passthrough missing → [`add-mtls-optional-crl`](items/add-mtls-optional-crl.md). |
 | htpasswd files (per vhost + per path) | ⛔ | → [`add-htpasswd-files`](items/add-htpasswd-files.md). |
-| `NETWORK_ACCESS=internal` (403 for external clients) | ⛔ | → [`add-network-access-internal`](items/add-network-access-internal.md). |
+| `NETWORK_ACCESS=internal` (403 for external clients) | ✅ | Per-route client-IP gate; configurable `Security:InternalRanges`. |
 
 ## Headers & proxying
 
