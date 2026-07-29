@@ -35,7 +35,7 @@ parser.
 | `VIRTUAL_PROTO` http/https | ✅ | |
 | WebSocket | ✅ | YARP default. |
 | HTTP/2 | ✅ | Configurable protocols. |
-| `VIRTUAL_PROTO=grpc` | ⛔ | → [`add-grpc-passthrough`](items/add-grpc-passthrough.md). |
+| `VIRTUAL_PROTO=grpc` | ✅ | grpc/grpcs → HTTP/2-exact cluster (trailers forwarded). E2E round-trip: → [`e2e-grpc-passthrough`](items/e2e-grpc-passthrough.md). |
 | `VIRTUAL_PROTO` fastcgi / uwsgi | 🚫 | Non-HTTP upstreams — out of scope. |
 | HTTP/3 (QUIC) | ⚠️ | Config toggle; needs MsQuic runtime → [`finish-http3`](items/finish-http3.md). |
 
