@@ -88,7 +88,7 @@ parser.
 | `DOCKER_CONTAINER_FILTERS` (scope discovery) | ✅ | `Docker:ContainerFilters` (map key→values) applied to the authoritative container listing. |
 | Host-network-mode backends | ⛔ | → [`add-host-network-mode`](items/add-host-network-mode.md). |
 | IPv6 listeners (`ENABLE_IPV6`) + `PREFER_IPV6_NETWORK` | ⛔ | → [`add-ipv6-support`](items/add-ipv6-support.md). |
-| Multi-network attach / unreachable-network resilience | ⛔ | → [`add-multi-network-attachment`](items/add-multi-network-attachment.md). |
+| Multi-network attach / unreachable-network resilience | ✅ | `Docker:ProxyNetworks` → reachability-aware selection; unreachable backends skipped. Runtime auto-detection: → [`e2e-multi-network`](items/e2e-multi-network.md). |
 | Docker Swarm services | ⛔ | → [`add-docker-swarm-support`](items/add-docker-swarm-support.md). |
 | `RESOLVERS` (custom DNS) | 🚫 | .NET resolves DNS; not applicable. |
 | Custom external ports (`HTTP_PORT`/`EXTERNAL_*_PORT`) | ⛔ | Listener config → [`add-proxy-protocol`](items/add-proxy-protocol.md) tracks the listener rework; port config folded there. |
