@@ -68,7 +68,9 @@ an exact host match takes precedence over a wildcard subdomain match (as in ngin
 routes for the same host, by highest priority and then the longest matching path prefix. An exact host match
 SHALL support a bare IPv4 address as the host, matching a request whose `Host` is that address. A wildcard
 `*.suffix` SHALL match a subdomain of **any depth** (for example `*.local` matches both `app.local` and
-`a.b.local`).
+`a.b.local`). A **trailing** wildcard `prefix.*` SHALL match any host beginning with `prefix.` (for example
+`app.*` matches `app.local` and `app.example.com`). Precedence SHALL be exact host, then leading wildcard, then
+trailing wildcard.
 
 #### Scenario: Exact host preferred over wildcard
 - **WHEN** routes exist for host `app.local` and for wildcard `*.local`, and a request targets `app.local`
@@ -84,6 +86,15 @@ SHALL support a bare IPv4 address as the host, matching a request whose `Host` i
 - **WHEN** a route for wildcard `*.local` exists and a request targets a nested subdomain `a.b.local` with no
   exact route
 - **THEN** the wildcard route is selected
+
+#### Scenario: Trailing wildcard matches any suffix
+- **WHEN** a route for trailing wildcard `app.*` exists and a request targets `app.example.com` with no exact or
+  leading-wildcard route
+- **THEN** the trailing-wildcard route is selected
+
+#### Scenario: Leading wildcard preferred over trailing wildcard
+- **WHEN** both a leading-wildcard route and a trailing-wildcard route match a request
+- **THEN** the leading-wildcard route is selected
 
 #### Scenario: Longest path prefix wins
 - **WHEN** two routes match host `app.local` with path prefixes `/` and `/api`, and a request targets `/api/orders`

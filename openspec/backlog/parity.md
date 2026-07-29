@@ -20,7 +20,7 @@ parser.
 | `DEFAULT_HOST` / catch-all + default response | ✅ | Default status configurable. |
 | Priority (`DOCKYARP_PRIORITY`) | ➕ | Extension; orders within a host (does not override host specificity). |
 | Wildcard host — leading `*.suffix` (any depth) | ✅ | Multi-level: `*.local` matches `app.local` and `a.b.local` (YARP + RouteMatcher). |
-| Wildcard host — trailing `foo.bar.*` | ⛔ | Needs a custom non-YARP matcher → [`add-trailing-wildcard-hosts`](items/add-trailing-wildcard-hosts.md). |
+| Wildcard host — trailing `foo.bar.*` | ✅ | Custom `MatcherPolicy` (`DockYarpHostMatcherPolicy`) over route metadata. |
 | Regex host `~^…$` (`VIRTUAL_HOST`) | ⛔ | YARP has no regex host match → [`add-regex-hosts`](items/add-regex-hosts.md). |
 | `VIRTUAL_DEST` path rewrite (arbitrary, e.g. `/api`→`/v2`) | ✅ | Strip + prepend via YARP transforms. |
 | Regex `VIRTUAL_PATH` (location) | ⛔ | YARP path is route-template only → [`add-regex-virtual-path`](items/add-regex-virtual-path.md). |
