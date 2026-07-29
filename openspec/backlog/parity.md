@@ -23,7 +23,7 @@ parser.
 | Wildcard host — trailing `foo.bar.*` | ✅ | Custom `MatcherPolicy` (`DockYarpHostMatcherPolicy`) over route metadata. |
 | Regex host `~^…$` (`VIRTUAL_HOST`) | ✅ | `MatcherPolicy` over route metadata; compiled/cached regex, ReDoS-bounded. |
 | `VIRTUAL_DEST` path rewrite (arbitrary, e.g. `/api`→`/v2`) | ✅ | Strip + prepend via YARP transforms. |
-| Regex `VIRTUAL_PATH` (location) | ⛔ | YARP path is route-template only → [`add-regex-virtual-path`](items/add-regex-virtual-path.md). |
+| Regex `VIRTUAL_PATH` (location) | ✅ | `MatcherPolicy` over route metadata; compiled/cached regex, ReDoS-bounded. |
 | `DEFAULT_ROOT` arbitrary fallback (return/redirect) | ⛔ | Status-code default only → [`add-default-root-response`](items/add-default-root-response.md). |
 | Raw-IP `VIRTUAL_HOST` | ✅ | Bare IPv4 matched exactly; IPv6 literal is a caveat. |
 | Custom LB algorithms (e.g. IP-hash, `loadbalance` label) | ⛔ | RR/least-requests only → [`add-loadbalance-policies`](items/add-loadbalance-policies.md). |
