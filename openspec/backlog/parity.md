@@ -63,7 +63,7 @@ parser.
 | Mutual TLS (`DOCKYARP_CLIENT_CERT` + CA), per-host enforcement | ✅ | CA validation + enforcement; handshake proven by the Aspire e2e (step-ca). |
 | Basic Auth (`DOCKYARP_AUTH_*` labels) | ✅ | Label-based. |
 | `ssl_verify_client=optional` passthrough + CRL + global CA | ⛔ | CRL/optional-passthrough missing → [`add-mtls-optional-crl`](items/add-mtls-optional-crl.md). |
-| htpasswd files (per vhost + per path) | ⛔ | → [`add-htpasswd-files`](items/add-htpasswd-files.md). |
+| htpasswd files (per vhost + per path) | ✅ | bcrypt / apr1 / SHA1; `Security:HtpasswdDirectory`. Reload deferred → [`reload-htpasswd-files`](items/reload-htpasswd-files.md). |
 | `NETWORK_ACCESS=internal` (403 for external clients) | ✅ | Per-route client-IP gate; configurable `Security:InternalRanges`. |
 
 ## Headers & proxying
