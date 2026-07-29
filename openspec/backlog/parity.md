@@ -85,7 +85,7 @@ parser.
 |---|---|---|
 | Network selection (preferred network, skip Swarm `ingress`) | ✅ | Deterministic. |
 | Health-aware (exclude unhealthy/starting; react to `health_status`) | ✅ | |
-| `DOCKER_CONTAINER_FILTERS` (scope discovery) | ⛔ | → [`add-docker-container-filters`](items/add-docker-container-filters.md). |
+| `DOCKER_CONTAINER_FILTERS` (scope discovery) | ✅ | `Docker:ContainerFilters` (map key→values) applied to the authoritative container listing. |
 | Host-network-mode backends | ⛔ | → [`add-host-network-mode`](items/add-host-network-mode.md). |
 | IPv6 listeners (`ENABLE_IPV6`) + `PREFER_IPV6_NETWORK` | ⛔ | → [`add-ipv6-support`](items/add-ipv6-support.md). |
 | Multi-network attach / unreachable-network resilience | ⛔ | → [`add-multi-network-attachment`](items/add-multi-network-attachment.md). |
