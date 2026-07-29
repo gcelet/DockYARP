@@ -73,7 +73,7 @@ parser.
 | `X-Forwarded-*` / `X-Real-IP` / Host / downstream-proxy trust | ✅ | |
 | `client_max_body_size` (`DOCKYARP_MAX_BODY_SIZE`) | ✅ | Per-route. |
 | Proxy timeouts (`DOCKYARP_PROXY_TIMEOUT`) | ✅ | Per-cluster activity timeout. |
-| gzip response compression | ⛔ | → [`add-gzip-compression`](items/add-gzip-compression.md). |
+| gzip response compression | ✅ | gzip + brotli, on by default; `Compression:Enabled`. |
 | httpoxy mitigation (strip inbound `Proxy` header) | ✅ | Stripped in the forwarded-headers transform. |
 | PROXY protocol (`ENABLE_PROXY_PROTOCOL`) + real client IP | ⛔ | → [`add-proxy-protocol`](items/add-proxy-protocol.md). |
 | `NON_GET_REDIRECT` (307/308 for non-GET) | ✅ | DockYarp redirects with 308 (method-preserving) for all methods; no separate knob needed. |
