@@ -59,4 +59,35 @@ public sealed class HtpasswdStoreTests
 
         store.Find("other.local", pathPrefix: null).Should().BeNull();
     }
+
+    /// <summary>Reloading picks up an edited file: new credentials replace the old ones.</summary>
+    [Test]
+    public void ReloadReflectsEditedFile()
+    {
+        File.WriteAllText(Path.Combine(dir, "app.local"), "alice:hashA\n");
+        HtpasswdStore store = new(new SecurityHeadersOptions { HtpasswdDirectory = dir });
+        store.Find("app.local", pathPrefix: null)!.Should().ContainKey("alice");
+
+        File.WriteAllText(Path.Combine(dir, "app.local"), "bob:hashB\n");
+        store.Reload();
+
+        IReadOnlyDictionary<string, string>? entries = store.Find("app.local", pathPrefix: null);
+        entries.Should().NotBeNull();
+        entries!.Should().ContainKey("bob");
+        entries.Should().NotContainKey("alice");
+    }
+
+    /// <summary>Reloading drops a removed file's protection.</summary>
+    [Test]
+    public void ReloadDropsRemovedFile()
+    {
+        File.WriteAllText(Path.Combine(dir, "app.local"), "alice:hashA\n");
+        HtpasswdStore store = new(new SecurityHeadersOptions { HtpasswdDirectory = dir });
+        store.Find("app.local", pathPrefix: null).Should().NotBeNull();
+
+        File.Delete(Path.Combine(dir, "app.local"));
+        store.Reload();
+
+        store.Find("app.local", pathPrefix: null).Should().BeNull();
+    }
 }

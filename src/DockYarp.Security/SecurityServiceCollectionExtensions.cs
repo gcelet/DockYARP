@@ -19,6 +19,11 @@ public static class SecurityServiceCollectionExtensions
 
         services.AddSingleton(options);
         services.AddSingleton<HtpasswdStore>();
+        if (!string.IsNullOrEmpty(options.HtpasswdDirectory))
+        {
+            services.AddHostedService<HtpasswdReloadService>();
+        }
+
         services.AddSingleton<RouteLookup>();
         services.AddSingleton<SecurityHeadersMiddleware>();
         services.AddSingleton<NetworkAccessMiddleware>();

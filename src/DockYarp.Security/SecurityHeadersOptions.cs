@@ -38,4 +38,7 @@ public sealed class SecurityHeadersOptions
     /// specific path. <see langword="null"/> or empty disables file-based Basic Auth.
     /// </remarks>
     public string? HtpasswdDirectory { get; set; }
+
+    /// <summary>Gets or sets how often the htpasswd directory is reloaded so file changes apply without a restart.</summary>
+    public TimeSpan HtpasswdReloadInterval { get; set; } = TimeSpan.FromSeconds(30);
 }
