@@ -57,4 +57,7 @@ public static class DockerLabels
 
     /// <summary>Optional Basic Auth realm shown in the challenge.</summary>
     public const string AuthRealm = "DOCKYARP_AUTH_REALM";
+
+    /// <summary>Restricts the route to internal client networks when set to <c>internal</c> (returns 403 otherwise).</summary>
+    public const string NetworkAccess = "NETWORK_ACCESS";
 }

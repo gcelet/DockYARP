@@ -28,6 +28,9 @@ public sealed record RouteRule
     /// <summary>Gets the optional maximum request body size (bytes) allowed before proxying this route.</summary>
     public long? MaxRequestBodySize { get; init; }
 
+    /// <summary>Gets a value indicating whether the route is restricted to internal client networks (403 otherwise).</summary>
+    public bool InternalOnly { get; init; }
+
     /// <summary>Gets the optional request transforms.</summary>
     public RouteTransforms? Transforms { get; init; }
 }

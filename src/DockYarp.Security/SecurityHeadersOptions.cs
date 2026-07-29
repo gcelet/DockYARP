@@ -26,4 +26,9 @@ public sealed class SecurityHeadersOptions
     /// <summary>Gets or sets the <c>Server</c> response header value; <see langword="null"/> or empty suppresses it.</summary>
     /// <remarks>The built-in Kestrel <c>Server</c> header is disabled at the host; this value, when set, is emitted instead.</remarks>
     public string? ServerHeader { get; set; }
+
+    /// <summary>Gets or sets the CIDR ranges considered "internal" for <c>NETWORK_ACCESS=internal</c> routes.</summary>
+    /// <remarks>Defaults to the common private ranges plus IPv6 loopback; a client outside these is denied (403).</remarks>
+    public string[] InternalRanges { get; set; } =
+        ["127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "::1/128"];
 }

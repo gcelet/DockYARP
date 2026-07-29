@@ -55,4 +55,7 @@ public sealed record ContainerLabelConfig
 
     /// <summary>Gets the Basic Auth credentials (<c>DOCKYARP_AUTH_*</c>), set only when complete.</summary>
     public BasicAuthCredentials? Auth { get; init; }
+
+    /// <summary>Gets a value indicating whether the route is restricted to internal networks (<c>NETWORK_ACCESS=internal</c>).</summary>
+    public bool InternalOnly { get; init; }
 }

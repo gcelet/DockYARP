@@ -26,6 +26,39 @@ public sealed class LabelParserTests
         config.Port.Should().Be(8080);
     }
 
+    /// <summary>NETWORK_ACCESS=internal marks the route internal-only.</summary>
+    [Test]
+    public void NetworkAccessInternalMarksInternalOnly()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.NetworkAccess, "internal")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.InternalOnly.Should().BeTrue();
+    }
+
+    /// <summary>Without NETWORK_ACCESS the route is not internal-only.</summary>
+    [Test]
+    public void NoNetworkAccessIsNotInternalOnly()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.InternalOnly.Should().BeFalse();
+    }
+
     /// <summary>A VIRTUAL_DEST destination rewrites the matched prefix: strip VIRTUAL_PATH and prepend the dest.</summary>
     [Test]
     public void VirtualDestRewritesPrefix()

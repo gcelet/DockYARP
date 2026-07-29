@@ -62,6 +62,7 @@ public static class LabelParser
             ProxyTimeout = ParseTimeoutSeconds(GetOrNull(labels, DockerLabels.ProxyTimeout)),
             MaxRequestBodySize = ParsePositiveLong(GetOrNull(labels, DockerLabels.MaxBodySize)),
             Auth = ParseAuth(labels),
+            InternalOnly = ParseInternalOnly(labels),
         };
         return true;
     }
@@ -86,8 +87,12 @@ public static class LabelParser
             HttpsMethod = ParseHttpsMethod(GetOrNull(labels, DockerLabels.HttpsMethod)),
             Hsts = GetOrNull(labels, DockerLabels.Hsts),
             Auth = ParseAuth(labels),
+            InternalOnly = ParseInternalOnly(labels),
         };
     }
+
+    private static bool ParseInternalOnly(IReadOnlyDictionary<string, string> labels) =>
+        string.Equals(GetOrNull(labels, DockerLabels.NetworkAccess), "internal", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Reports whether exactly one of the auth user/password labels is present (incomplete).</summary>
     /// <param name="labels">The container labels.</param>

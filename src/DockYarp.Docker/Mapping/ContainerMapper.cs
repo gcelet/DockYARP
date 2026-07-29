@@ -205,6 +205,7 @@ public static class ContainerMapper
                 Auth = first.Auth,
                 ClientCertificate = first.ClientCertificate,
                 MaxRequestBodySize = first.MaxRequestBodySize,
+                InternalOnly = first.InternalOnly,
                 Transforms = transforms,
             };
         }
@@ -259,6 +260,7 @@ public static class ContainerMapper
                 Auth = common.Auth,
                 ClientCertificate = common.ClientCertificate,
                 MaxRequestBodySize = common.MaxRequestBodySize,
+                InternalOnly = common.InternalOnly,
                 Transforms = transforms,
             };
         }
