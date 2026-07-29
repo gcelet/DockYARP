@@ -171,6 +171,22 @@ public sealed class ContainerMapperTests
         result.Warnings.Should().Contain(warning => warning.Contains("Unhealthy", System.StringComparison.Ordinal));
     }
 
+    /// <summary>A container with no reachable network address is skipped with a warning, not routed.</summary>
+    [Test]
+    public void UnreachableContainerIsSkipped()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            string.Empty,
+            DiscoveryTestData.Labels((DockerLabels.VirtualHost, "app.local"), (DockerLabels.VirtualPort, "8080")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Routes.Should().BeEmpty();
+        result.Contribution.Clusters.Should().BeEmpty();
+        result.Warnings.Should().Contain(warning => warning.Contains("no reachable network address", System.StringComparison.Ordinal));
+    }
+
     /// <summary>A starting container is excluded until it becomes healthy.</summary>
     [Test]
     public void StartingContainerIsExcluded()

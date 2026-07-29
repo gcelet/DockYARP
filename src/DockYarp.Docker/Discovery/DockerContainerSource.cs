@@ -19,15 +19,17 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
 {
     private readonly IDockerClient client;
     private readonly string? preferredNetwork;
+    private readonly IReadOnlyCollection<string> proxyNetworks;
     private readonly IDictionary<string, IDictionary<string, bool>>? containerFilters;
 
     /// <summary>Initializes the source, creating a Docker client from the options.</summary>
-    /// <param name="options">Discovery options (endpoint, preferred network, container filters).</param>
+    /// <param name="options">Discovery options (endpoint, preferred/proxy networks, container filters).</param>
     public DockerContainerSource(DockerDiscoveryOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
         client = CreateClient(options.DockerEndpoint);
         preferredNetwork = options.PreferredNetwork;
+        proxyNetworks = [.. options.ProxyNetworks];
         containerFilters = DockerFilters.Build(options.ContainerFilters);
     }
 
@@ -125,13 +127,19 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
 
     private string ResolveAddress(ContainerListResponse response)
     {
-        // Select by network (preferred network, ingress skipped, deterministic); fall back to the
-        // container name (resolvable on a shared network) when no usable network address is found.
+        // Select by network (preferred network, ingress skipped, reachable-only, deterministic).
         Dictionary<string, string?> networks = response.NetworkSettings?.Networks is { } map
             ? map.ToDictionary(pair => pair.Key, pair => pair.Value?.IPAddress, StringComparer.Ordinal)
             : new Dictionary<string, string?>(StringComparer.Ordinal);
-        string? ip = NetworkAddressSelector.Select(networks, preferredNetwork);
-        return string.IsNullOrEmpty(ip) ? ResolveName(response.Names) : ip;
+        string? ip = NetworkAddressSelector.Select(networks, preferredNetwork, proxyNetworks);
+        if (!string.IsNullOrEmpty(ip))
+        {
+            return ip;
+        }
+
+        // Reachability unknown: fall back to the container name (resolvable on a shared network). Reachability
+        // known but no shared network: leave the address empty so the mapper skips the unreachable backend.
+        return proxyNetworks.Count > 0 ? string.Empty : ResolveName(response.Names);
     }
 
     private static ImmutableArray<int> ResolvePorts(IList<Port>? ports)

@@ -23,6 +23,14 @@ public sealed class DockerDiscoveryOptions
     /// <remarks>Set this to the network the proxy shares with its backends; <see langword="null"/> selects deterministically.</remarks>
     public string? PreferredNetwork { get; set; }
 
+    /// <summary>Gets the Docker networks the proxy is attached to, used to select a reachable backend address.</summary>
+    /// <remarks>
+    /// When non-empty, address selection restricts the fallback choice to a shared (reachable) network and
+    /// skips backends reachable on none. Empty leaves selection reachability-unaware (prior behavior), e.g.
+    /// <c>ProxyNetworks:0 = edge</c>.
+    /// </remarks>
+    public IList<string> ProxyNetworks { get; } = [];
+
     /// <summary>Gets or sets the initial reconnect delay after a connection failure.</summary>
     public TimeSpan InitialReconnectDelay { get; set; } = TimeSpan.FromSeconds(1);
 
