@@ -3,6 +3,7 @@ namespace DockYarp.App.ReverseProxy;
 using DockYarp.Core.Interfaces;
 using DockYarp.Core.Stores;
 
+using Microsoft.AspNetCore.Routing.Matching;
 using Microsoft.Extensions.DependencyInjection;
 
 using Yarp.ReverseProxy.Configuration;
@@ -25,6 +26,9 @@ internal static class ReverseProxyServiceCollectionExtensions
             .AddTransforms(context => ForwardedHeadersTransform.Apply(context, xForwardedAction));
         services.AddHostedService<YarpConfigBridge>();
         services.AddSingleton<RequestBodySizeMiddleware>();
+
+        // Endpoint-selector policy for host forms YARP cannot match natively (trailing wildcard; regex later).
+        services.AddSingleton<MatcherPolicy, DockYarpHostMatcherPolicy>();
         return services;
     }
 }

@@ -81,6 +81,46 @@ public sealed class RouteMatcherTests
         route!.ClusterId.Should().Be("wild");
     }
 
+    /// <summary>A trailing-wildcard route matches any host beginning with the prefix.</summary>
+    [Test]
+    public void TrailingWildcardMatchesSuffix()
+    {
+        RouteMatcher matcher = new([new RouteRule { HostPattern = "app.*", ClusterId = "trailing" }]);
+
+        bool matched = matcher.TryMatch("app.example.com", "/", out RouteRule? route);
+
+        matched.Should().BeTrue();
+        route!.ClusterId.Should().Be("trailing");
+    }
+
+    /// <summary>An exact host wins over a matching trailing wildcard.</summary>
+    [Test]
+    public void ExactHostWinsOverTrailingWildcard()
+    {
+        RouteMatcher matcher = new(
+        [
+            new RouteRule { HostPattern = "app.local", ClusterId = "exact" },
+            new RouteRule { HostPattern = "app.*", ClusterId = "trailing" },
+        ]);
+
+        matcher.TryMatch("app.local", "/", out RouteRule? route).Should().BeTrue();
+        route!.ClusterId.Should().Be("exact");
+    }
+
+    /// <summary>A leading wildcard wins over a trailing wildcard when both match.</summary>
+    [Test]
+    public void LeadingWildcardWinsOverTrailingWildcard()
+    {
+        RouteMatcher matcher = new(
+        [
+            new RouteRule { HostPattern = "*.local", ClusterId = "leading" },
+            new RouteRule { HostPattern = "app.*", ClusterId = "trailing" },
+        ]);
+
+        matcher.TryMatch("app.local", "/", out RouteRule? route).Should().BeTrue();
+        route!.ClusterId.Should().Be("leading");
+    }
+
     /// <summary>An exact host still wins over a matching multi-level wildcard.</summary>
     [Test]
     public void ExactHostWinsOverNestedWildcard()

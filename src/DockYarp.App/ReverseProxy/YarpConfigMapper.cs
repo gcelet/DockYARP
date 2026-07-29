@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.Linq;
 
 using DockYarp.Core.Models;
+using DockYarp.Core.Routing;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Forwarder;
 
@@ -69,21 +70,47 @@ public static class YarpConfigMapper
         };
     }
 
-    private static RouteConfig BuildRoute(RouteRule rule) =>
-        new()
+    // Non-native (metadata-matched) host routes sit below native host routes; a lower order wins in YARP.
+    private const int NonNativeHostOrder = 1000;
+    private const string CatchAllPath = "/{**catch-all}";
+
+    private static RouteConfig BuildRoute(RouteRule rule)
+    {
+        HostPattern pattern = HostPattern.Parse(rule.HostPattern);
+        bool nativeHost = pattern.Kind is HostPatternKind.Exact or HostPatternKind.LeadingWildcard;
+        return new RouteConfig
         {
             RouteId = $"{rule.HostPattern}|{rule.PathPrefix}",
             ClusterId = rule.ClusterId,
-
-            // YARP: a lower order takes precedence, so a higher priority maps to a lower (negated) order.
-            Order = rule.Priority == 0 ? null : -rule.Priority,
+            Order = BuildOrder(rule.Priority, nativeHost),
             Match = new RouteMatch
             {
-                Hosts = [rule.HostPattern],
-                Path = BuildPath(rule.PathPrefix),
+                // Native forms (exact, leading wildcard) use YARP host matching; non-native forms match any host
+                // here and are filtered by DockYarpHostMatcherPolicy, so they must still carry a path.
+                Hosts = nativeHost ? [rule.HostPattern] : null,
+                Path = nativeHost ? BuildPath(rule.PathPrefix) : BuildPath(rule.PathPrefix) ?? CatchAllPath,
             },
+            Metadata = BuildHostMetadata(pattern, rule.HostPattern),
             Transforms = BuildTransforms(rule.Transforms),
         };
+    }
+
+    // YARP: a lower order takes precedence, so a higher priority maps to a lower (negated) order. Non-native host
+    // routes are offset below native ones while priority still orders among them.
+    private static int? BuildOrder(int priority, bool nativeHost)
+    {
+        if (!nativeHost)
+        {
+            return NonNativeHostOrder - priority;
+        }
+
+        return priority == 0 ? null : -priority;
+    }
+
+    private static IReadOnlyDictionary<string, string>? BuildHostMetadata(HostPattern pattern, string hostPattern) =>
+        pattern.Kind == HostPatternKind.TrailingWildcard
+            ? new Dictionary<string, string>(StringComparer.Ordinal) { [DockYarpHostMatcherPolicy.HostTrailingKey] = hostPattern }
+            : null;
 
     private static IReadOnlyList<IReadOnlyDictionary<string, string>>? BuildTransforms(RouteTransforms? transforms)
     {
