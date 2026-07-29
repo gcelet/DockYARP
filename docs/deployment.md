@@ -75,6 +75,7 @@ Options are bound from `appsettings.json` and environment variables (double-unde
 | `Docker` | `Enabled`, `DockerEndpoint` |
 | `AdminApi` | `ApiKey` (empty ⇒ admin API closed) |
 | `Host` | `ShutdownTimeoutSeconds` |
+| `Routing` | `DefaultHost`, `DefaultResponseStatusCode` (default 404), `DefaultResponseLocation` (redirect target for unmatched requests; `$scheme`/`$host`/`$request_uri`) |
 | `DataProtection` | `CertificatePath`, `CertificatePassword` (optional PFX to encrypt the key ring at rest) |
 | `Compression` | `Enabled` (gzip/brotli response compression; default `true`) |
 

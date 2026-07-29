@@ -4,6 +4,7 @@ using DockYarp.AdminApi;
 using DockYarp.App.ErrorPages;
 using DockYarp.App.Observability;
 using DockYarp.App.ReverseProxy;
+using DockYarp.App.Routing;
 using DockYarp.App.Security;
 using DockYarp.App.StaticConfig;
 using DockYarp.Core.Configuration;
@@ -115,7 +116,7 @@ app.MapPrometheusScrapingEndpoint();
 app.MapReverseProxy();
 
 // Terminal fallback: requests matching no route (and no default host) get the configured default response.
-app.MapFallback(() => Results.StatusCode(routingOptions.DefaultResponseStatusCode));
+app.MapFallback(context => DefaultResponseWriter.WriteAsync(context, routingOptions));
 
 await app.RunAsync();
 
