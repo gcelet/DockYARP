@@ -9,6 +9,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\DockYarp.Core\DockYarp.Core.csproj" />
   </ItemGroup>
 

@@ -14,6 +14,7 @@
     <PackageVersion Include="Certes" Version="3.0.4" />
     <PackageVersion Include="System.IO.Abstractions" Version="22.2.0" />
     <PackageVersion Include="YamlDotNet" Version="18.1.0" />
+    <PackageVersion Include="BCrypt.Net-Next" Version="4.0.3" />
   </ItemGroup>
   <!-- Code quality analyzers -->
   <ItemGroup>

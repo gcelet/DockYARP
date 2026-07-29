@@ -18,6 +18,7 @@ public static class SecurityServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(options);
 
         services.AddSingleton(options);
+        services.AddSingleton<HtpasswdStore>();
         services.AddSingleton<RouteLookup>();
         services.AddSingleton<SecurityHeadersMiddleware>();
         services.AddSingleton<NetworkAccessMiddleware>();

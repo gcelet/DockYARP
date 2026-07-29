@@ -31,4 +31,11 @@ public sealed class SecurityHeadersOptions
     /// <remarks>Defaults to the common private ranges plus IPv6 loopback; a client outside these is denied (403).</remarks>
     public string[] InternalRanges { get; set; } =
         ["127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "::1/128"];
+
+    /// <summary>Gets or sets the directory of Apache htpasswd files enabling file-based Basic Auth.</summary>
+    /// <remarks>
+    /// A file named <c>&lt;host&gt;</c> protects that vhost; <c>&lt;host&gt;_&lt;sha1hex(path)&gt;</c> protects a
+    /// specific path. <see langword="null"/> or empty disables file-based Basic Auth.
+    /// </remarks>
+    public string? HtpasswdDirectory { get; set; }
 }

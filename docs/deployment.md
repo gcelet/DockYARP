@@ -71,7 +71,7 @@ Options are bound from `appsettings.json` and environment variables (double-unde
 | Section | Keys |
 |---|---|
 | `Tls` | `ContactEmail`, `CertificateDirectory`, `AcmeDirectoryUri` (defaults to Let's Encrypt **staging**), `AcceptTermsOfService`, `RenewBeforeExpiry`, `CheckInterval` |
-| `Security` | `EnableHsts`, `HstsMaxAge`, `HstsIncludeSubDomains`, `FrameOptions`, `ReferrerPolicy`, `ServerHeader`, `InternalRanges` (CIDRs for `NETWORK_ACCESS=internal`) |
+| `Security` | `EnableHsts`, `HstsMaxAge`, `HstsIncludeSubDomains`, `FrameOptions`, `ReferrerPolicy`, `ServerHeader`, `InternalRanges` (CIDRs for `NETWORK_ACCESS=internal`), `HtpasswdDirectory` (file-based Basic Auth) |
 | `Docker` | `Enabled`, `DockerEndpoint` |
 | `AdminApi` | `ApiKey` (empty ⇒ admin API closed) |
 | `Host` | `ShutdownTimeoutSeconds` |
