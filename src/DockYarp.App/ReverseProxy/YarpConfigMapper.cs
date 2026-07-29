@@ -80,6 +80,7 @@ public static class YarpConfigMapper
     {
         HostPattern pattern = HostPattern.Parse(rule.HostPattern);
         bool nativeHost = pattern.Kind is HostPatternKind.Exact or HostPatternKind.LeadingWildcard;
+        bool regexPath = IsRegexPath(rule.PathPrefix);
         return new RouteConfig
         {
             RouteId = $"{rule.HostPattern}|{rule.PathPrefix}",
@@ -90,11 +91,50 @@ public static class YarpConfigMapper
                 // Native forms (exact, leading wildcard) use YARP host matching; non-native forms match any host
                 // here and are filtered by DockYarpHostMatcherPolicy, so they must still carry a path.
                 Hosts = nativeHost ? [rule.HostPattern] : null,
-                Path = nativeHost ? BuildPath(rule.PathPrefix) : BuildPath(rule.PathPrefix) ?? CatchAllPath,
+                Path = BuildMatchPath(rule.PathPrefix, nativeHost, regexPath),
             },
-            Metadata = BuildHostMetadata(pattern.Kind, rule.HostPattern),
+            Metadata = BuildMetadata(pattern.Kind, rule.HostPattern, regexPath, rule.PathPrefix),
             Transforms = BuildTransforms(rule.Transforms),
         };
+    }
+
+    private static bool IsRegexPath(string? pathPrefix) => pathPrefix is { Length: > 0 } && pathPrefix[0] == '~';
+
+    // A regex path is not a valid route template, so such a route matches any path and is filtered later by the
+    // path matcher policy. A prefix path uses its template, and a host-only non-native route needs a catch-all.
+    private static string? BuildMatchPath(string? pathPrefix, bool nativeHost, bool regexPath)
+    {
+        if (regexPath)
+        {
+            return CatchAllPath;
+        }
+
+        string? template = BuildPath(pathPrefix);
+        if (template is not null)
+        {
+            return template;
+        }
+
+        return nativeHost ? null : CatchAllPath;
+    }
+
+    private static IReadOnlyDictionary<string, string>? BuildMetadata(
+        HostPatternKind hostKind, string hostPattern, bool regexPath, string? pathPrefix)
+    {
+        Dictionary<string, string>? metadata = null;
+        if (hostKind is HostPatternKind.TrailingWildcard or HostPatternKind.Regex)
+        {
+            metadata = new Dictionary<string, string>(StringComparer.Ordinal);
+            metadata[DockYarpHostMatcherPolicy.HostPatternKey] = hostPattern;
+        }
+
+        if (regexPath)
+        {
+            metadata ??= new Dictionary<string, string>(StringComparer.Ordinal);
+            metadata[DockYarpPathMatcherPolicy.PathRegexKey] = pathPrefix![1..];
+        }
+
+        return metadata;
     }
 
     // YARP: a lower order takes precedence, so a higher priority maps to a lower (negated) order. Non-native host
@@ -106,11 +146,6 @@ public static class YarpConfigMapper
             HostPatternKind.Regex => RegexHostOrder - priority,
             _ => priority == 0 ? null : -priority,
         };
-
-    private static IReadOnlyDictionary<string, string>? BuildHostMetadata(HostPatternKind kind, string hostPattern) =>
-        kind is HostPatternKind.TrailingWildcard or HostPatternKind.Regex
-            ? new Dictionary<string, string>(StringComparer.Ordinal) { [DockYarpHostMatcherPolicy.HostPatternKey] = hostPattern }
-            : null;
 
     private static IReadOnlyList<IReadOnlyDictionary<string, string>>? BuildTransforms(RouteTransforms? transforms)
     {

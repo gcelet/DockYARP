@@ -27,8 +27,9 @@ internal static class ReverseProxyServiceCollectionExtensions
         services.AddHostedService<YarpConfigBridge>();
         services.AddSingleton<RequestBodySizeMiddleware>();
 
-        // Endpoint-selector policy for host forms YARP cannot match natively (trailing wildcard; regex later).
+        // Endpoint-selector policies for host and path forms YARP cannot match natively (trailing wildcard, regex).
         services.AddSingleton<MatcherPolicy, DockYarpHostMatcherPolicy>();
+        services.AddSingleton<MatcherPolicy, DockYarpPathMatcherPolicy>();
         return services;
     }
 }

@@ -178,11 +178,29 @@ public sealed class RouteMatcher
             return byPriority;
         }
 
+        // A prefix path is more specific than a regex path, so it is tried first.
+        int byRegex = IsRegexPath(left.PathPrefix).CompareTo(IsRegexPath(right.PathPrefix));
+        if (byRegex != 0)
+        {
+            return byRegex;
+        }
+
         return PathLength(right.PathPrefix).CompareTo(PathLength(left.PathPrefix));
     }
 
-    private static bool PathMatches(string? prefix, string path) =>
-        string.IsNullOrEmpty(prefix) || path.StartsWith(prefix, StringComparison.Ordinal);
+    private static bool PathMatches(string? prefix, string path)
+    {
+        if (string.IsNullOrEmpty(prefix))
+        {
+            return true;
+        }
+
+        return IsRegexPath(prefix)
+            ? CompiledRegexCache.IsMatch(prefix[1..], path)
+            : path.StartsWith(prefix, StringComparison.Ordinal);
+    }
+
+    private static bool IsRegexPath(string? prefix) => prefix is { Length: > 0 } && prefix[0] == '~';
 
     private static int PathLength(string? prefix) => prefix?.Length ?? 0;
 

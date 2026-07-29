@@ -78,6 +78,26 @@ public sealed class LabelParserTests
         config.PathAddPrefix.Should().Be("/v2");
     }
 
+    /// <summary>A regex VIRTUAL_PATH ignores VIRTUAL_DEST (a regex location has no fixed prefix to rewrite).</summary>
+    [Test]
+    public void RegexVirtualPathIgnoresDest()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.VirtualPath, "~^/(app1|alt1)/"),
+                (DockerLabels.VirtualDest, "/v2")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.PathPrefix.Should().Be("~^/(app1|alt1)/");
+        config.PathRemovePrefix.Should().BeNull();
+        config.PathAddPrefix.Should().BeNull();
+    }
+
     /// <summary>A root VIRTUAL_DEST strips the matched prefix without prepending (unchanged behavior).</summary>
     [Test]
     public void RootVirtualDestStripsOnly()

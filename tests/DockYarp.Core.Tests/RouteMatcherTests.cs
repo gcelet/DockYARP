@@ -145,6 +145,32 @@ public sealed class RouteMatcherTests
         route!.ClusterId.Should().Be("leading");
     }
 
+    /// <summary>A regex VIRTUAL_PATH matches a request path satisfying the expression.</summary>
+    [Test]
+    public void RegexPathMatches()
+    {
+        RouteMatcher matcher = new(
+            [new RouteRule { HostPattern = "app.local", PathPrefix = @"~^/(app1|alt1)/", ClusterId = "regex" }]);
+
+        matcher.TryMatch("app.local", "/app1/x", out RouteRule? route).Should().BeTrue();
+        route!.ClusterId.Should().Be("regex");
+        matcher.TryMatch("app.local", "/other", out _).Should().BeFalse();
+    }
+
+    /// <summary>A prefix path wins over a regex path when both match the same host.</summary>
+    [Test]
+    public void PrefixPathWinsOverRegexPath()
+    {
+        RouteMatcher matcher = new(
+        [
+            new RouteRule { HostPattern = "app.local", PathPrefix = "/api", ClusterId = "prefix" },
+            new RouteRule { HostPattern = "app.local", PathPrefix = @"~^/api/", ClusterId = "regexpath" },
+        ]);
+
+        matcher.TryMatch("app.local", "/api/x", out RouteRule? route).Should().BeTrue();
+        route!.ClusterId.Should().Be("prefix");
+    }
+
     /// <summary>An exact host still wins over a matching multi-level wildcard.</summary>
     [Test]
     public void ExactHostWinsOverNestedWildcard()

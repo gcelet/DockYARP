@@ -14,7 +14,9 @@ internal static class PathRewrite
     /// </remarks>
     public static (string? Remove, string? Add) Resolve(string? dest, string? path)
     {
-        if (string.IsNullOrEmpty(dest) || string.IsNullOrEmpty(path))
+        // A regex VIRTUAL_PATH (~-prefixed) has no fixed prefix to strip, so VIRTUAL_DEST does not apply
+        // (nginx-proxy forbids the combination); ignore the destination.
+        if (string.IsNullOrEmpty(dest) || string.IsNullOrEmpty(path) || path[0] == '~')
         {
             return (null, null);
         }
