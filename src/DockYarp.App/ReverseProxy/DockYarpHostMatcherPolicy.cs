@@ -13,17 +13,17 @@ using Microsoft.AspNetCore.Routing.Matching;
 
 using Yarp.ReverseProxy.Model;
 
-/// <summary>Matches host forms YARP cannot express natively (trailing wildcard today; regex added later).</summary>
+/// <summary>Matches host forms YARP cannot express natively: trailing wildcard (<c>prefix.*</c>) and regex.</summary>
 /// <remarks>
-/// Non-native host routes are emitted without a <c>Match.Hosts</c> constraint and carry the pattern in
+/// Non-native host routes are emitted without a <c>Match.Hosts</c> constraint and carry the raw pattern in
 /// <c>RouteConfig.Metadata</c>. This endpoint-selector policy invalidates such candidates whose request host does
-/// not match, while native exact/leading-wildcard routes (which keep <c>Match.Hosts</c>) remain more specific and
-/// win — matching nginx-proxy's exact &gt; wildcard precedence.
+/// not match (classifying the pattern via <see cref="HostPattern"/>), while native exact/leading-wildcard routes
+/// (which keep <c>Match.Hosts</c>) remain more specific and win — matching nginx-proxy's precedence.
 /// </remarks>
 public sealed class DockYarpHostMatcherPolicy : MatcherPolicy, IEndpointSelectorPolicy
 {
-    /// <summary>Route metadata key carrying a trailing-wildcard host pattern (<c>prefix.*</c>).</summary>
-    internal const string HostTrailingKey = "DockYarp.HostTrailing";
+    /// <summary>Route metadata key carrying a non-native host pattern (trailing wildcard or <c>~</c>-regex).</summary>
+    internal const string HostPatternKey = "DockYarp.HostPattern";
 
     /// <inheritdoc />
     /// <remarks>Runs after the built-in host matcher policy so native host routes are resolved first.</remarks>
@@ -63,5 +63,5 @@ public sealed class DockYarpHostMatcherPolicy : MatcherPolicy, IEndpointSelector
     }
 
     private static string? HostPatternFor(Endpoint endpoint) =>
-        endpoint.Metadata.GetMetadata<RouteModel>()?.Config.Metadata?.GetValueOrDefault(HostTrailingKey);
+        endpoint.Metadata.GetMetadata<RouteModel>()?.Config.Metadata?.GetValueOrDefault(HostPatternKey);
 }

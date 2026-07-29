@@ -11,4 +11,7 @@ public enum HostPatternKind
 
     /// <summary>A trailing wildcard <c>prefix.*</c> matching any host beginning with <c>prefix.</c>.</summary>
     TrailingWildcard,
+
+    /// <summary>A <c>~</c>-prefixed regular expression (lowest precedence).</summary>
+    Regex,
 }

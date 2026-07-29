@@ -121,6 +121,30 @@ public sealed class RouteMatcherTests
         route!.ClusterId.Should().Be("leading");
     }
 
+    /// <summary>A regex host route matches a host satisfying the expression.</summary>
+    [Test]
+    public void RegexHostMatches()
+    {
+        RouteMatcher matcher = new([new RouteRule { HostPattern = @"~^app-\d+\.local$", ClusterId = "regex" }]);
+
+        matcher.TryMatch("app-42.local", "/", out RouteRule? route).Should().BeTrue();
+        route!.ClusterId.Should().Be("regex");
+    }
+
+    /// <summary>A wildcard host wins over a regex host when both match.</summary>
+    [Test]
+    public void WildcardWinsOverRegex()
+    {
+        RouteMatcher matcher = new(
+        [
+            new RouteRule { HostPattern = "*.local", ClusterId = "leading" },
+            new RouteRule { HostPattern = @"~^app\.local$", ClusterId = "regex" },
+        ]);
+
+        matcher.TryMatch("app.local", "/", out RouteRule? route).Should().BeTrue();
+        route!.ClusterId.Should().Be("leading");
+    }
+
     /// <summary>An exact host still wins over a matching multi-level wildcard.</summary>
     [Test]
     public void ExactHostWinsOverNestedWildcard()

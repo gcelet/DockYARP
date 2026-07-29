@@ -70,8 +70,10 @@ public static class YarpConfigMapper
         };
     }
 
-    // Non-native (metadata-matched) host routes sit below native host routes; a lower order wins in YARP.
-    private const int NonNativeHostOrder = 1000;
+    // Non-native (metadata-matched) host routes sit below native host routes; a lower order wins in YARP. Regex
+    // sits below trailing wildcard so wildcard beats regex, matching nginx precedence.
+    private const int TrailingHostOrder = 1000;
+    private const int RegexHostOrder = 2000;
     private const string CatchAllPath = "/{**catch-all}";
 
     private static RouteConfig BuildRoute(RouteRule rule)
@@ -82,7 +84,7 @@ public static class YarpConfigMapper
         {
             RouteId = $"{rule.HostPattern}|{rule.PathPrefix}",
             ClusterId = rule.ClusterId,
-            Order = BuildOrder(rule.Priority, nativeHost),
+            Order = BuildOrder(rule.Priority, pattern.Kind),
             Match = new RouteMatch
             {
                 // Native forms (exact, leading wildcard) use YARP host matching; non-native forms match any host
@@ -90,26 +92,24 @@ public static class YarpConfigMapper
                 Hosts = nativeHost ? [rule.HostPattern] : null,
                 Path = nativeHost ? BuildPath(rule.PathPrefix) : BuildPath(rule.PathPrefix) ?? CatchAllPath,
             },
-            Metadata = BuildHostMetadata(pattern, rule.HostPattern),
+            Metadata = BuildHostMetadata(pattern.Kind, rule.HostPattern),
             Transforms = BuildTransforms(rule.Transforms),
         };
     }
 
     // YARP: a lower order takes precedence, so a higher priority maps to a lower (negated) order. Non-native host
-    // routes are offset below native ones while priority still orders among them.
-    private static int? BuildOrder(int priority, bool nativeHost)
-    {
-        if (!nativeHost)
+    // routes are offset below native ones (and regex below trailing) while priority still orders within a tier.
+    private static int? BuildOrder(int priority, HostPatternKind kind) =>
+        kind switch
         {
-            return NonNativeHostOrder - priority;
-        }
+            HostPatternKind.TrailingWildcard => TrailingHostOrder - priority,
+            HostPatternKind.Regex => RegexHostOrder - priority,
+            _ => priority == 0 ? null : -priority,
+        };
 
-        return priority == 0 ? null : -priority;
-    }
-
-    private static IReadOnlyDictionary<string, string>? BuildHostMetadata(HostPattern pattern, string hostPattern) =>
-        pattern.Kind == HostPatternKind.TrailingWildcard
-            ? new Dictionary<string, string>(StringComparer.Ordinal) { [DockYarpHostMatcherPolicy.HostTrailingKey] = hostPattern }
+    private static IReadOnlyDictionary<string, string>? BuildHostMetadata(HostPatternKind kind, string hostPattern) =>
+        kind is HostPatternKind.TrailingWildcard or HostPatternKind.Regex
+            ? new Dictionary<string, string>(StringComparer.Ordinal) { [DockYarpHostMatcherPolicy.HostPatternKey] = hostPattern }
             : null;
 
     private static IReadOnlyList<IReadOnlyDictionary<string, string>>? BuildTransforms(RouteTransforms? transforms)

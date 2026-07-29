@@ -18,6 +18,7 @@ public sealed class RouteMatcher
     private readonly Dictionary<string, RouteRule[]> exactHosts;
     private readonly PatternRoute[] leadingWildcards;
     private readonly PatternRoute[] trailingWildcards;
+    private readonly PatternRoute[] regexHosts;
     private readonly RouteRule[]? defaultHostRoutes;
 
     /// <summary>Builds a matcher from the given routes, with no default host.</summary>
@@ -35,6 +36,7 @@ public sealed class RouteMatcher
         Dictionary<string, List<RouteRule>> exact = new(StringComparer.OrdinalIgnoreCase);
         List<PatternRoute> leading = [];
         List<PatternRoute> trailing = [];
+        List<PatternRoute> regexes = [];
 
         foreach (RouteRule route in routes)
         {
@@ -50,6 +52,12 @@ public sealed class RouteMatcher
                 case HostPatternKind.TrailingWildcard:
                 {
                     trailing.Add(new PatternRoute(pattern, route));
+                    break;
+                }
+
+                case HostPatternKind.Regex:
+                {
+                    regexes.Add(new PatternRoute(pattern, route));
                     break;
                 }
 
@@ -72,8 +80,10 @@ public sealed class RouteMatcher
         exactHosts = BuildExactIndex(exact);
         leading.Sort(static (left, right) => CompareRoutes(left.Rule, right.Rule));
         trailing.Sort(static (left, right) => CompareRoutes(left.Rule, right.Rule));
+        regexes.Sort(static (left, right) => CompareRoutes(left.Rule, right.Rule));
         leadingWildcards = [.. leading];
         trailingWildcards = [.. trailing];
+        regexHosts = [.. regexes];
         defaultHostRoutes = defaultHost is { Length: > 0 } host && exactHosts.TryGetValue(host, out RouteRule[]? routesForHost)
             ? routesForHost
             : null;
@@ -92,7 +102,8 @@ public sealed class RouteMatcher
         }
 
         if (TryMatchWildcard(leadingWildcards, host, path, out route)
-            || TryMatchWildcard(trailingWildcards, host, path, out route))
+            || TryMatchWildcard(trailingWildcards, host, path, out route)
+            || TryMatchWildcard(regexHosts, host, path, out route))
         {
             return true;
         }

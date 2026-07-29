@@ -18,14 +18,14 @@ using Yarp.ReverseProxy.Model;
 /// <summary>Tests for <see cref="DockYarpHostMatcherPolicy"/> candidate selection.</summary>
 public sealed class DockYarpHostMatcherPolicyTests
 {
-    private const string HostTrailingKey = "DockYarp.HostTrailing";
+    private const string HostPatternKey = "DockYarp.HostPattern";
 
     /// <summary>A candidate whose request host does not match the trailing pattern is invalidated.</summary>
     [Test]
     public async Task InvalidatesNonMatchingTrailingHost()
     {
         DockYarpHostMatcherPolicy policy = new();
-        CandidateSet candidates = Candidates(TrailingEndpoint("app.*"));
+        CandidateSet candidates = Candidates(PatternEndpoint("app.*"));
 
         await policy.ApplyAsync(Context("other.local"), candidates);
 
@@ -37,11 +37,26 @@ public sealed class DockYarpHostMatcherPolicyTests
     public async Task KeepsMatchingTrailingHost()
     {
         DockYarpHostMatcherPolicy policy = new();
-        CandidateSet candidates = Candidates(TrailingEndpoint("app.*"));
+        CandidateSet candidates = Candidates(PatternEndpoint("app.*"));
 
         await policy.ApplyAsync(Context("app.example.com"), candidates);
 
         candidates.IsValidCandidate(0).Should().BeTrue();
+    }
+
+    /// <summary>A regex-metadata candidate is invalidated for a non-matching host and kept for a matching one.</summary>
+    [Test]
+    public async Task RegexHostIsMatched()
+    {
+        DockYarpHostMatcherPolicy policy = new();
+        CandidateSet matching = Candidates(PatternEndpoint(@"~^app-\d+\.local$"));
+        CandidateSet notMatching = Candidates(PatternEndpoint(@"~^app-\d+\.local$"));
+
+        await policy.ApplyAsync(Context("app-42.local"), matching);
+        await policy.ApplyAsync(Context("nope.local"), notMatching);
+
+        matching.IsValidCandidate(0).Should().BeTrue();
+        notMatching.IsValidCandidate(0).Should().BeFalse();
     }
 
     /// <summary>The policy does not apply to endpoints without the host metadata.</summary>
@@ -54,14 +69,14 @@ public sealed class DockYarpHostMatcherPolicyTests
         policy.AppliesToEndpoints([endpoint]).Should().BeFalse();
     }
 
-    private static Endpoint TrailingEndpoint(string pattern)
+    private static Endpoint PatternEndpoint(string pattern)
     {
         RouteConfig config = new()
         {
             RouteId = "r",
             ClusterId = "c",
             Match = new RouteMatch { Path = "/{**catch-all}" },
-            Metadata = new Dictionary<string, string>(System.StringComparer.Ordinal) { [HostTrailingKey] = pattern },
+            Metadata = new Dictionary<string, string>(System.StringComparer.Ordinal) { [HostPatternKey] = pattern },
         };
         RouteModel model = new(config, cluster: null, HttpTransformer.Empty);
         return new Endpoint(requestDelegate: null, new EndpointMetadataCollection(model), pattern);

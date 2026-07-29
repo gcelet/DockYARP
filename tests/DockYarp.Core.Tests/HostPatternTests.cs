@@ -43,4 +43,26 @@ public sealed class HostPatternTests
         pattern.Matches("app").Should().BeFalse();
         pattern.Matches("other.local").Should().BeFalse();
     }
+
+    /// <summary>A ~-prefixed regex matches hosts satisfying the expression and rejects others.</summary>
+    [Test]
+    public void RegexMatchesExpression()
+    {
+        HostPattern pattern = HostPattern.Parse(@"~^app-\d+\.example\.com$");
+
+        pattern.Kind.Should().Be(HostPatternKind.Regex);
+        pattern.Matches("app-42.example.com").Should().BeTrue();
+        pattern.Matches("app-x.example.com").Should().BeFalse();
+        pattern.Matches("other.example.com").Should().BeFalse();
+    }
+
+    /// <summary>An invalid regex never matches (fails closed rather than throwing).</summary>
+    [Test]
+    public void InvalidRegexNeverMatches()
+    {
+        HostPattern pattern = HostPattern.Parse("~^app-[");
+
+        pattern.Kind.Should().Be(HostPatternKind.Regex);
+        pattern.Matches("app-42.local").Should().BeFalse();
+    }
 }
