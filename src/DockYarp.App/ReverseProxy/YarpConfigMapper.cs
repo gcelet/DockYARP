@@ -4,6 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 
 using DockYarp.Core.Models;
 using DockYarp.Core.Routing;
@@ -177,10 +179,24 @@ public static class YarpConfigMapper
             LoadBalancingPolicy = MapPolicy(cluster.LoadBalancingPolicy),
             Destinations = BuildDestinations(cluster.Endpoints),
             HealthCheck = BuildHealth(cluster.HealthCheck),
-            HttpRequest = cluster.RequestTimeout is { } timeout
-                ? new ForwarderRequestConfig { ActivityTimeout = timeout }
-                : null,
+            HttpRequest = BuildRequestConfig(cluster),
         };
+
+    // gRPC backends require exact HTTP/2 (no downgrade); YARP then forwards gRPC, including trailers.
+    private static ForwarderRequestConfig? BuildRequestConfig(Cluster cluster)
+    {
+        if (cluster.RequestTimeout is null && !cluster.Http2Only)
+        {
+            return null;
+        }
+
+        return new ForwarderRequestConfig
+        {
+            ActivityTimeout = cluster.RequestTimeout,
+            Version = cluster.Http2Only ? HttpVersion.Version20 : null,
+            VersionPolicy = cluster.Http2Only ? HttpVersionPolicy.RequestVersionExact : null,
+        };
+    }
 
     private static IReadOnlyDictionary<string, DestinationConfig> BuildDestinations(
         ImmutableArray<ClusterEndpoint> endpoints)

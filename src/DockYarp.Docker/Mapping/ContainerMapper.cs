@@ -217,6 +217,7 @@ public static class ContainerMapper
                 Endpoints = [.. endpoints],
                 LoadBalancingPolicy = first.LoadBalancingPolicy ?? LoadBalancingPolicy.RoundRobin,
                 RequestTimeout = first.ProxyTimeout,
+                Http2Only = first.Http2,
             };
     }
 

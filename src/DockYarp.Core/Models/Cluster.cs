@@ -22,4 +22,7 @@ public sealed record Cluster
 
     /// <summary>Gets the optional request timeout applied to the cluster's outgoing (proxied) requests.</summary>
     public TimeSpan? RequestTimeout { get; init; }
+
+    /// <summary>Gets a value indicating whether the backend is contacted over HTTP/2 only (a gRPC backend).</summary>
+    public bool Http2Only { get; init; }
 }

@@ -49,6 +49,7 @@ public static class LabelParser
             Hosts = hosts,
             Port = port,
             Scheme = ParseScheme(GetOrNull(labels, DockerLabels.VirtualProto)),
+            Http2 = ParseHttp2(GetOrNull(labels, DockerLabels.VirtualProto)),
             PathPrefix = virtualPath,
             PathRemovePrefix = removePrefix,
             PathAddPrefix = addPrefix,
@@ -112,9 +113,7 @@ public static class LabelParser
     {
         ArgumentNullException.ThrowIfNull(labels);
         string? proto = GetOrNull(labels, DockerLabels.VirtualProto);
-        return proto is not null
-            && !proto.Equals("http", StringComparison.OrdinalIgnoreCase)
-            && !proto.Equals("https", StringComparison.OrdinalIgnoreCase);
+        return proto is not null && proto.ToUpperInvariant() is not ("HTTP" or "HTTPS" or "GRPC" or "GRPCS");
     }
 
     /// <summary>Reports whether <c>DOCKYARP_PRIORITY</c> is present but not a valid integer.</summary>
@@ -200,9 +199,14 @@ public static class LabelParser
         };
 
     private static BackendScheme ParseScheme(string? value) =>
-        string.Equals(value, "https", StringComparison.OrdinalIgnoreCase)
-            ? BackendScheme.Https
-            : BackendScheme.Http;
+        value?.ToUpperInvariant() switch
+        {
+            "HTTPS" or "GRPCS" => BackendScheme.Https,
+            _ => BackendScheme.Http,
+        };
+
+    private static bool ParseHttp2(string? value) =>
+        value?.ToUpperInvariant() is "GRPC" or "GRPCS";
 
     private static BasicAuthCredentials? ParseAuth(IReadOnlyDictionary<string, string> labels)
     {

@@ -17,6 +17,9 @@ public sealed record ContainerLabelConfig
     /// <summary>Gets the backend transport scheme (<c>VIRTUAL_PROTO</c>); defaults to HTTP.</summary>
     public BackendScheme Scheme { get; init; } = BackendScheme.Http;
 
+    /// <summary>Gets a value indicating whether the backend uses HTTP/2 only (<c>VIRTUAL_PROTO=grpc</c>/<c>grpcs</c>).</summary>
+    public bool Http2 { get; init; }
+
     /// <summary>Gets the optional path prefix (<c>VIRTUAL_PATH</c>).</summary>
     public string? PathPrefix { get; init; }
 

@@ -204,6 +204,23 @@ public sealed class YarpConfigMapperTests
         clusters.Single().HttpRequest!.ActivityTimeout.Should().Be(System.TimeSpan.FromSeconds(30));
     }
 
+    /// <summary>An HTTP/2-only (gRPC) cluster forwards over exact HTTP/2.</summary>
+    [Test]
+    public void Http2OnlyClusterForwardsExactHttp2()
+    {
+        Cluster grpc = Cluster("app", LoadBalancingPolicy.RoundRobin) with { Http2Only = true };
+        RouteConfigSnapshot snapshot = new(
+            [new RouteRule { HostPattern = "app.local", ClusterId = "app" }],
+            [grpc],
+            1);
+
+        (_, System.Collections.Generic.IReadOnlyList<ClusterConfig> clusters) = YarpConfigMapper.Map(snapshot);
+
+        Yarp.ReverseProxy.Forwarder.ForwarderRequestConfig request = clusters.Single().HttpRequest!;
+        request.Version.Should().Be(System.Net.HttpVersion.Version20);
+        request.VersionPolicy.Should().Be(System.Net.Http.HttpVersionPolicy.RequestVersionExact);
+    }
+
     /// <summary>Endpoints sharing an id collapse to one destination instead of throwing.</summary>
     [Test]
     public void DuplicateEndpointsCollapseToOneDestination()

@@ -378,4 +378,60 @@ public sealed class LabelParserTests
         config!.Auth.Should().BeNull();
         LabelParser.HasIncompleteAuth(container.Labels).Should().BeTrue();
     }
+
+    /// <summary>VIRTUAL_PROTO=grpc selects HTTP transport with HTTP/2-only forwarding.</summary>
+    [Test]
+    public void GrpcProtoIsHttp2OverHttp()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.VirtualProto, "grpc")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.Scheme.Should().Be(BackendScheme.Http);
+        config.Http2.Should().BeTrue();
+        LabelParser.HasUnsupportedProto(container.Labels).Should().BeFalse();
+    }
+
+    /// <summary>VIRTUAL_PROTO=grpcs selects HTTPS transport with HTTP/2-only forwarding.</summary>
+    [Test]
+    public void GrpcsProtoIsHttp2OverHttps()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.VirtualProto, "grpcs")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.Scheme.Should().Be(BackendScheme.Https);
+        config.Http2.Should().BeTrue();
+        LabelParser.HasUnsupportedProto(container.Labels).Should().BeFalse();
+    }
+
+    /// <summary>VIRTUAL_PROTO=https selects HTTPS transport without HTTP/2-only forwarding.</summary>
+    [Test]
+    public void HttpsProtoIsNotHttp2()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.VirtualProto, "https")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.Scheme.Should().Be(BackendScheme.Https);
+        config.Http2.Should().BeFalse();
+    }
 }
