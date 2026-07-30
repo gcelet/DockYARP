@@ -1,0 +1,5 @@
+{{/* DockYARP — navbar brand: mark + wordmark */}}
+<a class="navbar-brand" href="{{ .Site.Home.RelPermalink }}">
+  {{ with resources.Get "icons/logo.svg" }}{{ .Content | safeHTML }}{{ end }}
+  <span class="navbar-brand__name">Dock<em>YARP</em></span>
+</a>

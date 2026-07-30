@@ -1,0 +1,77 @@
+# GitHub Pages project site default; swap to https://dockyarp.com/ once the domain is reserved.
+# Override at build time with `hugo --baseURL` for other hosts.
+baseURL = "https://gcelet.github.io/DockYARP/"
+title = "DockYARP"
+contentDir = "content/en"
+defaultContentLanguage = "en"
+enableRobotsTXT = true
+enableGitInfo = true
+
+disableKinds = ["taxonomy", "term"]
+
+# Docsy is installed as a Git submodule at themes/docsy (the theme lives under themes/docsy/theme),
+# so no Hugo Modules / Go toolchain is required. See README.md for setup.
+theme = ["docsy/theme"]
+
+# Hugo denies text/html content files by default. We author only Markdown pages plus the first-party Docsy
+# landing (content/en/_index.html), so allow exactly those two content media types — nothing else.
+[security]
+  allowContent = ['^text/markdown$', '^text/html$']
+
+# Single language; `locale` replaces the deprecated top-level `languageCode` (Hugo 0.158+).
+[languages]
+  [languages.en]
+    label = "English"
+    locale = "en-US"
+    weight = 1
+
+[markup]
+  [markup.goldmark.renderer]
+    unsafe = true
+  [markup.highlight]
+    style = "dracula"
+    lineNumbersInTable = false
+    noClasses = false
+
+[params]
+  copyright = "DockYARP contributors"
+  github_repo = "https://github.com/gcelet/DockYARP"
+  github_branch = "main"
+  github_subdir = "docs-site"
+  description = "Automatic reverse proxy for Docker, powered by .NET & YARP."
+  images = ["/images/dockyarp-github-banner.png"]
+
+  # Brand colours also exposed to templates
+  [params.brand]
+    ink = "#0F1226"
+    blue = "#3B82F6"
+    violet = "#7C3AED"
+    teal = "#14B8A6"
+
+  [params.ui]
+    showLightDarkModeMenu = true  # first-class light/dark toggle
+    navbar_logo = true          # renders assets/icons/logo.svg
+    navbar_translucent_over_cover_disable = false
+    sidebar_menu_compact = false
+    sidebar_search_disable = false
+    breadcrumb_disable = false
+    footer_about_enable = true
+
+  [params.links]
+    [[params.links.user]]
+      name = "Docker Hub"
+      url = "https://hub.docker.com/r/dockyarp/dockyarp"
+      icon = "fab fa-docker"
+      desc = "Pull the image"
+    [[params.links.developer]]
+      name = "GitHub"
+      url = "https://github.com/gcelet/DockYARP"
+      icon = "fab fa-github"
+      desc = "Source, issues, discussions"
+
+# The Docs entry comes from content/en/docs/_index.md front matter; only non-content links live here.
+[[menu.main]]
+  name = "GitHub"
+  weight = 50
+  url = "https://github.com/gcelet/DockYARP"
+  pre = "<i class='fab fa-github'></i>"

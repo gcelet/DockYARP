@@ -39,3 +39,8 @@ N/A — internal initiative. No `parity.md` row.
   [[add-doc-versioning]] when present).
 - Tier B-runtime: needs an external CI runner + hosting (GitHub Pages), unlike the deterministic in-repo items.
 - Do not touch the Nuke stop-files (`build/Directory.Build.*`); add the target within the existing build project.
+- **Docsy install method to revisit here**: the foundation installs Docsy as a **Git submodule** (avoids Go on
+  the Windows dev box). In CI this is a one-liner (`actions/checkout` with `submodules: recursive`), so it is
+  not a blocker. When building CI, decide whether to keep the submodule or switch to **Hugo Modules** (Go is
+  trivial to add on a CI runner) — a project preference, not a technical constraint. The user finds the local
+  submodule mildly annoying but acceptable for now.

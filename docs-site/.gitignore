@@ -1,0 +1,11 @@
+# Hugo build output
+/public/
+/resources/
+.hugo_build.lock
+
+# Node / Docsy dependencies
+/node_modules/
+/themes/docsy/node_modules/
+
+# Hugo Modules (unused: Docsy is a Git submodule, not a module) — ignore if ever generated
+/go.sum

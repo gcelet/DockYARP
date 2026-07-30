@@ -1,0 +1,44 @@
+---
+title: DockYARP
+linkTitle: DockYARP
+menu:
+  main:
+    weight: 1
+---
+
+{{< blocks/cover title="Dock<em>YARP</em>" image_anchor="top" height="full" >}}
+<p class="lead mt-4 mb-5">
+  Automatic reverse proxy for Docker — powered by .NET &amp; YARP.<br>
+  Container auto-discovery, dynamic routing, TLS.
+</p>
+<a class="btn btn-lg btn-primary me-3 mb-4" href="{{< relref "/docs" >}}">
+  Get started <i class="fas fa-arrow-right ms-2"></i>
+</a>
+<a class="btn btn-lg btn-secondary mb-4" href="https://github.com/gcelet/DockYARP">
+  <i class="fab fa-github me-2"></i> GitHub
+</a>
+{{< /blocks/cover >}}
+
+{{< blocks/section color="white" type="row" >}}
+{{% blocks/feature icon="fa-magnifying-glass" title="Container auto-discovery" %}}
+Routes appear and disappear as containers start and stop. No config reloads.
+{{% /blocks/feature %}}
+{{% blocks/feature icon="fa-route" title="Dynamic routing" %}}
+Host- and path-based rules driven entirely by container labels, applied live by YARP.
+{{% /blocks/feature %}}
+{{% blocks/feature icon="fa-lock" title="Automatic TLS" %}}
+Certificates provisioned and renewed per host, with sane defaults out of the box.
+{{% /blocks/feature %}}
+{{< /blocks/section >}}
+
+{{< blocks/section color="dark" type="row" >}}
+{{% blocks/feature icon="fab fa-docker" title="Pull the image" url="https://hub.docker.com/r/dockyarp/dockyarp" %}}
+`docker pull dockyarp`
+{{% /blocks/feature %}}
+{{% blocks/feature icon="fa-tags" title="Configure with labels" url="/docs/configuration/" %}}
+nginx-proxy-compatible labels: `VIRTUAL_HOST`, `VIRTUAL_PORT`, `LETSENCRYPT_HOST`, and `DOCKYARP_*` extensions.
+{{% /blocks/feature %}}
+{{% blocks/feature icon="fab fa-github" title="Contribute" url="https://github.com/gcelet/DockYARP" %}}
+Issues, discussions and pull requests are welcome.
+{{% /blocks/feature %}}
+{{< /blocks/section >}}

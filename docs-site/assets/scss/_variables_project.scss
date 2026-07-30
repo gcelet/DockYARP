@@ -1,0 +1,64 @@
+//
+// DockYARP — Docsy brand variables
+// Loaded before Bootstrap/Docsy so every derived colour follows the brand.
+//
+
+// ---- Brand palette -------------------------------------------------------
+$dy-ink:        #0F1226; // primary surface / navbar / code blocks
+$dy-ink-deep:   #0B0E22; // sidebar, footer
+$dy-blue:       #3B82F6; // hexagon / structure
+$dy-violet:     #7C3AED; // primary action (Y of YARP)
+$dy-violet-lt:  #A78BFA; // accent on dark backgrounds
+$dy-teal:       #14B8A6; // flow / success
+$dy-teal-lt:    #2DD4BF;
+$dy-mist:       #E2E8F0;
+$dy-slate:      #64748B;
+
+// ---- Bootstrap / Docsy semantic colours ---------------------------------
+$primary:       $dy-violet;
+$secondary:     $dy-blue;
+$success:       $dy-teal;
+$info:          $dy-blue;
+$warning:       #EAB308;
+$danger:        #EF4444;
+$dark:          $dy-ink;
+$light:         #F6F7FB;
+
+$body-color:    #334155;
+$body-bg:       #FFFFFF;
+
+// ---- Typography ----------------------------------------------------------
+$td-enable-google-fonts: true;
+$google_font_name: "Space Grotesk";
+$google_font_family: "Space+Grotesk:wght@400;500;600;700";
+
+$font-family-sans-serif: "Space Grotesk", -apple-system, BlinkMacSystemFont,
+  "Segoe UI", system-ui, sans-serif;
+$font-family-monospace: "JetBrains Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+$font-size-base: 1rem;
+$headings-font-weight: 700;
+$display1-weight: 700;
+$display2-weight: 700;
+$headings-letter-spacing: -0.02em;
+
+// ---- Shape ---------------------------------------------------------------
+$border-radius:    0.5rem;
+$border-radius-lg: 0.75rem;
+$border-radius-sm: 0.375rem;
+$border-color:     $dy-mist;
+
+// ---- Docsy specifics -----------------------------------------------------
+$td-sidebar-bg-color:     #FFFFFF;
+$td-sidebar-border-color: $dy-mist;
+
+// Docsy "paint by number" section backgrounds: a flat LIST of colors (indexed by a section's ordinal),
+// not a map — Docsy iterates it with nth() and passes each entry straight to color-contrast().
+$td-box-colors: $dy-ink, $dy-violet, $dy-blue, $dy-teal, $dy-ink-deep, $dy-slate;
+
+$link-color: $dy-violet;
+$link-hover-color: darken($dy-violet, 8%);
+
+$navbar-dark-color:        rgba(255, 255, 255, 0.72);
+$navbar-dark-hover-color:  #FFFFFF;
+$navbar-dark-active-color: $dy-violet-lt;

@@ -1,0 +1,220 @@
+//
+// DockYARP — Docsy custom styles
+//
+
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap");
+
+// ---- Navbar --------------------------------------------------------------
+.td-navbar {
+  background: $dy-ink !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+
+  .navbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+
+    svg, .navbar-logo svg {
+      height: 30px;
+      width: 30px;
+      fill: none;
+    }
+    .navbar-brand__name { color: #fff; }
+    .navbar-brand__name em { color: $dy-violet-lt; font-style: normal; }
+  }
+
+  // The navbar background is always dark, so keep its content light in BOTH site themes — otherwise
+  // Bootstrap darkens the nav links and the theme toggle in light mode, making them invisible here.
+  // Nav links, the GitHub icon link (.Pre), and the theme toggle (#bd-theme, .btn-link.nav-link with a
+  // currentColor SVG) all resolve their colour from here.
+  .nav-link,
+  #bd-theme {
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.78);
+    &:hover,
+    &:focus { color: #fff; }
+  }
+  .nav-link.active { color: $dy-violet-lt !important; }
+}
+
+// ---- Cover / hero blocks -------------------------------------------------
+.td-cover-block {
+  background-color: $dy-ink;
+  background-image: radial-gradient(120% 140% at 78% 20%, #1B1F45 0%, #0F1226 55%);
+  min-height: 480px;
+
+  .display-1 {
+    letter-spacing: -0.03em;
+    em { color: $dy-violet-lt; font-style: normal; }
+  }
+  .lead { color: #B4BAD6; }
+
+  .btn-primary {
+    background: $dy-violet;
+    border-color: $dy-violet;
+    font-weight: 600;
+    &:hover { background: darken($dy-violet, 6%); border-color: darken($dy-violet, 6%); }
+  }
+  .btn-secondary {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.28);
+    color: #fff;
+    font-weight: 600;
+    &:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.5); }
+  }
+}
+
+// ---- Sidebar -------------------------------------------------------------
+.td-sidebar-nav {
+  a {
+    color: $dy-slate;
+    border-radius: $border-radius-sm;
+    padding: 0.28rem 0.6rem;
+    &:hover { color: $dy-violet; background: rgba(124, 58, 237, 0.06); }
+  }
+  .td-sidebar-link.active,
+  .td-sidebar-nav-active-item {
+    color: #fff !important;
+    background: $dy-violet;
+    font-weight: 600;
+  }
+}
+.td-sidebar { border-right: 1px solid $dy-mist; }
+
+// ---- Right-hand TOC ------------------------------------------------------
+.td-toc {
+  border-left: 1px solid $dy-mist;
+  #TableOfContents a { color: $dy-slate; }
+  #TableOfContents a:hover { color: $dy-violet; }
+}
+
+// ---- Content -------------------------------------------------------------
+.td-content {
+  h1 { letter-spacing: -0.03em; }
+  h2 {
+    margin-top: 2.2rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid $dy-mist;
+  }
+
+  > table { display: table; width: 100%; }
+
+  a { text-decoration: none; border-bottom: 1px solid rgba(124, 58, 237, 0.3); }
+  a:hover { border-bottom-color: $dy-violet; }
+
+  code {
+    font-family: $font-family-monospace;
+    background: #F1F5F9;
+    color: $dy-ink;
+    padding: 0.12em 0.4em;
+    border-radius: 5px;
+  }
+
+  .highlight {
+    border-radius: $border-radius-lg;
+    padding: 0.2rem 0.4rem;
+    background: $dy-ink !important;
+    pre { background: transparent !important; }
+  }
+
+  blockquote {
+    border-left: 3px solid $dy-violet;
+    background: rgba(124, 58, 237, 0.04);
+    padding: 0.8rem 1.1rem;
+    border-radius: 0 $border-radius $border-radius 0;
+  }
+}
+
+// ---- Alerts / Docsy shortcodes ------------------------------------------
+.alert-primary { border-left-color: $dy-violet; }
+.pageinfo-primary { background: rgba(124, 58, 237, 0.06); border-color: rgba(124, 58, 237, 0.25); }
+
+// ---- Feature cards (blocks/section) -------------------------------------
+.td-block__feature {
+  background: #fff;
+  border: 1px solid $dy-mist;
+  border-radius: $border-radius-lg;
+  padding: 1.6rem;
+  height: 100%;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+  &:hover { border-color: rgba(124, 58, 237, 0.4); transform: translateY(-2px); }
+  i, .feature-icon { color: $dy-violet; font-size: 1.6rem; }
+  h4 { font-weight: 600; margin-top: 0.8rem; }
+  p { color: $dy-slate; font-size: 0.95rem; }
+}
+
+// ---- Footer --------------------------------------------------------------
+.td-footer {
+  background: $dy-ink-deep;
+  color: rgba(255, 255, 255, 0.62);
+  min-height: 200px;
+  a { color: #fff; }
+  a:hover { color: $dy-violet-lt; }
+}
+
+// ---- Search --------------------------------------------------------------
+.td-search__input,
+input.td-search-input {
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  &::placeholder { color: rgba(255, 255, 255, 0.5); }
+  &:focus { border-color: $dy-violet-lt; box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.25); }
+}
+
+// ---- Dark mode -----------------------------------------------------------
+// First-class dark theme (the default reading mode for many users). Docsy/Bootstrap 5.3 set
+// [data-bs-theme="dark"] on <html> via the theme toggle; prefers-color-scheme is a fallback for the
+// system setting. Both point at the same brand-dark surfaces.
+@mixin dockyarp-dark {
+  $dy-dark-bg:      #0F1226; // page surface
+  $dy-dark-surface: #171B34; // cards, code, raised panels
+  $dy-dark-border:  #262B47;
+  $dy-dark-text:    #E2E8F0;
+  $dy-dark-muted:   #94A3B8;
+
+  background-color: $dy-dark-bg;
+  color: $dy-dark-text;
+
+  .td-sidebar {
+    background: #0B0E22;
+    border-right-color: $dy-dark-border;
+  }
+  .td-sidebar-nav a { color: $dy-dark-muted; }
+  .td-sidebar-nav a:hover { color: #fff; background: rgba(124, 58, 237, 0.18); }
+
+  .td-toc {
+    border-left-color: $dy-dark-border;
+    #TableOfContents a { color: $dy-dark-muted; }
+    #TableOfContents a:hover { color: $dy-violet-lt; }
+  }
+
+  .td-content {
+    color: $dy-dark-text;
+    h2 { border-top-color: $dy-dark-border; }
+    a { color: $dy-violet-lt; border-bottom-color: rgba(167, 139, 250, 0.35); }
+    a:hover { border-bottom-color: $dy-violet-lt; }
+    code { background: $dy-dark-surface; color: $dy-mist; }
+    blockquote { background: rgba(124, 58, 237, 0.10); }
+    table th, table td { border-color: $dy-dark-border; }
+  }
+
+  .td-block__feature {
+    background: $dy-dark-surface;
+    border-color: $dy-dark-border;
+    &:hover { border-color: rgba(167, 139, 250, 0.5); }
+    p { color: $dy-dark-muted; }
+  }
+
+  // Docsy renders the page footer/box surfaces; keep them on the dark palette.
+  .td-box.td-box--white { background: $dy-dark-surface; color: $dy-dark-text; }
+}
+
+[data-bs-theme="dark"] { @include dockyarp-dark; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-bs-theme="light"]) { @include dockyarp-dark; }
+}

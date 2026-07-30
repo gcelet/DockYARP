@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="DockYARP">
+  <polygon points="60,16 98,38 98,82 60,104 22,82 22,38" stroke="#3B82F6" stroke-width="7"></polygon>
+  <path d="M46 44 L60 64 L74 44" stroke="#A78BFA" stroke-width="7"></path>
+  <path d="M60 64 V90" stroke="#2DD4BF" stroke-width="7"></path>
+  <circle cx="60" cy="64" r="5" fill="#FFFFFF"></circle>
+</svg>
