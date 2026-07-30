@@ -41,6 +41,18 @@ theme = ["docsy/theme"]
   description = "Automatic reverse proxy for Docker, powered by .NET & YARP."
   images = ["/images/dockyarp-github-banner.png"]
 
+  # Client-side offline search (Lunr). The Lunr library is self-hosted (see layouts/_partials/head.html), so
+  # search makes no CDN or search-service request. Algolia DocSearch is the opt-in alternative — set
+  # [params.search.algolia] below and it takes over from the offline index.
+  offlineSearch = true
+  offlineSearchSummaryLength = 200
+  offlineSearchMaxResults = 10
+
+  # [params.search.algolia]
+  #   appId = "APPLICATION_ID"
+  #   apiKey = "SEARCH_API_KEY"
+  #   indexName = "INDEX_NAME"
+
   # Brand colours also exposed to templates
   [params.brand]
     ink = "#0F1226"
