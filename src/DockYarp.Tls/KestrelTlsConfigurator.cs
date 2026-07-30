@@ -28,11 +28,13 @@ public sealed class KestrelTlsConfigurator(
     /// <inheritdoc />
     public void Configure(KestrelServerOptions serverOptions)
     {
-        ImmutableArray<TlsCipherSuite> ciphers = TlsHardening.ParseCipherSuites(options.CipherSuites);
+        SslPolicyResolution effective =
+            SslPolicyPresets.Resolve(options.SslPolicy, options.MinimumTlsVersion, options.CipherSuites);
+        ImmutableArray<TlsCipherSuite> ciphers = TlsHardening.ParseCipherSuites(effective.CipherSuites);
 
         serverOptions.ConfigureHttpsDefaults(https =>
         {
-            https.SslProtocols = TlsHardening.ToSslProtocols(options.MinimumTlsVersion);
+            https.SslProtocols = TlsHardening.ToSslProtocols(effective.MinimumTlsVersion);
             https.ServerCertificate = fallback.Certificate;
             https.ServerCertificateSelector = (_, host) => selector.Select(host);
 

@@ -26,6 +26,13 @@ public sealed class TlsOptions
     /// <summary>Gets or sets the minimum accepted TLS version (default TLS 1.2).</summary>
     public TlsVersion MinimumTlsVersion { get; set; } = TlsVersion.Tls12;
 
+    /// <summary>Gets or sets a named TLS posture preset (<c>Mozilla-Modern</c>/<c>Intermediate</c>/<c>Old</c>).</summary>
+    /// <remarks>
+    /// A preset sets the minimum TLS version and a default cipher-suite list; an explicit <see cref="CipherSuites"/>
+    /// overrides the preset's ciphers. An unset or unrecognized value leaves the configured values unchanged.
+    /// </remarks>
+    public string? SslPolicy { get; set; }
+
     /// <summary>Gets or sets the enabled HTTP protocols for the endpoints (default <c>Http1AndHttp2</c>).</summary>
     public string HttpProtocols { get; set; } = "Http1AndHttp2";
 
