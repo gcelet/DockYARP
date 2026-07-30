@@ -379,6 +379,23 @@ public sealed class LabelParserTests
         LabelParser.HasIncompleteAuth(container.Labels).Should().BeTrue();
     }
 
+    /// <summary>CERT_NAME is parsed into the config's shared-certificate name.</summary>
+    [Test]
+    public void CertNameIsParsed()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.CertName, "shared")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.CertName.Should().Be("shared");
+    }
+
     /// <summary>VIRTUAL_PROTO=grpc selects HTTP transport with HTTP/2-only forwarding.</summary>
     [Test]
     public void GrpcProtoIsHttp2OverHttp()

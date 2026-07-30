@@ -12,4 +12,10 @@ internal static partial class TlsLog
 
     [LoggerMessage(EventId = 2, Level = LogLevel.Error, Message = "Failed to provision certificate for {Host}.")]
     public static partial void ProvisioningFailed(ILogger logger, string host, Exception exception);
+
+    [LoggerMessage(
+        EventId = 3,
+        Level = LogLevel.Warning,
+        Message = "Shared certificate '{CertName}' pinned via CERT_NAME is not in the store; falling back to per-host selection.")]
+    public static partial void SharedCertificateMissing(ILogger logger, string certName);
 }

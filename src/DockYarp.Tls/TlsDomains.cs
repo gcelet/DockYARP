@@ -15,10 +15,13 @@ public static class TlsDomains
     public static IReadOnlyList<DesiredCertificate> Desired(RouteConfigSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
+
+        // A CERT_NAME host uses an operator-supplied shared certificate, so it is not ACME-provisioned.
         return
         [
             .. snapshot.Routes
-                .Where(route => route.Tls is { CertificateHost.Length: > 0 } tls && tls.Method != HttpsMethod.NoHttps)
+                .Where(route => route.Tls is { CertificateHost.Length: > 0, CertificateName: null or "" } tls
+                    && tls.Method != HttpsMethod.NoHttps)
                 .Select(route => new DesiredCertificate(route.Tls!.CertificateHost, route.Tls!.ContactEmail))
                 .DistinctBy(desired => desired.Host, StringComparer.OrdinalIgnoreCase),
         ];

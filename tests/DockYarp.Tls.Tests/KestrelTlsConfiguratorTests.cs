@@ -5,9 +5,11 @@ using System.IO.Abstractions.TestingHelpers;
 
 using AwesomeAssertions;
 
+using DockYarp.Core.Stores;
 using DockYarp.Tls;
 
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.Extensions.Logging.Abstractions;
 
 /// <summary>Tests for <see cref="KestrelTlsConfigurator"/>.</summary>
 public sealed class KestrelTlsConfiguratorTests
@@ -20,7 +22,7 @@ public sealed class KestrelTlsConfiguratorTests
         TlsOptions tlsOptions = new();
         using DefaultCertificateProvider fallback = new(tlsOptions, new MockFileSystem());
         KestrelTlsConfigurator configurator = new(
-            new SniCertificateSelector(store, fallback),
+            new SniCertificateSelector(store, new RouteConfigStore(), fallback, NullLogger<SniCertificateSelector>.Instance),
             fallback,
             tlsOptions,
             new ClientCertificateValidator(tlsOptions, new MockFileSystem()));

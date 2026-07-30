@@ -28,6 +28,9 @@ public static class DockerLabels
     /// <summary>Contact email used when requesting the certificate.</summary>
     public const string LetsEncryptEmail = "LETSENCRYPT_EMAIL";
 
+    /// <summary>Name of a shared certificate in the store to pin for this host (overrides per-host selection).</summary>
+    public const string CertName = "CERT_NAME";
+
     /// <summary>HTTP↔HTTPS behavior: <c>redirect</c> (default), <c>noredirect</c>, <c>nohttp</c>, <c>nohttps</c>.</summary>
     public const string HttpsMethod = "HTTPS_METHOD";
 

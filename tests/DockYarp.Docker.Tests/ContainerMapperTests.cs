@@ -104,6 +104,26 @@ public sealed class ContainerMapperTests
         result.Contribution.Routes.Single().Tls!.CertificateHost.Should().Be("app.local");
     }
 
+    /// <summary>CERT_NAME alone creates TLS metadata pinning the shared certificate (no LETSENCRYPT_HOST).</summary>
+    [Test]
+    public void CertNameCreatesTlsMetadata()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.CertName, "shared")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        HostTlsMetadata? tls = result.Contribution.Routes.Single().Tls;
+        tls.Should().NotBeNull();
+        tls!.CertificateName.Should().Be("shared");
+        tls.CertificateHost.Should().Be("app.local");
+    }
+
     /// <summary>VIRTUAL_DEST with a VIRTUAL_PATH strips the path prefix before forwarding.</summary>
     [Test]
     public void VirtualDestStripsPathPrefix()

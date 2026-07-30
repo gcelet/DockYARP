@@ -35,6 +35,9 @@ public sealed record ContainerLabelConfig
     /// <summary>Gets the certificate contact email (<c>LETSENCRYPT_EMAIL</c>), if any.</summary>
     public string? LetsEncryptEmail { get; init; }
 
+    /// <summary>Gets the shared-certificate name (<c>CERT_NAME</c>) pinned for the host, if any.</summary>
+    public string? CertName { get; init; }
+
     /// <summary>Gets the HTTPS method (<c>HTTPS_METHOD</c>); defaults to <see cref="Core.Models.HttpsMethod.Redirect"/>.</summary>
     public HttpsMethod HttpsMethod { get; init; } = HttpsMethod.Redirect;
 

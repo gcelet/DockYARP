@@ -191,13 +191,17 @@ public static class ContainerMapper
 
         public RouteRule BuildRoute(string host)
         {
-            HostTlsMetadata? tls = first.LetsEncryptHost is { Length: > 0 } certificateHost
+            // A host with LETSENCRYPT_HOST or a CERT_NAME shared certificate is served over HTTPS; a CERT_NAME-only
+            // host certifies the vhost itself (no ACME).
+            string? letsEncryptHost = first.LetsEncryptHost is { Length: > 0 } ? first.LetsEncryptHost : null;
+            HostTlsMetadata? tls = letsEncryptHost is not null || first.CertName is { Length: > 0 }
                 ? new HostTlsMetadata
                 {
-                    CertificateHost = certificateHost,
+                    CertificateHost = letsEncryptHost ?? host,
                     ContactEmail = first.LetsEncryptEmail,
                     Method = first.HttpsMethod,
                     Hsts = first.Hsts,
+                    CertificateName = first.CertName,
                 }
                 : null;
 
@@ -246,13 +250,14 @@ public static class ContainerMapper
         public RouteRule BuildRoute(string clusterId)
         {
             string? routePath = RoutePath(path);
-            HostTlsMetadata? tls = LetsEncryptCovers(common.LetsEncryptHost, host)
+            HostTlsMetadata? tls = LetsEncryptCovers(common.LetsEncryptHost, host) || common.CertName is { Length: > 0 }
                 ? new HostTlsMetadata
                 {
                     CertificateHost = host,
                     ContactEmail = common.LetsEncryptEmail,
                     Method = common.HttpsMethod,
                     Hsts = common.Hsts,
+                    CertificateName = common.CertName,
                 }
                 : null;
 

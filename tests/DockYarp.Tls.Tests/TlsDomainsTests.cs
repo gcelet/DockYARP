@@ -53,4 +53,23 @@ public sealed class TlsDomainsTests
 
         TlsDomains.Desired(snapshot).Should().BeEmpty();
     }
+
+    /// <summary>A host pinned to a CERT_NAME shared certificate is not ACME-provisioned.</summary>
+    [Test]
+    public void CertNameHostIsNotProvisioned()
+    {
+        RouteConfigSnapshot snapshot = new(
+            [
+                new RouteRule
+                {
+                    HostPattern = "app.local",
+                    ClusterId = "app",
+                    Tls = new HostTlsMetadata { CertificateHost = "app.local", CertificateName = "shared" },
+                },
+            ],
+            [],
+            1);
+
+        TlsDomains.Desired(snapshot).Should().BeEmpty();
+    }
 }
