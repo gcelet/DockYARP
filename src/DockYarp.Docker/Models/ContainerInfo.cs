@@ -15,6 +15,9 @@ public sealed record ContainerInfo
     /// <summary>Gets the reachable network address (IP or resolvable host) DockYarp forwards to.</summary>
     public required string Address { get; init; }
 
+    /// <summary>Gets a value indicating whether the container runs in Docker host network mode.</summary>
+    public bool IsHostNetwork { get; init; }
+
     /// <summary>Gets the container labels.</summary>
     public required IReadOnlyDictionary<string, string> Labels { get; init; }
 

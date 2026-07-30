@@ -187,6 +187,39 @@ public sealed class ContainerMapperTests
         result.Warnings.Should().Contain(warning => warning.Contains("no reachable network address", System.StringComparison.Ordinal));
     }
 
+    /// <summary>A host-network container with a host address is routed to that address on its port.</summary>
+    [Test]
+    public void HostNetworkContainerIsRoutedToHostAddress()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "host.docker.internal",
+            DiscoveryTestData.Labels((DockerLabels.VirtualHost, "app.local"), (DockerLabels.VirtualPort, "8080")))
+            with { IsHostNetwork = true };
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Clusters.Should().ContainSingle()
+            .Which.Endpoints.Should().ContainSingle()
+            .Which.Address.Should().Be("http://host.docker.internal:8080");
+    }
+
+    /// <summary>A host-network container with no host address is skipped with a Docker:HostAddress warning.</summary>
+    [Test]
+    public void HostNetworkContainerWithoutHostAddressIsSkipped()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            string.Empty,
+            DiscoveryTestData.Labels((DockerLabels.VirtualHost, "app.local"), (DockerLabels.VirtualPort, "8080")))
+            with { IsHostNetwork = true };
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Routes.Should().BeEmpty();
+        result.Warnings.Should().Contain(warning => warning.Contains("Docker:HostAddress", System.StringComparison.Ordinal));
+    }
+
     /// <summary>A starting container is excluded until it becomes healthy.</summary>
     [Test]
     public void StartingContainerIsExcluded()

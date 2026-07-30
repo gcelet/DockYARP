@@ -23,6 +23,14 @@ public sealed class DockerDiscoveryOptions
     /// <remarks>Set this to the network the proxy shares with its backends; <see langword="null"/> selects deterministically.</remarks>
     public string? PreferredNetwork { get; set; }
 
+    /// <summary>Gets or sets the address the proxy uses to reach the Docker host, for host-network backends.</summary>
+    /// <remarks>
+    /// A host-network container has no container IP; DockYarp forwards to this address (e.g.
+    /// <c>host.docker.internal</c> on Docker Desktop, or the host-gateway/LAN IP on Linux). When unset, a
+    /// host-network backend is skipped rather than routed to a guessed address.
+    /// </remarks>
+    public string? HostAddress { get; set; }
+
     /// <summary>Gets the Docker networks the proxy is attached to, used to select a reachable backend address.</summary>
     /// <remarks>
     /// When non-empty, address selection restricts the fallback choice to a shared (reachable) network and

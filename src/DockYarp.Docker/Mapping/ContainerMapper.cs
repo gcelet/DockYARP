@@ -38,11 +38,14 @@ public static class ContainerMapper
                 continue;
             }
 
-            // No reachable address (e.g. the proxy shares none of the container's networks): skip rather than
-            // build a broken scheme://:port endpoint.
+            // No reachable address (e.g. host mode without a host address, or the proxy shares none of the
+            // container's networks): skip rather than build a broken scheme://:port endpoint.
             if (string.IsNullOrEmpty(container.Address))
             {
-                warnings.Add($"{container.Name} ({Short(container.Id)}): no reachable network address; not routed.");
+                string reason = container.IsHostNetwork
+                    ? "host-network container requires Docker:HostAddress"
+                    : "no reachable network address";
+                warnings.Add($"{container.Name} ({Short(container.Id)}): {reason}; not routed.");
                 continue;
             }
 

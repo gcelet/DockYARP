@@ -19,16 +19,18 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
 {
     private readonly IDockerClient client;
     private readonly string? preferredNetwork;
+    private readonly string? hostAddress;
     private readonly IReadOnlyCollection<string> proxyNetworks;
     private readonly IDictionary<string, IDictionary<string, bool>>? containerFilters;
 
     /// <summary>Initializes the source, creating a Docker client from the options.</summary>
-    /// <param name="options">Discovery options (endpoint, preferred/proxy networks, container filters).</param>
+    /// <param name="options">Discovery options (endpoint, preferred/proxy networks, host address, container filters).</param>
     public DockerContainerSource(DockerDiscoveryOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
         client = CreateClient(options.DockerEndpoint);
         preferredNetwork = options.PreferredNetwork;
+        hostAddress = options.HostAddress;
         proxyNetworks = [.. options.ProxyNetworks];
         containerFilters = DockerFilters.Build(options.ContainerFilters);
     }
@@ -106,16 +108,21 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
         return configuration.CreateClient();
     }
 
-    private ContainerInfo ToContainerInfo(ContainerListResponse response) =>
-        new()
+    private ContainerInfo ToContainerInfo(ContainerListResponse response)
+    {
+        Dictionary<string, string?> networks = BuildNetworks(response);
+        bool hostMode = BackendAddressResolver.IsHostNetwork(networks);
+        return new()
         {
             Id = response.ID,
             Name = ResolveName(response.Names),
-            Address = ResolveAddress(response),
+            Address = ResolveAddress(response, networks, hostMode),
+            IsHostNetwork = hostMode,
             Labels = CopyLabels(response.Labels),
             ExposedPorts = ResolvePorts(response.Ports),
             Health = ContainerStatusParser.ParseHealth(response.Status),
         };
+    }
 
     private static IReadOnlyDictionary<string, string> CopyLabels(IDictionary<string, string>? labels) =>
         labels is null
@@ -125,21 +132,18 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
     private static string ResolveName(IList<string>? names) =>
         names is { Count: > 0 } ? names[0].TrimStart('/') : string.Empty;
 
-    private string ResolveAddress(ContainerListResponse response)
-    {
-        // Select by network (preferred network, ingress skipped, reachable-only, deterministic).
-        Dictionary<string, string?> networks = response.NetworkSettings?.Networks is { } map
+    private static Dictionary<string, string?> BuildNetworks(ContainerListResponse response) =>
+        response.NetworkSettings?.Networks is { } map
             ? map.ToDictionary(pair => pair.Key, pair => pair.Value?.IPAddress, StringComparer.Ordinal)
             : new Dictionary<string, string?>(StringComparer.Ordinal);
-        string? ip = NetworkAddressSelector.Select(networks, preferredNetwork, proxyNetworks);
-        if (!string.IsNullOrEmpty(ip))
-        {
-            return ip;
-        }
 
-        // Reachability unknown: fall back to the container name (resolvable on a shared network). Reachability
-        // known but no shared network: leave the address empty so the mapper skips the unreachable backend.
-        return proxyNetworks.Count > 0 ? string.Empty : ResolveName(response.Names);
+    private string ResolveAddress(ContainerListResponse response, Dictionary<string, string?> networks, bool hostMode)
+    {
+        // Host mode has no container IP; otherwise select by network (preferred, ingress skipped, reachable-only,
+        // deterministic). The resolver falls back to the host address, empty (skip), or the container name.
+        string? ip = hostMode ? null : NetworkAddressSelector.Select(networks, preferredNetwork, proxyNetworks);
+        return BackendAddressResolver.Resolve(
+            networks, hostAddress, ip, ResolveName(response.Names), proxyNetworks);
     }
 
     private static ImmutableArray<int> ResolvePorts(IList<Port>? ports)
