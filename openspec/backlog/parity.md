@@ -51,7 +51,7 @@ parser.
 | Min TLS version / ciphers / protocols | ⚠️ | Wired as config; cipher allow-list Linux/macOS only. |
 | `CERT_NAME` shared/SAN cert | ✅ | `CERT_NAME` pins a named shared certificate in SNI selection; the host is not ACME-provisioned. |
 | `default.crt` + `TRUST_DEFAULT_CERT` + `ENABLE_HTTP_ON_MISSING_CERT` | ✅ | Operator `default.crt`/`.key` preferred; `Security:TrustDefaultCert` (500 on untrusted) + `Security:EnableHttpOnMissingCert`. |
-| `SSL_POLICY` presets (Mozilla/ELB) | ⛔ | Raw cipher config only → [`add-ssl-policy-presets`](items/add-ssl-policy-presets.md). |
+| `SSL_POLICY` presets (Mozilla/ELB) | ✅ | `Tls:SslPolicy` Mozilla Modern/Intermediate/Old → version + ciphers. Live negotiation: → [`e2e-ssl-policy-negotiation`](items/e2e-ssl-policy-negotiation.md). |
 | OCSP stapling (`.chain.pem`) | ⛔ | → [`add-ocsp-stapling`](items/add-ocsp-stapling.md). |
 | ACME DNS-01 | ⛔ | HTTP-01 only → [`add-acme-dns01`](items/add-acme-dns01.md). |
 | DH params (`DHPARAM_*`, per-vhost) | ⛔ | → [`add-dhparam-config`](items/add-dhparam-config.md). |
