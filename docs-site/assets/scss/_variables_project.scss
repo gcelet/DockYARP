@@ -28,9 +28,8 @@ $body-color:    #334155;
 $body-bg:       #FFFFFF;
 
 // ---- Typography ----------------------------------------------------------
-$td-enable-google-fonts: true;
-$google_font_name: "Space Grotesk";
-$google_font_family: "Space+Grotesk:wght@400;500;600;700";
+// Fonts are self-hosted as woff2 (see assets/scss/_fonts_project.scss); no Google Fonts CDN.
+$td-enable-google-fonts: false;
 
 $font-family-sans-serif: "Space Grotesk", -apple-system, BlinkMacSystemFont,
   "Segoe UI", system-ui, sans-serif;

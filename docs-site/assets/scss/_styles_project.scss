@@ -2,7 +2,8 @@
 // DockYARP — Docsy custom styles
 //
 
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap");
+// Self-hosted web fonts (Space Grotesk + JetBrains Mono); no external font request.
+@import "fonts_project";
 
 // ---- Navbar --------------------------------------------------------------
 .td-navbar {
