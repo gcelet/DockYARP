@@ -50,7 +50,7 @@ parser.
 | SNI certificate selection | ✅ | Validated by the Aspire e2e (step-ca). |
 | Min TLS version / ciphers / protocols | ⚠️ | Wired as config; cipher allow-list Linux/macOS only. |
 | `CERT_NAME` shared/SAN cert | ⛔ | → [`add-cert-name-shared-cert`](items/add-cert-name-shared-cert.md). |
-| `default.crt` + `TRUST_DEFAULT_CERT` + `ENABLE_HTTP_ON_MISSING_CERT` | ⛔ | → [`add-default-cert-trust-toggle`](items/add-default-cert-trust-toggle.md). |
+| `default.crt` + `TRUST_DEFAULT_CERT` + `ENABLE_HTTP_ON_MISSING_CERT` | ✅ | Operator `default.crt`/`.key` preferred; `Security:TrustDefaultCert` (500 on untrusted) + `Security:EnableHttpOnMissingCert`. |
 | `SSL_POLICY` presets (Mozilla/ELB) | ⛔ | Raw cipher config only → [`add-ssl-policy-presets`](items/add-ssl-policy-presets.md). |
 | OCSP stapling (`.chain.pem`) | ⛔ | → [`add-ocsp-stapling`](items/add-ocsp-stapling.md). |
 | ACME DNS-01 | ⛔ | HTTP-01 only → [`add-acme-dns01`](items/add-acme-dns01.md). |
