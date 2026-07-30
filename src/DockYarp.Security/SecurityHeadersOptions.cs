@@ -8,6 +8,20 @@ public sealed class SecurityHeadersOptions
     /// <summary>Gets or sets a value indicating whether HSTS is emitted on HTTPS responses.</summary>
     public bool EnableHsts { get; set; } = true;
 
+    /// <summary>Gets or sets a value indicating whether a host without a real certificate is served the default certificate.</summary>
+    /// <remarks>
+    /// When <see langword="false"/> (nginx <c>TRUST_DEFAULT_CERT=false</c>), an HTTPS request to such a host is
+    /// refused with 500 instead of being served via the default certificate.
+    /// </remarks>
+    public bool TrustDefaultCert { get; set; } = true;
+
+    /// <summary>Gets or sets a value indicating whether a host with no certificate stays reachable over HTTP.</summary>
+    /// <remarks>
+    /// When <see langword="true"/> (default, nginx <c>ENABLE_HTTP_ON_MISSING_CERT</c>), a redirecting host is not
+    /// redirected until a certificate exists; when <see langword="false"/>, the redirect is forced regardless.
+    /// </remarks>
+    public bool EnableHttpOnMissingCert { get; set; } = true;
+
     /// <summary>Gets or sets the HSTS max-age.</summary>
     public TimeSpan HstsMaxAge { get; set; } = TimeSpan.FromDays(365);
 

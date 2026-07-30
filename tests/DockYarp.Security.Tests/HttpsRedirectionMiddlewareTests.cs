@@ -75,7 +75,8 @@ public sealed class HttpsRedirectionMiddlewareTests
         RouteConfigStore store = SecurityTestHelpers.StoreWith(new RouteRule { HostPattern = "app.local", ClusterId = "app" });
         HttpsRedirectionMiddleware middleware = new(
             new RouteLookup(store, new RoutingOptions()),
-            new FakeCertificateAvailability(available: true));
+            new FakeCertificateAvailability(available: true),
+            new SecurityHeadersOptions());
         DefaultHttpContext context = SecurityTestHelpers.Context("http", "app.local", "/");
         bool nextCalled = false;
 
@@ -121,7 +122,60 @@ public sealed class HttpsRedirectionMiddlewareTests
         context.Response.Headers.Location.ToString().Should().Be("https://app.local/orders");
     }
 
-    private static HttpsRedirectionMiddleware Middleware(HttpsMethod method, bool certificateAvailable)
+    /// <summary>With TrustDefaultCert=false, an HTTPS request to a host with no real certificate is refused with 500.</summary>
+    [Test]
+    public async Task HttpsRefusedWhenDefaultCertNotTrusted()
+    {
+        HttpsRedirectionMiddleware middleware = Middleware(
+            HttpsMethod.NoRedirect, certificateAvailable: false, new SecurityHeadersOptions { TrustDefaultCert = false });
+        DefaultHttpContext context = SecurityTestHelpers.Context("https", "app.local", "/");
+        bool nextCalled = false;
+
+        await middleware.InvokeAsync(context, _ =>
+        {
+            nextCalled = true;
+            return Task.CompletedTask;
+        });
+
+        context.Response.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
+        nextCalled.Should().BeFalse();
+    }
+
+    /// <summary>With TrustDefaultCert=false, an HTTPS request to a host that has a real certificate is served.</summary>
+    [Test]
+    public async Task HttpsServedWhenCertificateAvailableEvenIfDefaultNotTrusted()
+    {
+        HttpsRedirectionMiddleware middleware = Middleware(
+            HttpsMethod.NoRedirect, certificateAvailable: true, new SecurityHeadersOptions { TrustDefaultCert = false });
+        DefaultHttpContext context = SecurityTestHelpers.Context("https", "app.local", "/");
+        bool nextCalled = false;
+
+        await middleware.InvokeAsync(context, _ =>
+        {
+            nextCalled = true;
+            return Task.CompletedTask;
+        });
+
+        nextCalled.Should().BeTrue();
+        context.Response.StatusCode.Should().Be(StatusCodes.Status200OK);
+    }
+
+    /// <summary>With EnableHttpOnMissingCert=false, a redirecting host is redirected even without a certificate.</summary>
+    [Test]
+    public async Task RedirectForcedWhenHttpOnMissingCertDisabled()
+    {
+        HttpsRedirectionMiddleware middleware = Middleware(
+            HttpsMethod.Redirect, certificateAvailable: false, new SecurityHeadersOptions { EnableHttpOnMissingCert = false });
+        DefaultHttpContext context = SecurityTestHelpers.Context("http", "app.local", "/orders");
+
+        await middleware.InvokeAsync(context, _ => Task.CompletedTask);
+
+        context.Response.StatusCode.Should().Be(StatusCodes.Status308PermanentRedirect);
+        context.Response.Headers.Location.ToString().Should().Be("https://app.local/orders");
+    }
+
+    private static HttpsRedirectionMiddleware Middleware(
+        HttpsMethod method, bool certificateAvailable, SecurityHeadersOptions? options = null)
     {
         RouteConfigStore store = SecurityTestHelpers.StoreWith(new RouteRule
         {
@@ -131,7 +185,8 @@ public sealed class HttpsRedirectionMiddlewareTests
         });
         return new HttpsRedirectionMiddleware(
             new RouteLookup(store, new RoutingOptions()),
-            new FakeCertificateAvailability(certificateAvailable));
+            new FakeCertificateAvailability(certificateAvailable),
+            options ?? new SecurityHeadersOptions());
     }
 
     private sealed class FakeCertificateAvailability(bool available) : ICertificateAvailability

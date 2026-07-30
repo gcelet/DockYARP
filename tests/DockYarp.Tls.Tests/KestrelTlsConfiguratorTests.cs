@@ -17,8 +17,8 @@ public sealed class KestrelTlsConfiguratorTests
     public void ConfigureRegistersHttpsDefaults()
     {
         FakeCertificateStore store = new();
-        using DefaultCertificateProvider fallback = new();
         TlsOptions tlsOptions = new();
+        using DefaultCertificateProvider fallback = new(tlsOptions, new MockFileSystem());
         KestrelTlsConfigurator configurator = new(
             new SniCertificateSelector(store, fallback),
             fallback,

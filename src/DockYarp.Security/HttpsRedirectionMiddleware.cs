@@ -6,10 +6,14 @@ using DockYarp.Core.Models;
 
 using Microsoft.AspNetCore.Http;
 
-/// <summary>Applies a route's HTTPS method: redirects HTTP to HTTPS (when a certificate exists) and refuses HTTPS on HTTP-only hosts.</summary>
+/// <summary>Applies a route's HTTPS method: redirects HTTP to HTTPS, refuses HTTPS on HTTP-only or untrusted-default hosts.</summary>
 /// <param name="routes">Route lookup used to find the request's route.</param>
 /// <param name="certificates">Certificate availability used to avoid redirecting before a certificate exists.</param>
-public sealed class HttpsRedirectionMiddleware(RouteLookup routes, ICertificateAvailability certificates) : IMiddleware
+/// <param name="options">Security options carrying the default-certificate trust and HTTP-on-missing-cert policies.</param>
+public sealed class HttpsRedirectionMiddleware(
+    RouteLookup routes,
+    ICertificateAvailability certificates,
+    SecurityHeadersOptions options) : IMiddleware
 {
     /// <inheritdoc />
     public Task InvokeAsync(HttpContext context, RequestDelegate next)
@@ -29,8 +33,20 @@ public sealed class HttpsRedirectionMiddleware(RouteLookup routes, ICertificateA
             return Task.CompletedTask;
         }
 
-        // Redirect HTTP to HTTPS only when the method redirects and a certificate is available.
-        if (!request.IsHttps && Redirects(tls.Method) && certificates.IsAvailable(host))
+        bool certificateAvailable = certificates.IsAvailable(host);
+
+        // TRUST_DEFAULT_CERT=false: refuse HTTPS to a host with no real certificate (served via the default one).
+        if (request.IsHttps && !certificateAvailable && !options.TrustDefaultCert)
+        {
+            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+            return Task.CompletedTask;
+        }
+
+        // Redirect HTTP to HTTPS when the method redirects; a missing certificate suppresses it unless
+        // ENABLE_HTTP_ON_MISSING_CERT is disabled (then the redirect is forced regardless).
+        if (!request.IsHttps
+            && Redirects(tls.Method)
+            && (certificateAvailable || !options.EnableHttpOnMissingCert))
         {
             string target = $"https://{host}{request.PathBase}{request.Path}{request.QueryString}";
             context.Response.Redirect(target, permanent: true, preserveMethod: true);

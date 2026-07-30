@@ -1,5 +1,6 @@
 namespace DockYarp.Tls.Tests;
 
+using System.IO.Abstractions.TestingHelpers;
 using System.Security.Cryptography.X509Certificates;
 
 using AwesomeAssertions;
@@ -16,7 +17,7 @@ public sealed class SniCertificateSelectorTests
         FakeCertificateStore store = new();
         using X509Certificate2 appCertificate = DefaultCertificateFactory.CreateSelfSigned("app.local");
         store.Save("app.local", appCertificate);
-        using DefaultCertificateProvider fallback = new();
+        using DefaultCertificateProvider fallback = new(new TlsOptions(), new MockFileSystem());
         SniCertificateSelector selector = new(store, fallback);
 
         X509Certificate2 selected = selector.Select("app.local");
@@ -31,7 +32,7 @@ public sealed class SniCertificateSelectorTests
         FakeCertificateStore store = new();
         using X509Certificate2 wildcard = DefaultCertificateFactory.CreateSelfSigned("*.example.com");
         store.Save("example.com", wildcard);
-        using DefaultCertificateProvider fallback = new();
+        using DefaultCertificateProvider fallback = new(new TlsOptions(), new MockFileSystem());
         SniCertificateSelector selector = new(store, fallback);
 
         selector.Select("foo.example.com").Thumbprint.Should().Be(wildcard.Thumbprint);
@@ -42,7 +43,7 @@ public sealed class SniCertificateSelectorTests
     public void ReturnsFallbackWhenMissing()
     {
         FakeCertificateStore store = new();
-        using DefaultCertificateProvider fallback = new();
+        using DefaultCertificateProvider fallback = new(new TlsOptions(), new MockFileSystem());
         SniCertificateSelector selector = new(store, fallback);
 
         selector.Select("unknown.local").Thumbprint.Should().Be(fallback.Certificate.Thumbprint);

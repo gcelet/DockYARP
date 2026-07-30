@@ -87,36 +87,32 @@ public sealed class FileCertificateStore : ICertificateStore, IDisposable
         foreach (string file in fileSystem.Directory.EnumerateFiles(directory, "*.pfx"))
         {
             string host = fileSystem.Path.GetFileNameWithoutExtension(file);
+            if (IsReserved(host))
+            {
+                continue;
+            }
+
             certificates[host] = X509CertificateLoader.LoadPkcs12(fileSystem.File.ReadAllBytes(file), null);
         }
 
         foreach (string file in fileSystem.Directory.EnumerateFiles(directory, "*.crt"))
         {
-            if (TryLoadPem(file, out X509Certificate2? certificate))
+            string host = fileSystem.Path.GetFileNameWithoutExtension(file);
+            if (IsReserved(host))
             {
-                string host = fileSystem.Path.GetFileNameWithoutExtension(file);
+                continue;
+            }
+
+            string keyPath = fileSystem.Path.ChangeExtension(file, ".key");
+            if (PemCertificateLoader.TryLoad(fileSystem, file, keyPath, out X509Certificate2 certificate))
+            {
                 certificates[host] = certificate;
             }
         }
     }
 
-    private bool TryLoadPem(string certPath, out X509Certificate2 certificate)
-    {
-        certificate = null!;
-        string keyPath = fileSystem.Path.ChangeExtension(certPath, ".key");
-        if (!fileSystem.File.Exists(keyPath))
-        {
-            return false;
-        }
-
-        using X509Certificate2 pem = X509Certificate2.CreateFromPem(
-            fileSystem.File.ReadAllText(certPath),
-            fileSystem.File.ReadAllText(keyPath));
-
-        // Round-trip through PFX so the private key is usable for TLS across platforms (avoids ephemeral-key issues).
-        certificate = X509CertificateLoader.LoadPkcs12(pem.Export(X509ContentType.Pfx), null);
-        return true;
-    }
+    // The "default" basename is owned by the SNI fallback provider (default.crt/default.key), not a vhost.
+    private static bool IsReserved(string host) => string.Equals(host, "default", StringComparison.OrdinalIgnoreCase);
 
     private string PathFor(string host, string extension) => fileSystem.Path.Combine(directory, $"{host}{extension}");
 }
