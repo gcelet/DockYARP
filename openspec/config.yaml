@@ -27,7 +27,8 @@ context: |
 
   Domain agents (owning roles referenced in tasks):
     AG-RP proxy/YARP · AG-DD Docker discovery/labels · AG-AT ACME/TLS/Kestrel ·
-    AG-SEC security/auth · AG-AA Admin API/observability · AG-DEP packaging/image/compose/CI.
+    AG-SEC security/auth · AG-AA Admin API/observability · AG-DEP packaging/image/compose/CI ·
+    AG-DOC documentation site (Hugo/Docsy, knowledge architecture).
 
   Label compatibility target (nginx-proxy): VIRTUAL_HOST, VIRTUAL_PORT, VIRTUAL_PATH,
   LETSENCRYPT_HOST, LETSENCRYPT_EMAIL. DockYarp-specific labels use the DOCKYARP_ prefix.
@@ -49,5 +50,5 @@ rules:
     - State impacted capabilities and affected src/tests projects explicitly.
   tasks:
     - Order tasks so Core domain types precede code that maps into them.
-    - Tag each task group with the owning domain agent (AG-RP, AG-DD, AG-AT, AG-SEC, AG-AA, AG-DEP).
+    - Tag each task group with the owning domain agent (AG-RP, AG-DD, AG-AT, AG-SEC, AG-AA, AG-DEP, AG-DOC).
     - Include unit tests (NUnit + AwesomeAssertions) and, for pipeline behavior, integration tests.

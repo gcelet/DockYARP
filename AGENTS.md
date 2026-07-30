@@ -24,7 +24,7 @@ source of truth:
 
 Domain agents referenced in tasks: `AG-RP` (proxy/YARP), `AG-DD` (Docker discovery/labels),
 `AG-AT` (ACME/TLS/Kestrel), `AG-SEC` (security/auth), `AG-AA` (Admin API/observability),
-`AG-DEP` (packaging/image/compose/CI).
+`AG-DEP` (packaging/image/compose/CI), `AG-DOC` (documentation site / Hugo / Docsy / knowledge architecture).
 
 **Before implementing: read the change's `proposal.md`, `specs/`, `design.md`, and work the `tasks.md`
 checklist.** Use `npx @fission-ai/openspec@latest list` to see changes and the `/opsx:*` slash commands

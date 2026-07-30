@@ -39,9 +39,9 @@ backlog item ──/opsx:propose <id>──▶ change ──/opsx:apply──▶
 | Field | Meaning |
 |---|---|
 | `id` | Future OpenSpec change id — kebab, verb-first (`add-*`, `fix-*`, `clarify-*`, `refine-*`, `finish-*`). |
-| `capability` | `proxy-routing` · `docker-discovery` · `yarp-dynamic-config` · `tls-acme` · `security` · `admin-api` · `deployment`. |
-| `agent` | Owning domain agent: `AG-RP` · `AG-DD` · `AG-AT` · `AG-SEC` · `AG-AA` · `AG-DEP`. |
-| `tier` | `A-structural` (in-process, spec-able now) · `B-runtime` (Kestrel/listener/Docker-heavy) · `C-doc` (small/polish). |
+| `capability` | `proxy-routing` · `docker-discovery` · `yarp-dynamic-config` · `tls-acme` · `security` · `admin-api` · `deployment` · `documentation`. |
+| `agent` | Owning domain agent: `AG-RP` · `AG-DD` · `AG-AT` · `AG-SEC` · `AG-AA` · `AG-DEP` · `AG-DOC` (documentation site). |
+| `tier` | `A-structural` (in-process/deterministic, spec-able now) · `B-runtime` (Kestrel/listener/Docker-heavy, or external runner/hosting) · `C-doc` (small/polish). |
 | `priority` | `high` · `medium` · `low`. |
 | `status` | `backlog` (not started) · `proposed` (an active change exists). A completed item is **removed** from the backlog on archive — the `parity.md` ✅ row is its permanent record. |
 
