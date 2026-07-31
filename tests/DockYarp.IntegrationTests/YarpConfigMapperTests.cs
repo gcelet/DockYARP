@@ -45,6 +45,24 @@ public sealed class YarpConfigMapperTests
         cluster.Destinations.Should().HaveCount(2);
     }
 
+    /// <summary>Each load-balancing policy maps to YARP's matching policy name.</summary>
+    [TestCase(LoadBalancingPolicy.RoundRobin, "RoundRobin")]
+    [TestCase(LoadBalancingPolicy.LeastRequests, "LeastRequests")]
+    [TestCase(LoadBalancingPolicy.PowerOfTwoChoices, "PowerOfTwoChoices")]
+    [TestCase(LoadBalancingPolicy.Random, "Random")]
+    [TestCase(LoadBalancingPolicy.FirstAlphabetical, "FirstAlphabetical")]
+    public void PolicyMapsToYarpName(LoadBalancingPolicy policy, string expected)
+    {
+        RouteConfigSnapshot snapshot = new(
+            [new RouteRule { HostPattern = "app.local", ClusterId = "app" }],
+            [Cluster("app", policy)],
+            1);
+
+        (_, System.Collections.Generic.IReadOnlyList<ClusterConfig> clusters) = YarpConfigMapper.Map(snapshot);
+
+        clusters.Single().LoadBalancingPolicy.Should().Be(expected);
+    }
+
     /// <summary>A cluster health-check configuration maps to YARP active health checks.</summary>
     [Test]
     public void HealthCheckMapsToYarp()

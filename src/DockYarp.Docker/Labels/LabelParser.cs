@@ -283,7 +283,20 @@ public static class LabelParser
         {
             "ROUNDROBIN" => LoadBalancingPolicy.RoundRobin,
             "LEASTREQUESTS" => LoadBalancingPolicy.LeastRequests,
+            "POWEROFTWOCHOICES" => LoadBalancingPolicy.PowerOfTwoChoices,
+            "RANDOM" => LoadBalancingPolicy.Random,
+            "FIRSTALPHABETICAL" => LoadBalancingPolicy.FirstAlphabetical,
             _ => null,
         };
+    }
+
+    /// <summary>Reports whether <c>DOCKYARP_LB</c> is present but not a recognized policy.</summary>
+    /// <param name="labels">The container labels.</param>
+    /// <returns><see langword="true"/> when the value does not map to a known load-balancing policy.</returns>
+    public static bool HasUnsupportedLoadBalancing(IReadOnlyDictionary<string, string> labels)
+    {
+        ArgumentNullException.ThrowIfNull(labels);
+        string? value = GetOrNull(labels, DockerLabels.LoadBalancing);
+        return value is not null && ParsePolicy(value) is null;
     }
 }

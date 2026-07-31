@@ -379,6 +379,46 @@ public sealed class LabelParserTests
         LabelParser.HasIncompleteAuth(container.Labels).Should().BeTrue();
     }
 
+    /// <summary>DOCKYARP_LB maps each supported value (dash/case-insensitive) to its policy.</summary>
+    [TestCase("round-robin", LoadBalancingPolicy.RoundRobin)]
+    [TestCase("least-requests", LoadBalancingPolicy.LeastRequests)]
+    [TestCase("power-of-two-choices", LoadBalancingPolicy.PowerOfTwoChoices)]
+    [TestCase("Random", LoadBalancingPolicy.Random)]
+    [TestCase("first-alphabetical", LoadBalancingPolicy.FirstAlphabetical)]
+    public void LoadBalancingPolicyIsParsed(string label, LoadBalancingPolicy expected)
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.LoadBalancing, label)));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.LoadBalancingPolicy.Should().Be(expected);
+        LabelParser.HasUnsupportedLoadBalancing(container.Labels).Should().BeFalse();
+    }
+
+    /// <summary>An unrecognized DOCKYARP_LB yields no policy and is flagged unsupported.</summary>
+    [Test]
+    public void UnknownLoadBalancingIsFlagged()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.LoadBalancing, "ip-hash")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.LoadBalancingPolicy.Should().BeNull();
+        LabelParser.HasUnsupportedLoadBalancing(container.Labels).Should().BeTrue();
+    }
+
     /// <summary>CERT_NAME is parsed into the config's shared-certificate name.</summary>
     [Test]
     public void CertNameIsParsed()

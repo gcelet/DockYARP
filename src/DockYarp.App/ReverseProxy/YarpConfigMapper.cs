@@ -11,6 +11,7 @@ using DockYarp.Core.Models;
 using DockYarp.Core.Routing;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Forwarder;
+using Yarp.ReverseProxy.LoadBalancing;
 
 using CoreHealthCheck = DockYarp.Core.Models.HealthCheckConfig;
 using YarpHealthCheck = Yarp.ReverseProxy.Configuration.HealthCheckConfig;
@@ -18,9 +19,6 @@ using YarpHealthCheck = Yarp.ReverseProxy.Configuration.HealthCheckConfig;
 /// <summary>Maps the internal routing snapshot to YARP configuration objects.</summary>
 public static class YarpConfigMapper
 {
-    private const string RoundRobin = "RoundRobin";
-    private const string LeastRequests = "LeastRequests";
-
     /// <summary>Maps a snapshot to YARP routes and clusters, with no default host.</summary>
     /// <param name="snapshot">The routing snapshot.</param>
     /// <returns>The YARP route and cluster configuration.</returns>
@@ -225,8 +223,11 @@ public static class YarpConfigMapper
     private static string MapPolicy(LoadBalancingPolicy policy) =>
         policy switch
         {
-            LoadBalancingPolicy.LeastRequests => LeastRequests,
-            _ => RoundRobin,
+            LoadBalancingPolicy.LeastRequests => LoadBalancingPolicies.LeastRequests,
+            LoadBalancingPolicy.PowerOfTwoChoices => LoadBalancingPolicies.PowerOfTwoChoices,
+            LoadBalancingPolicy.Random => LoadBalancingPolicies.Random,
+            LoadBalancingPolicy.FirstAlphabetical => LoadBalancingPolicies.FirstAlphabetical,
+            _ => LoadBalancingPolicies.RoundRobin,
         };
 
     private static YarpHealthCheck? BuildHealth(CoreHealthCheck? health)

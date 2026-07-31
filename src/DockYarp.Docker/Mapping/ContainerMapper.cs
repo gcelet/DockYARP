@@ -158,6 +158,11 @@ public static class ContainerMapper
             warnings.Add($"{container.Name} ({id}): unrecognized {DockerLabels.HttpsMethod}; using redirect.");
         }
 
+        if (LabelParser.HasUnsupportedLoadBalancing(container.Labels))
+        {
+            warnings.Add($"{container.Name} ({id}): unrecognized {DockerLabels.LoadBalancing}; using round-robin.");
+        }
+
         if (LabelParser.HasUnsupportedClientCert(container.Labels))
         {
             warnings.Add($"{container.Name} ({id}): unrecognized {DockerLabels.ClientCert}; requiring no client certificate.");

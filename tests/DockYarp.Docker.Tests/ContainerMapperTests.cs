@@ -207,6 +207,24 @@ public sealed class ContainerMapperTests
         result.Warnings.Should().Contain(warning => warning.Contains("no reachable network address", System.StringComparison.Ordinal));
     }
 
+    /// <summary>An unrecognized DOCKYARP_LB is reported and the container still routes (round-robin default).</summary>
+    [Test]
+    public void UnknownLoadBalancingIsWarned()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.LoadBalancing, "ip-hash")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Clusters.Should().ContainSingle();
+        result.Warnings.Should().Contain(warning => warning.Contains(DockerLabels.LoadBalancing, System.StringComparison.Ordinal));
+    }
+
     /// <summary>A host-network container with a host address is routed to that address on its port.</summary>
     [Test]
     public void HostNetworkContainerIsRoutedToHostAddress()
