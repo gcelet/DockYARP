@@ -105,7 +105,7 @@ parser.
 | `vhost.d`-style per-vhost/global config + route override | ✅ | Structured overrides: per-host/`default` response headers + static-route replacement (not raw nginx; request-headers/location = future structured additions). |
 | `SERVER_TOKENS` (hide/adjust `Server`) | ✅ | Suppressed by default; set `Security:ServerHeader` for a custom value. |
 | `DEBUG_ENDPOINT`-style config dump | ⛔ | Admin API covers most → [`add-config-dump-debug`](items/add-config-dump-debug.md). |
-| Custom `LOG_FORMAT` template | ⚠️ | JSON/disable done; custom template → [`refine-access-log-formats`](items/refine-access-log-formats.md). |
+| Custom `LOG_FORMAT` template | ✅ | `AccessLog:Fields` selects an ordered field set (structured analog of `LOG_FORMAT`). |
 
 ## Non-goals (architectural — deliberately not ported)
 
