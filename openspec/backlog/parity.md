@@ -20,7 +20,7 @@ docker-gen exposes both `.Env` and `.Labels` with no precedence — the template
 
 | Source | nginx-proxy | DockYarp | Status | Notes / item |
 |---|---|---|---|---|
-| Container **environment variables** (`-e VIRTUAL_HOST=…`) | canonical for `VIRTUAL_*`, `CERT_NAME`, `NETWORK_ACCESS`, `SERVER_TOKENS`, `EXTERNAL_*_PORT`, per-vhost `HTTPS_METHOD`/`HSTS`/`SSL_POLICY`/`ENABLE_HTTP_ON_MISSING_CERT` | not read | ⛔ | Labels-only today (`ListContainers` omits env; needs inspect). Env should win over label → [`add-env-var-config`](items/add-env-var-config.md). |
+| Container **environment variables** (`-e VIRTUAL_HOST=…`) | canonical for `VIRTUAL_*`, `CERT_NAME`, `NETWORK_ACCESS`, `SERVER_TOKENS`, `EXTERNAL_*_PORT`, per-vhost `HTTPS_METHOD`/`HSTS`/`SSL_POLICY`/`ENABLE_HTTP_ON_MISSING_CERT` | read via per-container inspect; **env wins over label** | ⚠️ | Merge/parse implemented + unit-tested; live inspect + `-e VIRTUAL_HOST` round-trip → [`e2e-env-var-config`](items/e2e-env-var-config.md) (flips ✅ when green). |
 | Container **labels** | namespaced `com.github.nginx-proxy.nginx-proxy.*` (loadbalance, keepalive, ssl_verify_client, http2/3, non-get-redirect, trust-default-cert, debug-endpoint) | reads config as labels (nginx-proxy env names + `DOCKYARP_*`) | ⚠️ | DockYarp implements the features via labels but under different names; decide whether to also accept the real nginx-proxy label namespace (see item). |
 | Mounted **files** (certs, htpasswd, dhparam, vhost.d, conf.d) | extensive | certs + htpasswd + static JSON config | ⚠️/➕ | DockYarp uses structured config/overrides, not raw nginx files (see Ops row). |
 
