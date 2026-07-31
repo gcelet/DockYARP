@@ -1,9 +1,12 @@
 namespace DockYarp.AdminApi;
 
 using System;
+using System.Linq;
 
+using DockYarp.Core.Configuration;
 using DockYarp.Core.Interfaces;
 using DockYarp.Core.Models;
+using DockYarp.Core.Routing;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -24,6 +27,26 @@ public static class AdminEndpoints
         group.MapGet("/routes", static (IRouteConfigStore store) => Results.Json(AdminMapper.Routes(store.Current)));
         group.MapGet("/clusters", static (IRouteConfigStore store) => Results.Json(AdminMapper.Clusters(store.Current)));
         group.MapGet("/certs", static (ICertificateInventory inventory) => Results.Json(inventory.List()));
+
+        // The DockYarp analog of nginx-proxy's DEBUG_ENDPOINT: resolve a host/path to its effective config,
+        // using the same route matcher as the request pipeline.
+        group.MapGet("/resolve", static (string? host, string? path, IRouteConfigStore store, RoutingOptions routing) =>
+        {
+            if (host is not { Length: > 0 })
+            {
+                return Results.BadRequest(new { error = "host is required" });
+            }
+
+            RouteConfigSnapshot snapshot = store.Current;
+            RouteMatcher matcher = new(snapshot.Routes, routing.DefaultHost);
+            if (!matcher.TryMatch(host, path is { Length: > 0 } ? path : "/", out RouteRule? route))
+            {
+                return Results.NotFound(new { host, path, matched = false });
+            }
+
+            Cluster? cluster = snapshot.Clusters.FirstOrDefault(candidate => candidate.Id == route.ClusterId);
+            return Results.Json(AdminMapper.Resolve(route, cluster));
+        });
         group.MapGet("/health", static (IRouteConfigStore store, ICertificateInventory inventory, IDiscoveryHealth discovery) =>
         {
             RouteConfigSnapshot snapshot = store.Current;

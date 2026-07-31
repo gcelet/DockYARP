@@ -73,6 +73,51 @@ public sealed class AdminApiIntegrationTests
         body.Should().Contain("Healthy");
     }
 
+    /// <summary>Resolve returns the effective config for a matching host/path with a valid key.</summary>
+    [Test]
+    public async Task ResolveReturnsEffectiveConfig()
+    {
+        using WebApplicationFactory<Program> factory = CreateFactory();
+        using HttpClient client = factory.CreateClient();
+        IRouteConfigStore store = factory.Services.GetRequiredService<IRouteConfigStore>();
+        store.Apply(
+            [new RouteRule { HostPattern = "app.local", PathPrefix = "/api", ClusterId = "app" }],
+            [new Cluster { Id = "app", Endpoints = [new ClusterEndpoint("c1", "http://10.0.0.1:8080")] }]);
+        client.DefaultRequestHeaders.Add("X-Api-Key", ApiKey);
+
+        using HttpResponseMessage response = await client.GetAsync("/api/resolve?host=app.local&path=/api/orders");
+        string body = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        body.Should().Contain("app.local");
+        body.Should().Contain("app");
+    }
+
+    /// <summary>Resolve for a host that matches no route returns 404.</summary>
+    [Test]
+    public async Task ResolveUnknownHostIs404()
+    {
+        using WebApplicationFactory<Program> factory = CreateFactory();
+        using HttpClient client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Api-Key", ApiKey);
+
+        using HttpResponseMessage response = await client.GetAsync("/api/resolve?host=nope.local&path=/");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    /// <summary>Resolve without an API key is rejected.</summary>
+    [Test]
+    public async Task ResolveRequiresApiKey()
+    {
+        using WebApplicationFactory<Program> factory = CreateFactory();
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage response = await client.GetAsync("/api/resolve?host=app.local");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
     /// <summary>The metrics endpoint is scrapable without an API key.</summary>
     [Test]
     public async Task MetricsAreScrapable()

@@ -60,4 +60,32 @@ public static class AdminApiModels
     /// <param name="Host">Certificate host.</param>
     /// <param name="NotAfter">Expiry timestamp (ISO-8601).</param>
     public sealed record CertView(string Host, string NotAfter);
+
+    /// <summary>A route's transforms view.</summary>
+    /// <param name="PathRemovePrefix">Prefix stripped before forwarding, if any.</param>
+    /// <param name="PathAddPrefix">Prefix prepended after stripping, if any.</param>
+    /// <param name="ResponseHeaders">Response headers set by overrides, if any.</param>
+    public sealed record TransformsView(
+        string? PathRemovePrefix, string? PathAddPrefix, IReadOnlyDictionary<string, string>? ResponseHeaders);
+
+    /// <summary>A route's security policy view (no secrets).</summary>
+    public sealed record SecurityView
+    {
+        /// <summary>Gets a value indicating whether the route is restricted to internal networks.</summary>
+        public bool InternalOnly { get; init; }
+
+        /// <summary>Gets the client-certificate requirement (<c>None</c>/<c>Optional</c>/<c>Required</c>).</summary>
+        public required string ClientCertificate { get; init; }
+
+        /// <summary>Gets the per-route maximum request body size in bytes, if any.</summary>
+        public long? MaxRequestBodySize { get; init; }
+    }
+
+    /// <summary>The effective configuration resolved for a host/path (the DockYarp analog of a debug dump).</summary>
+    /// <param name="Route">The matched route view.</param>
+    /// <param name="Transforms">The route's transforms, if any.</param>
+    /// <param name="Security">The route's security policy.</param>
+    /// <param name="Cluster">The resolved target cluster, if present.</param>
+    public sealed record ResolveView(
+        RouteView Route, TransformsView? Transforms, SecurityView Security, ClusterView? Cluster);
 }
