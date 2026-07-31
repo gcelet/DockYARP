@@ -102,7 +102,7 @@ parser.
 | Access logging (structured + JSON + disable) | ✅ | `LOG_JSON`/`DISABLE_ACCESS_LOGS` covered. |
 | Admin API (`/api/*`) + Prometheus `/metrics` | ✅ | |
 | Graceful shutdown | ✅ | |
-| `vhost.d`-style per-vhost/global/location raw config + override | ⛔ | → [`add-vhost-config-overrides`](items/add-vhost-config-overrides.md). |
+| `vhost.d`-style per-vhost/global config + route override | ✅ | Structured overrides: per-host/`default` response headers + static-route replacement (not raw nginx; request-headers/location = future structured additions). |
 | `SERVER_TOKENS` (hide/adjust `Server`) | ✅ | Suppressed by default; set `Security:ServerHeader` for a custom value. |
 | `DEBUG_ENDPOINT`-style config dump | ⛔ | Admin API covers most → [`add-config-dump-debug`](items/add-config-dump-debug.md). |
 | Custom `LOG_FORMAT` template | ⚠️ | JSON/disable done; custom template → [`refine-access-log-formats`](items/refine-access-log-formats.md). |
