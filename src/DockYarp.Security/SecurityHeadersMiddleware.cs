@@ -13,7 +13,7 @@ using Microsoft.AspNetCore.Http;
 /// <param name="routes">Route lookup used to resolve a per-host HSTS override.</param>
 public sealed class SecurityHeadersMiddleware(SecurityHeadersOptions options, RouteLookup routes) : IMiddleware
 {
-    private const string HstsOff = "off";
+    private const string OffValue = "off";
 
     /// <inheritdoc />
     public Task InvokeAsync(HttpContext context, RequestDelegate next)
@@ -23,13 +23,16 @@ public sealed class SecurityHeadersMiddleware(SecurityHeadersOptions options, Ro
         headers["X-Frame-Options"] = options.FrameOptions;
         headers["Referrer-Policy"] = options.ReferrerPolicy;
 
-        // The built-in Kestrel `Server` header is disabled at the host; emit a configured value only when set.
-        if (!string.IsNullOrEmpty(options.ServerHeader))
+        RouteRule? route = routes.TryGetRoute(context, out RouteRule? matched) ? matched : null;
+
+        // The built-in Kestrel `Server` header is disabled at the host; emit a configured value unless the host
+        // opts out via SERVER_TOKENS=off (or empty).
+        if (!string.IsNullOrEmpty(options.ServerHeader) && !ServerHeaderSuppressed(route))
         {
             headers["Server"] = options.ServerHeader;
         }
 
-        if (context.Request.IsHttps && ResolveHsts(context) is { } hsts)
+        if (context.Request.IsHttps && ResolveHsts(route) is { } hsts)
         {
             headers["Strict-Transport-Security"] = hsts;
         }
@@ -37,18 +40,22 @@ public sealed class SecurityHeadersMiddleware(SecurityHeadersOptions options, Ro
         return next(context);
     }
 
-    private string? ResolveHsts(HttpContext context)
+    private static bool ServerHeaderSuppressed(RouteRule? route) =>
+        route?.ServerTokens is { } tokens && IsOff(tokens);
+
+    private string? ResolveHsts(RouteRule? route)
     {
         // A per-host override wins: a value replaces the header, "off"/empty suppresses it for the host.
-        if (routes.TryGetRoute(context, out RouteRule? route) && route.Tls?.Hsts is { } perHost)
+        if (route?.Tls?.Hsts is { } perHost)
         {
-            return perHost.Length == 0 || string.Equals(perHost, HstsOff, StringComparison.OrdinalIgnoreCase)
-                ? null
-                : perHost;
+            return IsOff(perHost) ? null : perHost;
         }
 
         return options.EnableHsts ? BuildGlobalHsts() : null;
     }
+
+    private static bool IsOff(string value) =>
+        value.Length == 0 || string.Equals(value, OffValue, StringComparison.OrdinalIgnoreCase);
 
     private string BuildGlobalHsts()
     {

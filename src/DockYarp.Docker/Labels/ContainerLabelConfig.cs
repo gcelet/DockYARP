@@ -41,6 +41,9 @@ public sealed record ContainerLabelConfig
     /// <summary>Gets the per-host TLS preset (<c>SSL_POLICY</c>) overriding the global policy, if any.</summary>
     public string? SslPolicy { get; init; }
 
+    /// <summary>Gets the per-host <c>Server</c> header control (<c>SERVER_TOKENS</c>); <c>off</c> suppresses it.</summary>
+    public string? ServerTokens { get; init; }
+
     /// <summary>Gets the HTTPS method (<c>HTTPS_METHOD</c>); defaults to <see cref="Core.Models.HttpsMethod.Redirect"/>.</summary>
     public HttpsMethod HttpsMethod { get; init; } = HttpsMethod.Redirect;
 

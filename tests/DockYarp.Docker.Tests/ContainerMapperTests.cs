@@ -163,6 +163,23 @@ public sealed class ContainerMapperTests
         result.Contribution.Routes.Single().Tls!.SslPolicy.Should().Be("Mozilla-Modern");
     }
 
+    /// <summary>SERVER_TOKENS is carried into the route as a top-level field (no certificate required).</summary>
+    [Test]
+    public void ServerTokensIsCarriedIntoRoute()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.ServerTokens, "off")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Routes.Single().ServerTokens.Should().Be("off");
+    }
+
     /// <summary>VIRTUAL_DEST with a VIRTUAL_PATH strips the path prefix before forwarding.</summary>
     [Test]
     public void VirtualDestStripsPathPrefix()

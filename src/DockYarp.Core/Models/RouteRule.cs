@@ -31,6 +31,9 @@ public sealed record RouteRule
     /// <summary>Gets a value indicating whether the route is restricted to internal client networks (403 otherwise).</summary>
     public bool InternalOnly { get; init; }
 
+    /// <summary>Gets the per-host <c>Server</c> header control (<c>SERVER_TOKENS</c>); <c>off</c> or empty suppresses it.</summary>
+    public string? ServerTokens { get; init; }
+
     /// <summary>Gets the optional request transforms.</summary>
     public RouteTransforms? Transforms { get; init; }
 }

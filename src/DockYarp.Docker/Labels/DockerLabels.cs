@@ -34,6 +34,9 @@ public static class DockerLabels
     /// <summary>Named TLS preset for this host (<c>Mozilla-Modern</c>/<c>Intermediate</c>/<c>Old</c>); overrides the global policy.</summary>
     public const string SslPolicy = "SSL_POLICY";
 
+    /// <summary>Per-host <c>Server</c> header control (<c>off</c> suppresses it for the host).</summary>
+    public const string ServerTokens = "SERVER_TOKENS";
+
     /// <summary>HTTP↔HTTPS behavior: <c>redirect</c> (default), <c>noredirect</c>, <c>nohttp</c>, <c>nohttps</c>.</summary>
     public const string HttpsMethod = "HTTPS_METHOD";
 

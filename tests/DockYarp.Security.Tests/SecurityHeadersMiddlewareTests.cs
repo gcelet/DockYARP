@@ -100,6 +100,27 @@ public sealed class SecurityHeadersMiddlewareTests
         context.Response.Headers["Server"].ToString().Should().Be("DockYarp");
     }
 
+    /// <summary>A per-host SERVER_TOKENS=off suppresses the Server header while another host keeps the global value.</summary>
+    [Test]
+    public async Task PerHostOffSuppressesServerHeader()
+    {
+        RouteLookup lookup = Lookup(new RouteRule
+        {
+            HostPattern = "quiet.local",
+            ClusterId = "quiet",
+            ServerTokens = "off",
+        });
+        SecurityHeadersMiddleware middleware = new(new SecurityHeadersOptions { ServerHeader = "DockYarp" }, lookup);
+        DefaultHttpContext quiet = SecurityTestHelpers.Context("http", "quiet.local", "/");
+        DefaultHttpContext other = SecurityTestHelpers.Context("http", "other.local", "/");
+
+        await middleware.InvokeAsync(quiet, _ => Task.CompletedTask);
+        await middleware.InvokeAsync(other, _ => Task.CompletedTask);
+
+        quiet.Response.Headers.ContainsKey("Server").Should().BeFalse();
+        other.Response.Headers["Server"].ToString().Should().Be("DockYarp");
+    }
+
     private static RouteLookup Lookup(params RouteRule[] routes) =>
         new(SecurityTestHelpers.StoreWith(routes), new RoutingOptions());
 }

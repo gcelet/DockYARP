@@ -469,6 +469,23 @@ public sealed class LabelParserTests
         config!.SslPolicy.Should().Be("Mozilla-Modern"); // env wins over the label
     }
 
+    /// <summary>SERVER_TOKENS is parsed into the config.</summary>
+    [Test]
+    public void ServerTokensIsParsed()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.ServerTokens, "off")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.ServerTokens.Should().Be("off");
+    }
+
     /// <summary>With no env vars, EffectiveConfig returns the labels unchanged.</summary>
     [Test]
     public void EffectiveConfigWithoutEnvReturnsLabels()
