@@ -49,13 +49,15 @@ public static class ContainerMapper
                 continue;
             }
 
-            if (container.Labels.ContainsKey(DockerLabels.VirtualHostMultiports))
+            // Effective config = labels overlaid by environment variables (env wins); read all knobs from it.
+            IReadOnlyDictionary<string, string> config = LabelParser.EffectiveConfig(container);
+            if (config.ContainsKey(DockerLabels.VirtualHostMultiports))
             {
-                ProcessMultiports(container, multiportGroups, warnings);
+                ProcessMultiports(container, config, multiportGroups, warnings);
             }
             else
             {
-                ProcessClassic(container, hostGroups, warnings);
+                ProcessClassic(container, config, hostGroups, warnings);
             }
         }
 
@@ -79,6 +81,7 @@ public static class ContainerMapper
 
     private static void ProcessClassic(
         ContainerInfo container,
+        IReadOnlyDictionary<string, string> effectiveConfig,
         Dictionary<string, HostGroup> groups,
         ImmutableArray<string>.Builder warnings)
     {
@@ -88,8 +91,8 @@ public static class ContainerMapper
             return;
         }
 
-        AddCommonWarnings(container, warnings);
-        if (LabelParser.HasUnsupportedProto(container.Labels))
+        AddCommonWarnings(container, effectiveConfig, warnings);
+        if (LabelParser.HasUnsupportedProto(effectiveConfig))
         {
             warnings.Add($"{container.Name} ({Short(container.Id)}): unsupported {DockerLabels.VirtualProto}; defaulting to http.");
         }
@@ -109,10 +112,11 @@ public static class ContainerMapper
 
     private static void ProcessMultiports(
         ContainerInfo container,
+        IReadOnlyDictionary<string, string> effectiveConfig,
         Dictionary<string, MultiportGroup> groups,
         ImmutableArray<string>.Builder warnings)
     {
-        string yaml = container.Labels[DockerLabels.VirtualHostMultiports];
+        string yaml = effectiveConfig[DockerLabels.VirtualHostMultiports];
         if (!MultiportParser.TryParse(yaml, out ImmutableArray<MultiportEntry> entries, out string? error))
         {
             warnings.Add($"{container.Name} ({Short(container.Id)}): invalid {DockerLabels.VirtualHostMultiports}: {error}");
@@ -125,8 +129,8 @@ public static class ContainerMapper
             return;
         }
 
-        AddCommonWarnings(container, warnings);
-        ContainerLabelConfig common = LabelParser.ParseCommon(container.Labels);
+        AddCommonWarnings(container, effectiveConfig, warnings);
+        ContainerLabelConfig common = LabelParser.ParseCommon(effectiveConfig);
         foreach (MultiportEntry entry in entries)
         {
             string clusterId = ClusterId(entry.Host, entry.Path);
@@ -140,40 +144,41 @@ public static class ContainerMapper
         }
     }
 
-    private static void AddCommonWarnings(ContainerInfo container, ImmutableArray<string>.Builder warnings)
+    private static void AddCommonWarnings(
+        ContainerInfo container, IReadOnlyDictionary<string, string> config, ImmutableArray<string>.Builder warnings)
     {
         string id = Short(container.Id);
-        if (LabelParser.HasIncompleteAuth(container.Labels))
+        if (LabelParser.HasIncompleteAuth(config))
         {
             warnings.Add($"{container.Name} ({id}): incomplete auth labels; route left unprotected.");
         }
 
-        if (LabelParser.HasInvalidPriority(container.Labels))
+        if (LabelParser.HasInvalidPriority(config))
         {
             warnings.Add($"{container.Name} ({id}): invalid {DockerLabels.Priority}; using priority 0.");
         }
 
-        if (LabelParser.HasUnsupportedHttpsMethod(container.Labels))
+        if (LabelParser.HasUnsupportedHttpsMethod(config))
         {
             warnings.Add($"{container.Name} ({id}): unrecognized {DockerLabels.HttpsMethod}; using redirect.");
         }
 
-        if (LabelParser.HasUnsupportedLoadBalancing(container.Labels))
+        if (LabelParser.HasUnsupportedLoadBalancing(config))
         {
             warnings.Add($"{container.Name} ({id}): unrecognized {DockerLabels.LoadBalancing}; using round-robin.");
         }
 
-        if (LabelParser.HasUnsupportedClientCert(container.Labels))
+        if (LabelParser.HasUnsupportedClientCert(config))
         {
             warnings.Add($"{container.Name} ({id}): unrecognized {DockerLabels.ClientCert}; requiring no client certificate.");
         }
 
-        if (LabelParser.HasInvalidProxyTimeout(container.Labels))
+        if (LabelParser.HasInvalidProxyTimeout(config))
         {
             warnings.Add($"{container.Name} ({id}): invalid {DockerLabels.ProxyTimeout}; no timeout applied.");
         }
 
-        if (LabelParser.HasInvalidMaxBodySize(container.Labels))
+        if (LabelParser.HasInvalidMaxBodySize(config))
         {
             warnings.Add($"{container.Name} ({id}): invalid {DockerLabels.MaxBodySize}; no body-size limit applied.");
         }

@@ -17,6 +17,9 @@ using global::Docker.DotNet.Models;
 /// <summary><see cref="IContainerSource"/> backed by the Docker daemon via Docker.DotNet.</summary>
 public sealed class DockerContainerSource : IContainerSource, IDisposable
 {
+    private static readonly IReadOnlyDictionary<string, string> EmptyEnv =
+        new Dictionary<string, string>(StringComparer.Ordinal);
+
     private readonly IDockerClient client;
     private readonly string? preferredNetwork;
     private readonly string? hostAddress;
@@ -47,10 +50,30 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
         List<ContainerInfo> result = new(responses.Count);
         foreach (ContainerListResponse response in responses)
         {
-            result.Add(ToContainerInfo(response));
+            // The list response omits env vars; inspect the container to read Config.Env (nginx-proxy's
+            // canonical config channel). See the change's design.md.
+            IReadOnlyDictionary<string, string> env =
+                await InspectEnvAsync(response.ID, cancellationToken).ConfigureAwait(false);
+            result.Add(ToContainerInfo(response, env));
         }
 
         return result;
+    }
+
+    private async Task<IReadOnlyDictionary<string, string>> InspectEnvAsync(string id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            ContainerInspectResponse inspect =
+                await client.Containers.InspectContainerAsync(id, cancellationToken).ConfigureAwait(false);
+            return ContainerEnvParser.Parse(inspect.Config?.Env);
+        }
+        catch (DockerApiException)
+        {
+            // The container vanished between listing and inspecting, or the daemon rejected the call; fall back
+            // to labels only for this container (the next reconcile corrects it).
+            return EmptyEnv;
+        }
     }
 
     /// <inheritdoc />
@@ -108,7 +131,7 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
         return configuration.CreateClient();
     }
 
-    private ContainerInfo ToContainerInfo(ContainerListResponse response)
+    private ContainerInfo ToContainerInfo(ContainerListResponse response, IReadOnlyDictionary<string, string> env)
     {
         Dictionary<string, string?> networks = BuildNetworks(response);
         bool hostMode = BackendAddressResolver.IsHostNetwork(networks);
@@ -119,6 +142,7 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
             Address = ResolveAddress(response, networks, hostMode),
             IsHostNetwork = hostMode,
             Labels = CopyLabels(response.Labels),
+            Env = env,
             ExposedPorts = ResolvePorts(response.Ports),
             Health = ContainerStatusParser.ParseHealth(response.Status),
         };

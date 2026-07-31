@@ -9,11 +9,32 @@ using System.Globalization;
 using DockYarp.Core.Models;
 using DockYarp.Docker.Models;
 
-/// <summary>Parses a container's labels into a <see cref="ContainerLabelConfig"/>.</summary>
+/// <summary>Parses a container's configuration (environment variables + labels) into a <see cref="ContainerLabelConfig"/>.</summary>
 /// <remarks>Pure and side-effect free so it can be unit tested without a Docker daemon.</remarks>
 public static class LabelParser
 {
-    /// <summary>Attempts to parse the container's labels into a configuration.</summary>
+    /// <summary>Builds the effective configuration map: labels overlaid by environment variables (env wins).</summary>
+    /// <param name="container">The container to read.</param>
+    /// <returns>The merged key/value view; an environment variable overrides a same-named label.</returns>
+    /// <remarks>Environment variables are nginx-proxy's canonical config channel; the label is the fallback.</remarks>
+    public static IReadOnlyDictionary<string, string> EffectiveConfig(ContainerInfo container)
+    {
+        ArgumentNullException.ThrowIfNull(container);
+        if (container.Env.Count == 0)
+        {
+            return container.Labels;
+        }
+
+        Dictionary<string, string> merged = new(container.Labels, StringComparer.Ordinal);
+        foreach (KeyValuePair<string, string> entry in container.Env)
+        {
+            merged[entry.Key] = entry.Value;
+        }
+
+        return merged;
+    }
+
+    /// <summary>Attempts to parse the container's configuration (env vars + labels) into a configuration.</summary>
     /// <param name="container">The container to parse.</param>
     /// <param name="config">The parsed configuration when successful.</param>
     /// <param name="error">A human-readable reason when parsing fails.</param>
@@ -23,8 +44,9 @@ public static class LabelParser
         [NotNullWhen(true)] out ContainerLabelConfig? config,
         [NotNullWhen(false)] out string? error)
     {
+        ArgumentNullException.ThrowIfNull(container);
         config = null;
-        IReadOnlyDictionary<string, string> labels = container.Labels;
+        IReadOnlyDictionary<string, string> labels = EffectiveConfig(container);
 
         ImmutableArray<string> hosts = labels.TryGetValue(DockerLabels.VirtualHost, out string? host)
             ? SplitHosts(host)

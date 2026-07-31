@@ -104,6 +104,27 @@ public sealed class ContainerMapperTests
         result.Contribution.Routes.Single().Tls!.CertificateHost.Should().Be("app.local");
     }
 
+    /// <summary>A container configured only via environment variables is discovered and routed.</summary>
+    [Test]
+    public void EnvironmentConfiguredContainerIsRouted()
+    {
+        ContainerInfo container = DiscoveryTestData.Container("c1", "10.0.0.1", DiscoveryTestData.Labels())
+            with
+        {
+            Env = new System.Collections.Generic.Dictionary<string, string>(System.StringComparer.Ordinal)
+            {
+                [DockerLabels.VirtualHost] = "app.local",
+                [DockerLabels.VirtualPort] = "8080",
+            },
+        };
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Routes.Should().ContainSingle(route => route.HostPattern == "app.local");
+        result.Contribution.Clusters.Should().ContainSingle()
+            .Which.Endpoints.Should().ContainSingle().Which.Address.Should().Be("http://10.0.0.1:8080");
+    }
+
     /// <summary>CERT_NAME alone creates TLS metadata pinning the shared certificate (no LETSENCRYPT_HOST).</summary>
     [Test]
     public void CertNameCreatesTlsMetadata()

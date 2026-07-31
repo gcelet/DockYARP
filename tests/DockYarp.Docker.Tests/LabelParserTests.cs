@@ -419,6 +419,62 @@ public sealed class LabelParserTests
         LabelParser.HasUnsupportedLoadBalancing(container.Labels).Should().BeTrue();
     }
 
+    /// <summary>EffectiveConfig merges env over labels (env wins), keeping label-only and env-only keys.</summary>
+    [Test]
+    public void EffectiveConfigMergesEnvOverLabels()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "label.local"),
+                (DockerLabels.VirtualPort, "8080")))
+            with
+        {
+            Env = new System.Collections.Generic.Dictionary<string, string>(System.StringComparer.Ordinal)
+            {
+                [DockerLabels.VirtualHost] = "env.local",
+                [DockerLabels.VirtualProto] = "https",
+            },
+        };
+
+        System.Collections.Generic.IReadOnlyDictionary<string, string> config = LabelParser.EffectiveConfig(container);
+
+        config[DockerLabels.VirtualHost].Should().Be("env.local");   // env wins
+        config[DockerLabels.VirtualPort].Should().Be("8080");         // label-only kept
+        config[DockerLabels.VirtualProto].Should().Be("https");       // env-only kept
+    }
+
+    /// <summary>With no env vars, EffectiveConfig returns the labels unchanged.</summary>
+    [Test]
+    public void EffectiveConfigWithoutEnvReturnsLabels()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1", "10.0.0.1", DiscoveryTestData.Labels((DockerLabels.VirtualHost, "app.local")));
+
+        LabelParser.EffectiveConfig(container).Should().BeSameAs(container.Labels);
+    }
+
+    /// <summary>Configuration set only as environment variables is parsed and routable.</summary>
+    [Test]
+    public void ConfigFromEnvironmentIsParsed()
+    {
+        ContainerInfo container = DiscoveryTestData.Container("c1", "10.0.0.1", DiscoveryTestData.Labels())
+            with
+        {
+            Env = new System.Collections.Generic.Dictionary<string, string>(System.StringComparer.Ordinal)
+            {
+                [DockerLabels.VirtualHost] = "app.local",
+                [DockerLabels.VirtualPort] = "8080",
+            },
+        };
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.Hosts.Should().ContainSingle().Which.Should().Be("app.local");
+        config.Port.Should().Be(8080);
+    }
+
     /// <summary>CERT_NAME is parsed into the config's shared-certificate name.</summary>
     [Test]
     public void CertNameIsParsed()
