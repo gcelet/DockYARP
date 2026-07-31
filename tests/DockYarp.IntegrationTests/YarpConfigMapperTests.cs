@@ -239,6 +239,32 @@ public sealed class YarpConfigMapperTests
         request.VersionPolicy.Should().Be(System.Net.Http.HttpVersionPolicy.RequestVersionExact);
     }
 
+    /// <summary>Response-header overrides map to YARP ResponseHeader transforms (Set, always).</summary>
+    [Test]
+    public void ResponseHeadersMapToTransforms()
+    {
+        RouteConfigSnapshot snapshot = new(
+            [
+                new RouteRule
+                {
+                    HostPattern = "app.local",
+                    ClusterId = "app",
+                    Transforms = new RouteTransforms
+                    {
+                        ResponseHeaders = new System.Collections.Generic.Dictionary<string, string>(System.StringComparer.Ordinal) { ["X-Frame-Options"] = "DENY" },
+                    },
+                },
+            ],
+            [Cluster("app", LoadBalancingPolicy.RoundRobin)],
+            1);
+
+        (System.Collections.Generic.IReadOnlyList<RouteConfig> routes, _) = YarpConfigMapper.Map(snapshot);
+
+        routes.Single().Transforms.Should().ContainSingle(t =>
+            t.ContainsKey("ResponseHeader") && t["ResponseHeader"] == "X-Frame-Options"
+            && t["Set"] == "DENY" && t["When"] == "Always");
+    }
+
     /// <summary>Endpoints sharing an id collapse to one destination instead of throwing.</summary>
     [Test]
     public void DuplicateEndpointsCollapseToOneDestination()

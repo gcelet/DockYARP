@@ -62,6 +62,30 @@ public sealed class StaticConfigProviderTests
         contribution.Clusters.Should().BeEmpty();
     }
 
+    /// <summary>The overrides section is parsed into per-host and default response headers.</summary>
+    [Test]
+    public void LoadsOverrides()
+    {
+        const string json =
+            """
+            {
+              "overrides": [
+                { "host": "app.local", "responseHeaders": { "X-Frame-Options": "DENY" } },
+                { "host": "default", "responseHeaders": { "X-Content-Type-Options": "nosniff" } }
+              ]
+            }
+            """;
+        MockFileSystem fileSystem = new();
+        string path = fileSystem.Path.Combine(fileSystem.Directory.GetCurrentDirectory(), "config.json");
+        fileSystem.AddFile(path, new MockFileData(json));
+
+        ConfigOverrides overrides = Provider(fileSystem, path).GetOverrides();
+
+        overrides.ResponseHeadersByHost.Should().ContainKey("app.local");
+        overrides.ResponseHeadersByHost["app.local"].Should().ContainKey("X-Frame-Options").WhoseValue.Should().Be("DENY");
+        overrides.DefaultResponseHeaders.Should().ContainKey("X-Content-Type-Options").WhoseValue.Should().Be("nosniff");
+    }
+
     private static StaticConfigProvider Provider(MockFileSystem fileSystem, string? path) =>
         new(new StaticConfigOptions { Path = path }, fileSystem, NullLogger<StaticConfigProvider>.Instance);
 }

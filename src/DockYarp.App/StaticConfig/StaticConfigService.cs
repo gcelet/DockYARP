@@ -1,10 +1,12 @@
 namespace DockYarp.App.StaticConfig;
 
+using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 
 using DockYarp.Core.Configuration;
 using DockYarp.Core.Interfaces;
+using DockYarp.Core.Models;
 
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -28,7 +30,8 @@ public sealed class StaticConfigService(
             StaticConfigLog.MergeDiagnostic(logger, diagnostic.Code, diagnostic.Message);
         }
 
-        store.Apply(merge.Routes, merge.Clusters);
+        ImmutableArray<RouteRule> routes = RouteOverrideApplier.Apply(merge.Routes, provider.GetOverrides());
+        store.Apply(routes, merge.Clusters);
         return Task.CompletedTask;
     }
 

@@ -167,6 +167,20 @@ public static class YarpConfigMapper
             list.Add(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["PathPrefix"] = add });
         }
 
+        if (transforms.ResponseHeaders is { Count: > 0 } responseHeaders)
+        {
+            // Override-injected response headers: set (replace) on every response (When=Always).
+            foreach (KeyValuePair<string, string> header in responseHeaders)
+            {
+                list.Add(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["ResponseHeader"] = header.Key,
+                    ["Set"] = header.Value,
+                    ["When"] = "Always",
+                });
+            }
+        }
+
         return list.Count > 0 ? list : null;
     }
 

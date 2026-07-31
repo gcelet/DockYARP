@@ -1,11 +1,13 @@
 namespace DockYarp.Docker.Discovery;
 
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 
 using DockYarp.Core.Configuration;
 using DockYarp.Core.Interfaces;
+using DockYarp.Core.Models;
 using DockYarp.Docker.Mapping;
 using DockYarp.Docker.Models;
 
@@ -47,7 +49,9 @@ public sealed class DiscoveryReconciler(
             DiscoveryLog.MergeDiagnostic(logger, diagnostic.Code, diagnostic.Message);
         }
 
-        store.Apply(merge.Routes, merge.Clusters);
-        DiscoveryLog.Reconciled(logger, merge.Routes.Length, merge.Clusters.Length, containers.Count);
+        // Layer per-host / global overrides (e.g. response headers) onto the merged routes.
+        ImmutableArray<RouteRule> routes = RouteOverrideApplier.Apply(merge.Routes, staticConfig.GetOverrides());
+        store.Apply(routes, merge.Clusters);
+        DiscoveryLog.Reconciled(logger, routes.Length, merge.Clusters.Length, containers.Count);
     }
 }
