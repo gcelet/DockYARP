@@ -8,6 +8,22 @@ parser.
 **Legend:** ✅ implemented · ⚠️ partial / runtime-unvalidated · ⛔ deferred (see item) · ➕ DockYarp extension
 · 🚫 non-goal (architectural, see bottom).
 
+> **Re-analysis 2026-07-31** (fresh read of `nginx.tmpl` + `docs/` + docker-gen `internal/`): the tables below
+> track *which features exist*; the **Configuration source** section below tracks *how config is read* — a
+> distinct axis that surfaced the env-var gap.
+
+## Configuration source
+
+nginx-proxy reads config from a container's **environment variables** (the canonical channel — the `VIRTUAL_*`
+family is **env-only**) **and** a separate namespaced **label** set (`com.github.nginx-proxy.nginx-proxy.*`).
+docker-gen exposes both `.Env` and `.Labels` with no precedence — the template decides.
+
+| Source | nginx-proxy | DockYarp | Status | Notes / item |
+|---|---|---|---|---|
+| Container **environment variables** (`-e VIRTUAL_HOST=…`) | canonical for `VIRTUAL_*`, `CERT_NAME`, `NETWORK_ACCESS`, `SERVER_TOKENS`, `EXTERNAL_*_PORT`, per-vhost `HTTPS_METHOD`/`HSTS`/`SSL_POLICY`/`ENABLE_HTTP_ON_MISSING_CERT` | not read | ⛔ | Labels-only today (`ListContainers` omits env; needs inspect). Env should win over label → [`add-env-var-config`](items/add-env-var-config.md). |
+| Container **labels** | namespaced `com.github.nginx-proxy.nginx-proxy.*` (loadbalance, keepalive, ssl_verify_client, http2/3, non-get-redirect, trust-default-cert, debug-endpoint) | reads config as labels (nginx-proxy env names + `DOCKYARP_*`) | ⚠️ | DockYarp implements the features via labels but under different names; decide whether to also accept the real nginx-proxy label namespace (see item). |
+| Mounted **files** (certs, htpasswd, dhparam, vhost.d, conf.d) | extensive | certs + htpasswd + static JSON config | ⚠️/➕ | DockYarp uses structured config/overrides, not raw nginx files (see Ops row). |
+
 ## Routing
 
 | Feature (nginx-proxy) | Status | Notes / item |
@@ -43,7 +59,8 @@ parser.
 
 | Feature | Status | Notes / item |
 |---|---|---|
-| ACME HTTP-01, renewal, SNI, self-signed fallback | ✅ | HTTPS on 8443. |
+| ACME HTTP-01, renewal, SNI, self-signed fallback | ✅ ➕ | HTTPS on 8443. **Note**: in the nginx-proxy world ACME issuance + `LETSENCRYPT_HOST/EMAIL` are the separate **acme-companion** container; DockYarp does this in-process → superset. |
+| ACME HTTP-01 challenge options (`ACME_HTTP_CHALLENGE_LOCATION`/accept-unknown-host) | ⛔ | Challenge served, always-on → [`add-acme-challenge-options`](items/add-acme-challenge-options.md). |
 | Provided certs (PEM/PFX), wildcard-parent selection | ✅ | |
 | `HTTPS_METHOD` (redirect/noredirect/nohttp/nohttps) | ✅ | Redirect gated on real cert availability. |
 | HSTS (preload + per-host `HSTS`) | ✅ | |
@@ -73,6 +90,7 @@ parser.
 | `X-Forwarded-*` / `X-Real-IP` / Host / downstream-proxy trust | ✅ | |
 | `client_max_body_size` (`DOCKYARP_MAX_BODY_SIZE`) | ✅ | Per-route. |
 | Proxy timeouts (`DOCKYARP_PROXY_TIMEOUT`) | ✅ | Per-cluster activity timeout. |
+| Backend keepalive / connection pooling (`keepalive` label) | ⛔ | YARP default pooling; no per-cluster override → [`add-backend-keepalive`](items/add-backend-keepalive.md). |
 | gzip response compression | ✅ | gzip + brotli, on by default; `Compression:Enabled`. |
 | httpoxy mitigation (strip inbound `Proxy` header) | ✅ | Stripped in the forwarded-headers transform. |
 | PROXY protocol (`ENABLE_PROXY_PROTOCOL`) + real client IP | ⛔ | → [`add-proxy-protocol`](items/add-proxy-protocol.md). |
@@ -89,7 +107,9 @@ parser.
 | Host-network-mode backends | ✅ | `Docker:HostAddress` targets the host on `VIRTUAL_PORT`; skipped with a warning if unset. Live reachability: → [`e2e-host-network-mode`](items/e2e-host-network-mode.md). |
 | IPv6 listeners (`ENABLE_IPV6`) + `PREFER_IPV6_NETWORK` | ⛔ | → [`add-ipv6-support`](items/add-ipv6-support.md). |
 | Multi-network attach / unreachable-network resilience | ✅ | `Docker:ProxyNetworks` → reachability-aware selection; unreachable backends skipped. Runtime auto-detection: → [`e2e-multi-network`](items/e2e-multi-network.md). |
-| Docker Swarm services | ⛔ | → [`add-docker-swarm-support`](items/add-docker-swarm-support.md). |
+| Docker Swarm services | ⛔ ➕ | **Beyond nginx-proxy**: docker-gen only exposes *classic-swarm* node metadata (`container.Node`), never Swarm-mode services/tasks. Swarm-mode support would be a DockYarp extension → [`add-docker-swarm-support`](items/add-docker-swarm-support.md). |
+| Remote daemon over TLS (`DOCKER_HOST`+`DOCKER_TLS_VERIFY`/`CERT_PATH`) | ⛔ | Endpoint URI only; no client-cert/CA/verify → [`add-docker-daemon-tls`](items/add-docker-daemon-tls.md). |
+| Event debounce (docker-gen `-wait`) | ⛔ | Reconcile per event; coalesce bursts → [`add-reconcile-debounce`](items/add-reconcile-debounce.md). |
 | `RESOLVERS` (custom DNS) | 🚫 | .NET resolves DNS; not applicable. |
 | Custom external ports (`HTTP_PORT`/`EXTERNAL_*_PORT`) | ⛔ | Listener config → [`add-proxy-protocol`](items/add-proxy-protocol.md) tracks the listener rework; port config folded there. |
 
