@@ -33,4 +33,4 @@
 
 ## 5. Verify (AG-AT)
 - [x] 5.1 Nuke `Test` gate green (unit/integration, no Docker) — 302 tests, 0 failures
-- [ ] 5.2 Existing Aspire e2e regression green from WSL (`./build.sh E2E`) — SNI, mTLS, ACME challenge unchanged
+- [x] 5.2 Existing Aspire e2e regression green from WSL (`./build.sh E2E`) — 21/21, SNI + mTLS + ACME unchanged
