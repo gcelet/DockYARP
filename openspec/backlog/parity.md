@@ -12,7 +12,7 @@ parser.
 
 | Feature (nginx-proxy) | Status | Notes / item |
 |---|---|---|
-| `VIRTUAL_HOST`, host/path routing, clusters, load balancing | ✅ | Round-robin / least-requests. |
+| `VIRTUAL_HOST`, host/path routing, clusters, load balancing | ✅ | RR / least-requests / power-of-two-choices / random / first-alphabetical. |
 | Replica aggregation (one endpoint per container per cluster) | ✅ | |
 | Multiple hosts per container (`VIRTUAL_HOST=a,b`) | ✅ | Comma-separated. |
 | Host precedence (exact over wildcard) | ✅ | nginx `server_name` semantics; longest path prefix wins. |
@@ -26,7 +26,7 @@ parser.
 | Regex `VIRTUAL_PATH` (location) | ✅ | `MatcherPolicy` over route metadata; compiled/cached regex, ReDoS-bounded. |
 | `DEFAULT_ROOT` arbitrary fallback (return/redirect) | ✅ | Status or templated redirect (`$scheme`/`$host`/`$request_uri`); `Routing:DefaultResponseLocation`. |
 | Raw-IP `VIRTUAL_HOST` | ✅ | Bare IPv4 matched exactly; IPv6 literal is a caveat. |
-| Custom LB algorithms (e.g. IP-hash, `loadbalance` label) | ⛔ | RR/least-requests only → [`add-loadbalance-policies`](items/add-loadbalance-policies.md). |
+| Client-affinity / `ip_hash` (`loadbalance` label) | ⛔ | YARP has no ip-hash policy; session affinity (+ Data Protection gate) → [`add-session-affinity`](items/add-session-affinity.md). |
 
 ## Protocols
 
