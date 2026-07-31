@@ -1,6 +1,7 @@
 namespace DockYarp.App.Observability;
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
 
@@ -28,15 +29,26 @@ public sealed class AccessLogMiddleware(AccessLogOptions options, ILogger<Access
         }
         finally
         {
-            HttpRequest request = context.Request;
-            AccessLog.Request(
-                logger,
-                request.Method,
-                request.Scheme,
-                request.Host.Host,
-                request.Path,
-                context.Response.StatusCode,
-                Stopwatch.GetElapsedTime(start).TotalMilliseconds);
+            double elapsedMs = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
+            if (options.Fields is { Length: > 0 } fields)
+            {
+                // Operator-selected field template: emit exactly the configured fields, structured.
+                IReadOnlyList<KeyValuePair<string, object>> selected =
+                    AccessLogFields.Select(AccessLogFields.Build(context, elapsedMs), fields);
+                logger.Log(LogLevel.Information, default, selected, null, AccessLogFields.Format);
+            }
+            else
+            {
+                HttpRequest request = context.Request;
+                AccessLog.Request(
+                    logger,
+                    request.Method,
+                    request.Scheme,
+                    request.Host.Host,
+                    request.Path,
+                    context.Response.StatusCode,
+                    elapsedMs);
+            }
         }
     }
 
