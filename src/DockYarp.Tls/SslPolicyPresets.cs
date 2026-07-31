@@ -43,6 +43,9 @@ public static class SslPolicyPresets
         ["Mozilla-Old"] = new SslPolicyResolution(TlsVersion.Tls12, OldSuites),
     };
 
+    /// <summary>Gets the names of the recognized <c>SSL_POLICY</c> presets.</summary>
+    public static IReadOnlyCollection<string> KnownPresetNames { get; } = [.. Presets.Keys];
+
     /// <summary>Resolves the effective TLS version and cipher list, applying a named preset when recognized.</summary>
     /// <param name="policy">The configured <c>SSL_POLICY</c> name, or <see langword="null"/>.</param>
     /// <param name="configuredVersion">The explicitly configured minimum TLS version.</param>

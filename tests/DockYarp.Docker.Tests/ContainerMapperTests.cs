@@ -145,6 +145,24 @@ public sealed class ContainerMapperTests
         tls.CertificateHost.Should().Be("app.local");
     }
 
+    /// <summary>SSL_POLICY on a certified host is carried into the per-host TLS metadata.</summary>
+    [Test]
+    public void SslPolicyIsCarriedIntoTlsMetadata()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.CertName, "shared"),
+                (DockerLabels.SslPolicy, "Mozilla-Modern")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Routes.Single().Tls!.SslPolicy.Should().Be("Mozilla-Modern");
+    }
+
     /// <summary>VIRTUAL_DEST with a VIRTUAL_PATH strips the path prefix before forwarding.</summary>
     [Test]
     public void VirtualDestStripsPathPrefix()

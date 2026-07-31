@@ -445,6 +445,30 @@ public sealed class LabelParserTests
         config[DockerLabels.VirtualProto].Should().Be("https");       // env-only kept
     }
 
+    /// <summary>SSL_POLICY is parsed into the config; an env value wins over a same-named label.</summary>
+    [Test]
+    public void SslPolicyIsParsedAndEnvWins()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.SslPolicy, "Mozilla-Old")))
+            with
+        {
+            Env = new System.Collections.Generic.Dictionary<string, string>(System.StringComparer.Ordinal)
+            {
+                [DockerLabels.SslPolicy] = "Mozilla-Modern",
+            },
+        };
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.SslPolicy.Should().Be("Mozilla-Modern"); // env wins over the label
+    }
+
     /// <summary>With no env vars, EffectiveConfig returns the labels unchanged.</summary>
     [Test]
     public void EffectiveConfigWithoutEnvReturnsLabels()

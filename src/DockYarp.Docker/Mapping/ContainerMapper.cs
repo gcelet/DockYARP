@@ -212,6 +212,7 @@ public static class ContainerMapper
                     Method = first.HttpsMethod,
                     Hsts = first.Hsts,
                     CertificateName = first.CertName,
+                    SslPolicy = first.SslPolicy,
                 }
                 : null;
 
@@ -268,6 +269,7 @@ public static class ContainerMapper
                     Method = common.HttpsMethod,
                     Hsts = common.Hsts,
                     CertificateName = common.CertName,
+                    SslPolicy = common.SslPolicy,
                 }
                 : null;
 

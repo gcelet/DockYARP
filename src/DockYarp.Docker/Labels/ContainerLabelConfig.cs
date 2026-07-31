@@ -38,6 +38,9 @@ public sealed record ContainerLabelConfig
     /// <summary>Gets the shared-certificate name (<c>CERT_NAME</c>) pinned for the host, if any.</summary>
     public string? CertName { get; init; }
 
+    /// <summary>Gets the per-host TLS preset (<c>SSL_POLICY</c>) overriding the global policy, if any.</summary>
+    public string? SslPolicy { get; init; }
+
     /// <summary>Gets the HTTPS method (<c>HTTPS_METHOD</c>); defaults to <see cref="Core.Models.HttpsMethod.Redirect"/>.</summary>
     public HttpsMethod HttpsMethod { get; init; } = HttpsMethod.Redirect;
 

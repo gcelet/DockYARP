@@ -9,6 +9,7 @@ using System.Security.Cryptography.X509Certificates;
 
 using AwesomeAssertions;
 
+using DockYarp.Core.Models;
 using DockYarp.Core.Stores;
 using DockYarp.Tls;
 
@@ -92,18 +93,56 @@ public sealed class SniTlsHandshakeCallbackTests
         validate(this, unrelated, null, SslPolicyErrors.None).Should().BeFalse(); // does not chain
     }
 
+    /// <summary>A host declaring an SSL_POLICY preset overrides the global posture; other hosts keep it.</summary>
+    [Test]
+    public void PerHostSslPolicyOverridesGlobalPosture()
+    {
+        FakeCertificateStore store = new();
+        using DefaultCertificateProvider fallback = new(new TlsOptions(), new MockFileSystem());
+        SniTlsHandshakeCallback callback =
+            Callback(store, fallback, new TlsOptions(), routes: RoutesWithPolicy("modern.local", "Mozilla-Modern"));
+
+        callback.BuildOptions("modern.local").EnabledSslProtocols.Should().Be(SslProtocols.Tls13);
+        callback.BuildOptions("other.local").EnabledSslProtocols.Should().Be(SslProtocols.Tls12 | SslProtocols.Tls13);
+    }
+
+    /// <summary>An unrecognized per-host SSL_POLICY falls back to the global posture.</summary>
+    [Test]
+    public void UnknownPerHostSslPolicyFallsBackToGlobalPosture()
+    {
+        FakeCertificateStore store = new();
+        using DefaultCertificateProvider fallback = new(new TlsOptions(), new MockFileSystem());
+        SniTlsHandshakeCallback callback =
+            Callback(store, fallback, new TlsOptions(), routes: RoutesWithPolicy("weird.local", "Bogus-Policy"));
+
+        callback.BuildOptions("weird.local").EnabledSslProtocols.Should().Be(SslProtocols.Tls12 | SslProtocols.Tls13);
+    }
+
     private static SniTlsHandshakeCallback Callback(
         FakeCertificateStore store,
         DefaultCertificateProvider fallback,
         TlsOptions options,
-        ClientCertificateValidator? clientCertificates = null)
+        ClientCertificateValidator? clientCertificates = null,
+        RouteConfigStore? routes = null)
     {
+        RouteConfigStore routeStore = routes ?? new RouteConfigStore();
         SniCertificateSelector selector =
-            new(store, new RouteConfigStore(), fallback, NullLogger<SniCertificateSelector>.Instance);
+            new(store, routeStore, fallback, NullLogger<SniCertificateSelector>.Instance);
         return new SniTlsHandshakeCallback(
             selector,
+            routeStore,
             clientCertificates ?? new ClientCertificateValidator(new TlsOptions(), new MockFileSystem()),
-            options);
+            options,
+            NullLogger<SniTlsHandshakeCallback>.Instance);
+    }
+
+    private static RouteConfigStore RoutesWithPolicy(string host, string policy)
+    {
+        RouteConfigStore store = new();
+        store.Apply(
+            [new RouteRule { HostPattern = host, ClusterId = host, Tls = new HostTlsMetadata { CertificateHost = host, SslPolicy = policy } }],
+            []);
+        return store;
     }
 
     private static X509Certificate2 CreateCa()

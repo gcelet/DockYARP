@@ -18,4 +18,8 @@ public sealed record HostTlsMetadata
 
     /// <summary>Gets the per-host HSTS override; <see langword="null"/> uses the global policy, <c>off</c> suppresses it.</summary>
     public string? Hsts { get; init; }
+
+    /// <summary>Gets the per-host TLS preset (<c>SSL_POLICY</c>) overriding the global posture, if any.</summary>
+    /// <remarks>When set to a recognized preset, the SNI handshake for this host uses that preset's version and ciphers.</remarks>
+    public string? SslPolicy { get; init; }
 }

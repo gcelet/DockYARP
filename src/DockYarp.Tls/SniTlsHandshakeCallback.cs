@@ -1,6 +1,7 @@
 namespace DockYarp.Tls;
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Net.Security;
@@ -8,52 +9,71 @@ using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 
+using DockYarp.Core.Interfaces;
+
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
+using Microsoft.Extensions.Logging;
 
 /// <summary>Assembles the TLS session for each HTTPS connection, keyed by the SNI host.</summary>
 /// <remarks>
 /// Kestrel's per-connection handshake callback bypasses <c>ConfigureHttpsDefaults</c> and the default
 /// certificate, so this type reassembles the certificate, protocol floor, cipher policy, and mutual-TLS policy
-/// itself. The global TLS posture is resolved once and captured; only the certificate lookup runs per handshake.
+/// itself. The global posture and each preset are prepared once; per handshake, a host that declares an
+/// <c>SSL_POLICY</c> preset overrides the global protocol floor and cipher policy, while only the certificate
+/// and per-host policy lookups run.
 /// </remarks>
 public sealed class SniTlsHandshakeCallback
 {
     private readonly SniCertificateSelector selector;
-    private readonly SslProtocols enabledProtocols;
+    private readonly IRouteConfigStore routes;
+    private readonly ILogger<SniTlsHandshakeCallback> logger;
     private readonly List<SslApplicationProtocol> applicationProtocols;
-    private readonly CipherSuitesPolicy? cipherSuitesPolicy;
+    private readonly PreparedPolicy globalPolicy;
+    private readonly IReadOnlyDictionary<string, PreparedPolicy> presetPolicies;
     private readonly bool mutualTls;
     private readonly RemoteCertificateValidationCallback? validateClientCertificate;
     private readonly TlsHandshakeCallbackOptions callbackOptions;
+    private readonly ConcurrentDictionary<string, byte> warnedUnknownPolicy = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Captures the global TLS posture and mutual-TLS wiring.</summary>
+    /// <summary>Captures the global TLS posture, the per-preset postures, and the mutual-TLS wiring.</summary>
     /// <param name="selector">The SNI certificate selector (also resolves the fallback certificate).</param>
+    /// <param name="routes">The routing store, used to resolve a host's <c>SSL_POLICY</c> preset.</param>
     /// <param name="clientCertificates">Validator for client certificates (mutual TLS).</param>
-    /// <param name="options">TLS options carrying the posture (minimum version, ciphers, protocols, SSL policy).</param>
+    /// <param name="options">TLS options carrying the global posture (minimum version, ciphers, protocols, SSL policy).</param>
+    /// <param name="logger">Logger for the per-host policy diagnostic.</param>
     public SniTlsHandshakeCallback(
         SniCertificateSelector selector,
+        IRouteConfigStore routes,
         ClientCertificateValidator clientCertificates,
-        TlsOptions options)
+        TlsOptions options,
+        ILogger<SniTlsHandshakeCallback> logger)
     {
         ArgumentNullException.ThrowIfNull(selector);
+        ArgumentNullException.ThrowIfNull(routes);
         ArgumentNullException.ThrowIfNull(clientCertificates);
         ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(logger);
 
         this.selector = selector;
+        this.routes = routes;
+        this.logger = logger;
 
-        SslPolicyResolution effective =
-            SslPolicyPresets.Resolve(options.SslPolicy, options.MinimumTlsVersion, options.CipherSuites);
-        enabledProtocols = TlsHardening.ToSslProtocols(effective.MinimumTlsVersion);
         applicationProtocols =
             TlsHardening.ToApplicationProtocols(TlsHardening.ParseHttpProtocols(options.HttpProtocols));
 
-        ImmutableArray<TlsCipherSuite> ciphers = TlsHardening.ParseCipherSuites(effective.CipherSuites);
+        // The global posture; a per-host SSL_POLICY preset overrides it at handshake time.
+        globalPolicy = Prepare(SslPolicyPresets.Resolve(options.SslPolicy, options.MinimumTlsVersion, options.CipherSuites));
 
-        // CipherSuitesPolicy is only supported on Linux/macOS; elsewhere the OS negotiates its own defaults.
-        cipherSuitesPolicy = !ciphers.IsEmpty && (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
-            ? new CipherSuitesPolicy(ciphers)
-            : null;
+        // Each preset is prepared once so no cipher parsing runs per handshake. A per-host preset fully replaces
+        // the posture (the global explicit ciphers do not bleed into it), matching nginx-proxy's per-vhost policy.
+        Dictionary<string, PreparedPolicy> presets = new(StringComparer.OrdinalIgnoreCase);
+        foreach (string name in SslPolicyPresets.KnownPresetNames)
+        {
+            presets[name] = Prepare(SslPolicyPresets.Resolve(name, TlsVersion.Tls12, configuredCiphers: null));
+        }
+
+        presetPolicies = presets;
 
         mutualTls = clientCertificates.HasClientCa;
 
@@ -80,16 +100,17 @@ public sealed class SniTlsHandshakeCallback
     /// <returns>The assembled <see cref="SslServerAuthenticationOptions"/>.</returns>
     public SslServerAuthenticationOptions BuildOptions(string? host)
     {
+        PreparedPolicy policy = ResolvePolicy(host);
         SslServerAuthenticationOptions authentication = new()
         {
             ServerCertificate = selector.Select(host),
-            EnabledSslProtocols = enabledProtocols,
+            EnabledSslProtocols = policy.Protocols,
             ApplicationProtocols = applicationProtocols,
         };
 
-        if (cipherSuitesPolicy is not null)
+        if (policy.Ciphers is not null)
         {
-            authentication.CipherSuitesPolicy = cipherSuitesPolicy;
+            authentication.CipherSuitesPolicy = policy.Ciphers;
         }
 
         if (mutualTls)
@@ -101,6 +122,45 @@ public sealed class SniTlsHandshakeCallback
         return authentication;
     }
 
+    private static PreparedPolicy Prepare(SslPolicyResolution resolution)
+    {
+        ImmutableArray<TlsCipherSuite> ciphers = TlsHardening.ParseCipherSuites(resolution.CipherSuites);
+
+        // CipherSuitesPolicy is only supported on Linux/macOS; elsewhere the OS negotiates its own defaults.
+        CipherSuitesPolicy? cipherPolicy = !ciphers.IsEmpty && (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
+            ? new CipherSuitesPolicy(ciphers)
+            : null;
+        return new PreparedPolicy(TlsHardening.ToSslProtocols(resolution.MinimumTlsVersion), cipherPolicy);
+    }
+
+    private PreparedPolicy ResolvePolicy(string? host)
+    {
+        if (host is not { Length: > 0 } name)
+        {
+            return globalPolicy;
+        }
+
+        if (HostSslPolicyResolver.Resolve(routes.Current, name) is not { Length: > 0 } policyName)
+        {
+            return globalPolicy;
+        }
+
+        if (presetPolicies.TryGetValue(policyName, out PreparedPolicy prepared))
+        {
+            return prepared;
+        }
+
+        // Unknown per-host preset: keep the global posture, warned once per distinct value.
+        if (warnedUnknownPolicy.TryAdd(policyName, 0))
+        {
+            TlsLog.UnsupportedSslPolicy(logger, policyName);
+        }
+
+        return globalPolicy;
+    }
+
     private ValueTask<SslServerAuthenticationOptions> OnConnectionAsync(TlsHandshakeCallbackContext context) =>
         ValueTask.FromResult(BuildOptions(context.ClientHelloInfo.ServerName));
+
+    private readonly record struct PreparedPolicy(SslProtocols Protocols, CipherSuitesPolicy? Ciphers);
 }
