@@ -7,7 +7,8 @@ runtime (`mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled`), running as a **
 images carry no ICU, so the app sets `InvariantGlobalization=true` (it uses invariant/ordinal operations).
 
 - Listens on **8080** (HTTP — ACME challenge + redirects) and **8443** (HTTPS — SNI per host, self-signed
-  fallback for unknown hosts).
+  fallback for unknown hosts). The ports are configurable via `Server:HttpPort` / `Server:HttpsPort`
+  (env `Server__HttpPort` / `Server__HttpsPort`); the non-root container defaults to 8080/8443.
 - Mounts **`/certs`** (certificate store) and **`/config`** (static configuration).
 
 ```bash

@@ -24,6 +24,33 @@ public static class TlsHardening
     public static HttpProtocols ParseHttpProtocols(string? value) =>
         Enum.TryParse(value, ignoreCase: true, out HttpProtocols parsed) ? parsed : HttpProtocols.Http1AndHttp2;
 
+    /// <summary>Maps the enabled HTTP protocols to the ALPN application-protocol list (HTTP/2 preferred).</summary>
+    /// <param name="protocols">The enabled HTTP protocols.</param>
+    /// <returns>The ALPN protocols to advertise; HTTP/3 is negotiated via Alt-Svc, not ALPN over TCP.</returns>
+    /// <remarks>Used when assembling <see cref="System.Net.Security.SslServerAuthenticationOptions"/> in the
+    /// per-connection handshake callback, which bypasses Kestrel's default ALPN wiring.</remarks>
+    public static List<SslApplicationProtocol> ToApplicationProtocols(HttpProtocols protocols)
+    {
+        List<SslApplicationProtocol> result = [];
+        if ((protocols & HttpProtocols.Http2) != HttpProtocols.None)
+        {
+            result.Add(SslApplicationProtocol.Http2);
+        }
+
+        if ((protocols & HttpProtocols.Http1) != HttpProtocols.None)
+        {
+            result.Add(SslApplicationProtocol.Http11);
+        }
+
+        if (result.Count == 0)
+        {
+            result.Add(SslApplicationProtocol.Http2);
+            result.Add(SslApplicationProtocol.Http11);
+        }
+
+        return result;
+    }
+
     /// <summary>Parses cipher-suite names into <see cref="TlsCipherSuite"/> values, skipping unknown entries.</summary>
     /// <param name="names">The configured cipher-suite names.</param>
     /// <returns>The recognized cipher suites (empty when none are recognized or configured).</returns>

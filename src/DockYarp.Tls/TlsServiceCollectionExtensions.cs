@@ -5,6 +5,7 @@ using System.IO.Abstractions;
 
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
 /// <summary>Dependency-injection registration for TLS/ACME.</summary>
@@ -26,10 +27,14 @@ public static class TlsServiceCollectionExtensions
         services.AddSingleton<DefaultCertificateProvider>();
         services.AddSingleton<ICertificateStore, FileCertificateStore>();
         services.AddSingleton<SniCertificateSelector>();
+        services.AddSingleton<SniTlsHandshakeCallback>();
         services.AddSingleton<IHttp01ChallengeStore, Http01ChallengeStore>();
         services.AddSingleton<Http01ChallengeMiddleware>();
         services.AddSingleton<IAcmeClient, CertesAcmeClient>();
         services.AddHostedService<CertificateProvisioningService>();
+
+        // A default (8080/8443) unless the host already bound endpoint options from the "Server" configuration.
+        services.TryAddSingleton<ServerEndpointOptions>();
         services.AddSingleton<IConfigureOptions<KestrelServerOptions>, KestrelTlsConfigurator>();
         return services;
     }

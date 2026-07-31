@@ -21,9 +21,11 @@ COPY --from=build /src/artifacts/publish ./
 COPY --chown=$APP_UID:$APP_UID --from=build /certs-seed /certs
 ENV Tls__CertificateDirectory=/certs
 
-# HTTP on 8080 (ACME challenge + redirects); HTTPS on 8443 (SNI per host, self-signed fallback).
-ENV ASPNETCORE_HTTP_PORTS=8080
-ENV ASPNETCORE_HTTPS_PORTS=8443
+# HTTP on 8080 (ACME challenge + redirects); HTTPS on 8443 (per-SNI TLS, self-signed fallback). DockYarp binds
+# these explicitly (the HTTPS endpoint attaches a per-connection TLS callback), so ASPNETCORE_*_PORTS no longer
+# apply — the data-plane ports are configured via Server__*.
+ENV Server__HttpPort=8080
+ENV Server__HttpsPort=8443
 EXPOSE 8080
 EXPOSE 8443
 

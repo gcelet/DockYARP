@@ -62,16 +62,21 @@ builder.Services.AddSingleton(routingOptions);
 builder.Services.AddDockYarpReverseProxy(xForwardedAction);
 
 // Security options bound from the "Security" section (defaults preserved when unset).
-SecurityHeadersOptions securityOptions = new();
-builder.Configuration.GetSection("Security").Bind(securityOptions);
+SecurityHeadersOptions securityOptions =
+    builder.Configuration.GetSection("Security").Get<SecurityHeadersOptions>() ?? new();
 builder.Services.AddDockYarpSecurity(securityOptions);
 
 // HTTPS redirection is gated on real certificate availability (store-backed).
 builder.Services.AddSingleton<ICertificateAvailability, CertificateAvailabilityAdapter>();
 
+// Data-plane endpoint ports, bound explicitly so the HTTPS endpoint can attach the per-connection TLS
+// handshake callback (which bypasses ConfigureHttpsDefaults). Defaults 8080/8443 (non-root container).
+ServerEndpointOptions serverEndpoints =
+    builder.Configuration.GetSection("Server").Get<ServerEndpointOptions>() ?? new();
+builder.Services.AddSingleton(serverEndpoints);
+
 // TLS/ACME: certificate store, SNI, HTTP-01 challenge, and provisioning.
-TlsOptions tlsOptions = new();
-builder.Configuration.GetSection("Tls").Bind(tlsOptions);
+TlsOptions tlsOptions = builder.Configuration.GetSection("Tls").Get<TlsOptions>() ?? new();
 builder.Services.AddDockYarpTls(tlsOptions);
 
 // Data Protection is registered transitively (YARP uses it for session affinity). Persist its keys under the

@@ -29,6 +29,18 @@ public sealed class TlsHardeningTests
         TlsHardening.ParseHttpProtocols(null).Should().Be(HttpProtocols.Http1AndHttp2);
     }
 
+    /// <summary>HTTP protocols map to the ALPN list (HTTP/2 preferred), defaulting to HTTP/2 + HTTP/1.1.</summary>
+    [Test]
+    public void ApplicationProtocolsMapFromHttpProtocols()
+    {
+        TlsHardening.ToApplicationProtocols(HttpProtocols.Http1).Should().Equal(SslApplicationProtocol.Http11);
+        TlsHardening.ToApplicationProtocols(HttpProtocols.Http2).Should().Equal(SslApplicationProtocol.Http2);
+        TlsHardening.ToApplicationProtocols(HttpProtocols.Http1AndHttp2)
+            .Should().Equal(SslApplicationProtocol.Http2, SslApplicationProtocol.Http11);
+        TlsHardening.ToApplicationProtocols(HttpProtocols.None)
+            .Should().Equal(SslApplicationProtocol.Http2, SslApplicationProtocol.Http11);
+    }
+
     /// <summary>Cipher-suite names are parsed and unknown entries are skipped.</summary>
     [Test]
     public void CipherSuitesParseSkippingUnknown()
