@@ -124,7 +124,7 @@ docker-gen exposes both `.Env` and `.Labels` with no precedence — the template
 | Admin API (`/api/*`) + Prometheus `/metrics` | ✅ | |
 | Graceful shutdown | ✅ | |
 | `vhost.d`-style per-vhost/global config + route override | ✅ | Structured overrides: per-host/`default` response headers + static-route replacement (not raw nginx; request-headers/location = future structured additions). |
-| `SERVER_TOKENS` (hide/adjust `Server`) | ✅ | Suppressed by default; set `Security:ServerHeader` for a custom value. |
+| `SERVER_TOKENS` (hide/adjust `Server`) | ✅ | Suppressed by default; global `Security:ServerHeader` for a custom value; per-host `SERVER_TOKENS=off` opts a host out. |
 | `DEBUG_ENDPOINT`-style config dump | ✅ | Admin `GET /api/resolve?host=&path=` returns the effective route/transforms/TLS/security/cluster (API-key protected). |
 | Custom `LOG_FORMAT` template | ✅ | `AccessLog:Fields` selects an ordered field set (structured analog of `LOG_FORMAT`). |
 
