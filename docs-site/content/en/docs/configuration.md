@@ -66,15 +66,107 @@ DockYARP-native key wins when both are set):
 
 ## Application configuration
 
-The proxy's own settings are bound from configuration sections:
+These are the proxy's own settings, bound from configuration sections. Any key can be set in `appsettings.json`
+or as a **double-underscore environment variable** on the proxy container (for example
+`Tls__AcceptTermsOfService=true`, `Docker__Enabled=true`). Defaults are shown.
 
-- **`Docker`** — endpoint, `PreferredNetwork` / `ProxyNetworks`, `ContainerFilters`, `HostAddress`.
-- **`Tls`** — certificate directory, ACME settings, `SslPolicy`, `MinimumTlsVersion`, `ClientCaCertificatePath`.
-- **`Security`** — `TrustDefaultCert`, `EnableHttpOnMissingCert`, HSTS defaults, `InternalRanges`,
-  `HtpasswdDirectory`, `ServerHeader`.
-- **`Routing`** — default host and the response for unmatched requests.
-- **`Proxy`** — trusting a downstream proxy's `X-Forwarded-*` headers.
+### `Server` — data-plane ports
 
-> This reference grows as capabilities are documented in depth. See the
-> [parity matrix](https://github.com/gcelet/DockYARP/blob/main/openspec/backlog/parity.md) for the full,
-> current feature set.
+| Key | Default | Purpose |
+|-----|---------|---------|
+| `HttpPort` | `8080` | Plaintext HTTP port (ACME challenge + HTTP→HTTPS redirects). |
+| `HttpsPort` | `8443` | HTTPS port (per-SNI TLS). |
+
+### `Docker` — discovery
+
+| Key | Default | Purpose |
+|-----|---------|---------|
+| `Enabled` | `false` | Turn on Docker discovery (when off, only the static configuration is applied). |
+| `DockerEndpoint` | platform default | Docker API URI (`unix:///var/run/docker.sock`, `npipe://./pipe/docker_engine`, or `tcp://…`). |
+| `PreferredNetwork` | — | Network whose container IP is preferred for the backend address. |
+| `ProxyNetworks` | — | Networks the proxy is attached to (restricts address selection to a reachable one). |
+| `HostAddress` | — | Address used to reach host-network backends (e.g. `host.docker.internal`). |
+| `ContainerFilters` | — | Docker-native filters scoping discovery, e.g. `Docker:ContainerFilters:label:0 = dockyarp.enable=true`. |
+| `InitialReconnectDelay` / `MaxReconnectDelay` | `00:00:01` / `00:00:30` | Event-stream reconnect backoff. |
+
+### `Tls` — certificates & ACME
+
+| Key | Default | Purpose |
+|-----|---------|---------|
+| `CertificateDirectory` | `certs` | Directory for the certificate store and Data Protection keys. |
+| `AcmeDirectoryUri` | Let's Encrypt **staging** | ACME directory endpoint (set the production URL to issue trusted certs). |
+| `AcceptTermsOfService` | `false` | Must be `true` for ACME issuance. |
+| `ContactEmail` | — | Default ACME contact when a host declares no `LETSENCRYPT_EMAIL`. |
+| `RenewBeforeExpiry` | `30.00:00:00` | Renew a certificate this long before it expires. |
+| `CheckInterval` | `12:00:00` | Provisioning / renewal check interval. |
+| `MinimumTlsVersion` | `Tls12` | Global TLS floor (a per-host `SSL_POLICY` overrides it). |
+| `SslPolicy` | — | Global preset: `Mozilla-Modern` / `Mozilla-Intermediate` / `Mozilla-Old`. |
+| `CipherSuites` | — | Explicit cipher allow-list (applied on Linux/macOS only). |
+| `HttpProtocols` | `Http1AndHttp2` | Enabled HTTP protocols on the HTTPS endpoint. |
+| `ClientCaCertificatePath` | — | Client CA (PEM) enabling mutual TLS. |
+
+### `Security`
+
+| Key | Default | Purpose |
+|-----|---------|---------|
+| `EnableHsts` | `true` | Emit HSTS on HTTPS responses. |
+| `HstsMaxAge` | `365.00:00:00` | HSTS `max-age`. |
+| `HstsIncludeSubDomains` / `HstsPreload` | `false` / `false` | HSTS directives. |
+| `TrustDefaultCert` | `true` | May a host with no real cert fall back to the default one (else an HTTPS request → 500). Per-host override: `TRUST_DEFAULT_CERT`. |
+| `EnableHttpOnMissingCert` | `true` | Serve HTTP (no redirect) while a host has no certificate. Per-host override: `ENABLE_HTTP_ON_MISSING_CERT`. |
+| `FrameOptions` | `DENY` | `X-Frame-Options` value. |
+| `ReferrerPolicy` | `no-referrer` | `Referrer-Policy` value. |
+| `ServerHeader` | — (suppressed) | Custom `Server` header value (a per-host `SERVER_TOKENS=off` opts out). |
+| `InternalRanges` | private ranges + `::1` | CIDRs treated as internal for `NETWORK_ACCESS=internal`. |
+| `HtpasswdDirectory` | — | Directory of Apache htpasswd files enabling file-based Basic Auth. |
+| `HtpasswdReloadInterval` | `00:00:30` | How often the htpasswd directory is reloaded. |
+
+### `Routing`
+
+| Key | Default | Purpose |
+|-----|---------|---------|
+| `DefaultHost` | — | Host whose route also serves requests matching no other host. |
+| `DefaultResponseStatusCode` | `404` | Status returned when a request matches no route and no default host. |
+| `DefaultResponseLocation` | — | Optional redirect `Location` for unmatched requests (`$scheme`/`$host`/`$request_uri`). |
+
+### `Proxy`
+
+| Key | Default | Purpose |
+|-----|---------|---------|
+| `TrustDownstreamProxy` | `true` | Append to inbound `X-Forwarded-*` headers (trusted) rather than replacing them. |
+
+### `AccessLog`
+
+| Key | Default | Purpose |
+|-----|---------|---------|
+| `Enabled` | `true` | Emit one access-log entry per request. |
+| `ExcludedPathPrefixes` | `/metrics`, `/api` | Request path prefixes excluded from access logging. |
+| `Fields` | default set | Ordered field selection (the structured analog of nginx `LOG_FORMAT`). |
+
+### `AdminApi`
+
+| Key | Default | Purpose |
+|-----|---------|---------|
+| `ApiKey` | — (closed) | Key required in the `X-Api-Key` header; empty closes the admin API. |
+
+### `Compression`
+
+| Key | Default | Purpose |
+|-----|---------|---------|
+| `Enabled` | `true` | gzip/brotli for compressible responses; set `false` to disable. |
+
+### `DataProtection`
+
+| Key | Default | Purpose |
+|-----|---------|---------|
+| `CertificatePath` / `CertificatePassword` | — | PFX used to encrypt the persisted key ring at rest (store it **outside** the `certs` volume). |
+
+### `Host`
+
+| Key | Default | Purpose |
+|-----|---------|---------|
+| `ShutdownTimeoutSeconds` | `30` | Graceful-shutdown drain timeout. |
+
+> See the [container configuration](#container-configuration-labels-or-environment-variables) above for per-backend
+> labels/env vars, and the
+> [parity matrix](https://github.com/gcelet/DockYARP/blob/main/openspec/backlog/parity.md) for the full feature set.
