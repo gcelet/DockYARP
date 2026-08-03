@@ -82,9 +82,9 @@ public static class LabelParser
             ServerTokens = GetOrNull(labels, DockerLabels.ServerTokens),
             HttpsMethod = ParseHttpsMethod(GetOrNull(labels, DockerLabels.HttpsMethod)),
             Hsts = GetOrNull(labels, DockerLabels.Hsts),
-            LoadBalancingPolicy = ParsePolicy(GetOrNull(labels, DockerLabels.LoadBalancing)),
+            LoadBalancingPolicy = ResolveLoadBalancing(labels),
             Priority = ParsePriority(GetOrNull(labels, DockerLabels.Priority)),
-            ClientCertificate = ParseClientCertificate(GetOrNull(labels, DockerLabels.ClientCert)),
+            ClientCertificate = ResolveClientCertificate(labels),
             ProxyTimeout = ParseTimeoutSeconds(GetOrNull(labels, DockerLabels.ProxyTimeout)),
             MaxRequestBodySize = ParsePositiveLong(GetOrNull(labels, DockerLabels.MaxBodySize)),
             Auth = ParseAuth(labels),
@@ -108,9 +108,9 @@ public static class LabelParser
             CertName = GetOrNull(labels, DockerLabels.CertName),
             SslPolicy = GetOrNull(labels, DockerLabels.SslPolicy),
             ServerTokens = GetOrNull(labels, DockerLabels.ServerTokens),
-            LoadBalancingPolicy = ParsePolicy(GetOrNull(labels, DockerLabels.LoadBalancing)),
+            LoadBalancingPolicy = ResolveLoadBalancing(labels),
             Priority = ParsePriority(GetOrNull(labels, DockerLabels.Priority)),
-            ClientCertificate = ParseClientCertificate(GetOrNull(labels, DockerLabels.ClientCert)),
+            ClientCertificate = ResolveClientCertificate(labels),
             ProxyTimeout = ParseTimeoutSeconds(GetOrNull(labels, DockerLabels.ProxyTimeout)),
             MaxRequestBodySize = ParsePositiveLong(GetOrNull(labels, DockerLabels.MaxBodySize)),
             HttpsMethod = ParseHttpsMethod(GetOrNull(labels, DockerLabels.HttpsMethod)),
@@ -170,6 +170,27 @@ public static class LabelParser
         {
             "REQUIRED" => ClientCertificateRequirement.Required,
             "OPTIONAL" => ClientCertificateRequirement.Optional,
+            _ => ClientCertificateRequirement.None,
+        };
+
+    private static ClientCertificateRequirement ResolveClientCertificate(IReadOnlyDictionary<string, string> labels)
+    {
+        // DockYarp-native wins; the nginx-proxy namespaced label is the compatibility fallback.
+        if (GetOrNull(labels, DockerLabels.ClientCert) is { } native)
+        {
+            return ParseClientCertificate(native);
+        }
+
+        return GetOrNull(labels, DockerLabels.NginxSslVerifyClient) is { } verify
+            ? TranslateNginxSslVerifyClient(verify)
+            : ClientCertificateRequirement.None;
+    }
+
+    private static ClientCertificateRequirement TranslateNginxSslVerifyClient(string value) =>
+        value.Trim().ToUpperInvariant() switch
+        {
+            "ON" => ClientCertificateRequirement.Required,
+            "OPTIONAL" or "OPTIONAL_NO_CA" => ClientCertificateRequirement.Optional,
             _ => ClientCertificateRequirement.None,
         };
 
@@ -313,6 +334,35 @@ public static class LabelParser
             "RANDOM" => LoadBalancingPolicy.Random,
             "FIRSTALPHABETICAL" => LoadBalancingPolicy.FirstAlphabetical,
             _ => null,
+        };
+    }
+
+    private static LoadBalancingPolicy? ResolveLoadBalancing(IReadOnlyDictionary<string, string> labels)
+    {
+        // DockYarp-native wins; the nginx-proxy namespaced label is the compatibility fallback.
+        if (GetOrNull(labels, DockerLabels.LoadBalancing) is { } native)
+        {
+            return ParsePolicy(native);
+        }
+
+        // A DockYarp policy name under the alias key still works; otherwise translate the nginx directive.
+        return GetOrNull(labels, DockerLabels.NginxLoadBalance) is { } directive
+            ? ParsePolicy(directive) ?? TranslateNginxLoadBalance(directive)
+            : null;
+    }
+
+    private static LoadBalancingPolicy? TranslateNginxLoadBalance(string value)
+    {
+        // nginx directive: drop a trailing ';' and any arguments (e.g. "hash $remote_addr;"), keep the name.
+        string trimmed = value.Trim().TrimEnd(';').Trim();
+        int space = trimmed.IndexOf(' ', StringComparison.Ordinal);
+        string directive = space >= 0 ? trimmed[..space] : trimmed;
+        return directive.ToUpperInvariant() switch
+        {
+            "LEAST_CONN" => LoadBalancingPolicy.LeastRequests,
+            "RANDOM" => LoadBalancingPolicy.Random,
+            "ROUND_ROBIN" => LoadBalancingPolicy.RoundRobin,
+            _ => null, // ip_hash / hash $x → session affinity, not a policy (see add-session-affinity)
         };
     }
 

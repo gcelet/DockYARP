@@ -69,4 +69,10 @@ public static class DockerLabels
 
     /// <summary>Restricts the route to internal client networks when set to <c>internal</c> (returns 403 otherwise).</summary>
     public const string NetworkAccess = "NETWORK_ACCESS";
+
+    /// <summary>nginx-proxy namespaced label for the load-balancing policy; aliases <see cref="LoadBalancing"/>.</summary>
+    public const string NginxLoadBalance = "com.github.nginx-proxy.nginx-proxy.loadbalance";
+
+    /// <summary>nginx-proxy namespaced label for mutual-TLS verification; aliases <see cref="ClientCert"/>.</summary>
+    public const string NginxSslVerifyClient = "com.github.nginx-proxy.nginx-proxy.ssl_verify_client";
 }

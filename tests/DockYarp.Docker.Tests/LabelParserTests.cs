@@ -588,4 +588,59 @@ public sealed class LabelParserTests
         config!.Scheme.Should().Be(BackendScheme.Https);
         config.Http2.Should().BeFalse();
     }
+
+    /// <summary>The nginx-proxy ssl_verify_client label aliases DOCKYARP_CLIENT_CERT with value translation.</summary>
+    [Test]
+    public void NginxSslVerifyClientAliasMapsToClientCert()
+    {
+        ParseConfig(DockerLabels.NginxSslVerifyClient, "on").ClientCertificate
+            .Should().Be(ClientCertificateRequirement.Required);
+        ParseConfig(DockerLabels.NginxSslVerifyClient, "optional").ClientCertificate
+            .Should().Be(ClientCertificateRequirement.Optional);
+        ParseConfig(DockerLabels.NginxSslVerifyClient, "off").ClientCertificate
+            .Should().Be(ClientCertificateRequirement.None);
+    }
+
+    /// <summary>The nginx-proxy loadbalance label aliases DOCKYARP_LB (nginx directives + DockYarp names).</summary>
+    [Test]
+    public void NginxLoadBalanceAliasMapsToPolicy()
+    {
+        ParseConfig(DockerLabels.NginxLoadBalance, "least_conn;").LoadBalancingPolicy
+            .Should().Be(LoadBalancingPolicy.LeastRequests);
+        ParseConfig(DockerLabels.NginxLoadBalance, "least-requests").LoadBalancingPolicy
+            .Should().Be(LoadBalancingPolicy.LeastRequests);
+        ParseConfig(DockerLabels.NginxLoadBalance, "hash $remote_addr;").LoadBalancingPolicy
+            .Should().BeNull(); // hashing is session affinity, not a policy
+    }
+
+    /// <summary>When both the DockYarp-native key and the namespaced label are set, the native value wins.</summary>
+    [Test]
+    public void DockYarpNativeKeyWinsOverNamespacedLabel()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.ClientCert, "required"),
+                (DockerLabels.NginxSslVerifyClient, "optional")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.ClientCertificate.Should().Be(ClientCertificateRequirement.Required);
+    }
+
+    private static ContainerLabelConfig ParseConfig(string aliasKey, string aliasValue)
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (aliasKey, aliasValue)));
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+        return config!;
+    }
 }
