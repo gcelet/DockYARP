@@ -1,5 +1,6 @@
 namespace DockYarp.Security;
 
+using System.Globalization;
 using System.Threading.Tasks;
 
 using DockYarp.Core.Models;
@@ -15,6 +16,8 @@ public sealed class HttpsRedirectionMiddleware(
     ICertificateAvailability certificates,
     SecurityHeadersOptions options) : IMiddleware
 {
+    private const int DefaultHttpsPort = 443;
+
     /// <inheritdoc />
     public Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
@@ -48,7 +51,12 @@ public sealed class HttpsRedirectionMiddleware(
             && Redirects(tls.Method)
             && (certificateAvailable || !options.EnableHttpOnMissingCert))
         {
-            string target = $"https://{host}{request.PathBase}{request.Path}{request.QueryString}";
+            // Use the host's external HTTPS port when configured (behind a non-standard published port); omit an
+            // explicit port at the default 443 so the common case is unchanged.
+            string authority = tls.ExternalHttpsPort is { } externalPort && externalPort != DefaultHttpsPort
+                ? $"{host}:{externalPort.ToString(CultureInfo.InvariantCulture)}"
+                : host;
+            string target = $"https://{authority}{request.PathBase}{request.Path}{request.QueryString}";
             context.Response.Redirect(target, permanent: true, preserveMethod: true);
             return Task.CompletedTask;
         }

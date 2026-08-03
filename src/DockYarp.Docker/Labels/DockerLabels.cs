@@ -37,6 +37,9 @@ public static class DockerLabels
     /// <summary>Per-host <c>Server</c> header control (<c>off</c> suppresses it for the host).</summary>
     public const string ServerTokens = "SERVER_TOKENS";
 
+    /// <summary>External HTTPS port used in the HTTP→HTTPS redirect target for this host (default 443).</summary>
+    public const string ExternalHttpsPort = "EXTERNAL_HTTPS_PORT";
+
     /// <summary>HTTP↔HTTPS behavior: <c>redirect</c> (default), <c>noredirect</c>, <c>nohttp</c>, <c>nohttps</c>.</summary>
     public const string HttpsMethod = "HTTPS_METHOD";
 

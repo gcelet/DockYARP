@@ -180,6 +180,24 @@ public sealed class ContainerMapperTests
         result.Contribution.Routes.Single().ServerTokens.Should().Be("off");
     }
 
+    /// <summary>EXTERNAL_HTTPS_PORT on a certified host is carried into the per-host TLS metadata.</summary>
+    [Test]
+    public void ExternalHttpsPortIsCarriedIntoTlsMetadata()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.CertName, "shared"),
+                (DockerLabels.ExternalHttpsPort, "8443")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Routes.Single().Tls!.ExternalHttpsPort.Should().Be(8443);
+    }
+
     /// <summary>VIRTUAL_DEST with a VIRTUAL_PATH strips the path prefix before forwarding.</summary>
     [Test]
     public void VirtualDestStripsPathPrefix()

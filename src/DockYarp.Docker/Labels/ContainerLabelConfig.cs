@@ -44,6 +44,9 @@ public sealed record ContainerLabelConfig
     /// <summary>Gets the per-host <c>Server</c> header control (<c>SERVER_TOKENS</c>); <c>off</c> suppresses it.</summary>
     public string? ServerTokens { get; init; }
 
+    /// <summary>Gets the external HTTPS port (<c>EXTERNAL_HTTPS_PORT</c>) used in the redirect target, if any.</summary>
+    public int? ExternalHttpsPort { get; init; }
+
     /// <summary>Gets the HTTPS method (<c>HTTPS_METHOD</c>); defaults to <see cref="Core.Models.HttpsMethod.Redirect"/>.</summary>
     public HttpsMethod HttpsMethod { get; init; } = HttpsMethod.Redirect;
 

@@ -631,6 +631,25 @@ public sealed class LabelParserTests
         config!.ClientCertificate.Should().Be(ClientCertificateRequirement.Required);
     }
 
+    /// <summary>EXTERNAL_HTTPS_PORT is parsed; an invalid value is flagged and ignored.</summary>
+    [Test]
+    public void ExternalHttpsPortIsParsed()
+    {
+        ParseConfig(DockerLabels.ExternalHttpsPort, "8443").ExternalHttpsPort.Should().Be(8443);
+
+        ContainerInfo invalid = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.ExternalHttpsPort, "nope")));
+
+        LabelParser.TryParse(invalid, out ContainerLabelConfig? config, out _).Should().BeTrue();
+        config!.ExternalHttpsPort.Should().BeNull();
+        LabelParser.HasInvalidExternalHttpsPort(invalid.Labels).Should().BeTrue();
+    }
+
     private static ContainerLabelConfig ParseConfig(string aliasKey, string aliasValue)
     {
         ContainerInfo container = DiscoveryTestData.Container(

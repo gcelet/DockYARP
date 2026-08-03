@@ -80,6 +80,7 @@ public static class LabelParser
             CertName = GetOrNull(labels, DockerLabels.CertName),
             SslPolicy = GetOrNull(labels, DockerLabels.SslPolicy),
             ServerTokens = GetOrNull(labels, DockerLabels.ServerTokens),
+            ExternalHttpsPort = ParseExternalPort(GetOrNull(labels, DockerLabels.ExternalHttpsPort)),
             HttpsMethod = ParseHttpsMethod(GetOrNull(labels, DockerLabels.HttpsMethod)),
             Hsts = GetOrNull(labels, DockerLabels.Hsts),
             LoadBalancingPolicy = ResolveLoadBalancing(labels),
@@ -108,6 +109,7 @@ public static class LabelParser
             CertName = GetOrNull(labels, DockerLabels.CertName),
             SslPolicy = GetOrNull(labels, DockerLabels.SslPolicy),
             ServerTokens = GetOrNull(labels, DockerLabels.ServerTokens),
+            ExternalHttpsPort = ParseExternalPort(GetOrNull(labels, DockerLabels.ExternalHttpsPort)),
             LoadBalancingPolicy = ResolveLoadBalancing(labels),
             Priority = ParsePriority(GetOrNull(labels, DockerLabels.Priority)),
             ClientCertificate = ResolveClientCertificate(labels),
@@ -215,6 +217,15 @@ public static class LabelParser
         return GetOrNull(labels, DockerLabels.MaxBodySize) is { } raw && ParsePositiveLong(raw) is null;
     }
 
+    /// <summary>Reports whether <c>EXTERNAL_HTTPS_PORT</c> is present but not a valid port.</summary>
+    /// <param name="labels">The container labels.</param>
+    /// <returns><see langword="true"/> when the value cannot be parsed as a port (1..65535).</returns>
+    public static bool HasInvalidExternalHttpsPort(IReadOnlyDictionary<string, string> labels)
+    {
+        ArgumentNullException.ThrowIfNull(labels);
+        return GetOrNull(labels, DockerLabels.ExternalHttpsPort) is { } raw && ParseExternalPort(raw) is null;
+    }
+
     private static TimeSpan? ParseTimeoutSeconds(string? value) =>
         int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int seconds) && seconds > 0
             ? TimeSpan.FromSeconds(seconds)
@@ -223,6 +234,11 @@ public static class LabelParser
     private static long? ParsePositiveLong(string? value) =>
         long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out long parsed) && parsed > 0
             ? parsed
+            : null;
+
+    private static int? ParseExternalPort(string? value) =>
+        int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int port) && port is > 0 and <= 65535
+            ? port
             : null;
 
     /// <summary>Reports whether <c>HTTPS_METHOD</c> is present but not a recognized value.</summary>

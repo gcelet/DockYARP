@@ -182,6 +182,11 @@ public static class ContainerMapper
         {
             warnings.Add($"{container.Name} ({id}): invalid {DockerLabels.MaxBodySize}; no body-size limit applied.");
         }
+
+        if (LabelParser.HasInvalidExternalHttpsPort(config))
+        {
+            warnings.Add($"{container.Name} ({id}): invalid {DockerLabels.ExternalHttpsPort}; the default HTTPS port is used.");
+        }
     }
 
     private static string ClusterId(string host, string path) =>
@@ -213,6 +218,7 @@ public static class ContainerMapper
                     Hsts = first.Hsts,
                     CertificateName = first.CertName,
                     SslPolicy = first.SslPolicy,
+                    ExternalHttpsPort = first.ExternalHttpsPort,
                 }
                 : null;
 
@@ -271,6 +277,7 @@ public static class ContainerMapper
                     Hsts = common.Hsts,
                     CertificateName = common.CertName,
                     SslPolicy = common.SslPolicy,
+                    ExternalHttpsPort = common.ExternalHttpsPort,
                 }
                 : null;
 

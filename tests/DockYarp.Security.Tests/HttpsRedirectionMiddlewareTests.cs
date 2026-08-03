@@ -174,6 +174,32 @@ public sealed class HttpsRedirectionMiddlewareTests
         context.Response.Headers.Location.ToString().Should().Be("https://app.local/orders");
     }
 
+    /// <summary>A redirecting host with EXTERNAL_HTTPS_PORT redirects to that port (the default 443 is omitted).</summary>
+    [Test]
+    public async Task RedirectUsesExternalHttpsPort()
+    {
+        RouteConfigStore store = SecurityTestHelpers.StoreWith(new RouteRule
+        {
+            HostPattern = "app.local",
+            ClusterId = "app",
+            Tls = new HostTlsMetadata
+            {
+                CertificateHost = "app.local",
+                Method = HttpsMethod.Redirect,
+                ExternalHttpsPort = 8443,
+            },
+        });
+        HttpsRedirectionMiddleware middleware = new(
+            new RouteLookup(store, new RoutingOptions()),
+            new FakeCertificateAvailability(available: true),
+            new SecurityHeadersOptions());
+        DefaultHttpContext context = SecurityTestHelpers.Context("http", "app.local", "/orders");
+
+        await middleware.InvokeAsync(context, _ => Task.CompletedTask);
+
+        context.Response.Headers.Location.ToString().Should().Be("https://app.local:8443/orders");
+    }
+
     private static HttpsRedirectionMiddleware Middleware(
         HttpsMethod method, bool certificateAvailable, SecurityHeadersOptions? options = null)
     {
