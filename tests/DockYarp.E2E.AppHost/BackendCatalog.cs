@@ -76,6 +76,23 @@ internal static class BackendCatalog
         },
         new BackendSpec
         {
+            Name = "echo-env", // config source = environment variables only (VIRTUAL_HOST/PORT as env, no labels)
+            Image = EchoImage,
+            Tag = EchoTag,
+            Labels = [],
+            Environment = EchoEnvRouted(EchoPort, id: "env", virtualHost: "env.local", virtualPort: EchoPort),
+        },
+        new BackendSpec
+        {
+            // env wins over a same-named label: the container is routed under the env VIRTUAL_HOST, not the label's.
+            Name = "echo-env-override",
+            Image = EchoImage,
+            Tag = EchoTag,
+            Labels = [Kv(VirtualHost, "envlabel.local")],
+            Environment = EchoEnvRouted(EchoPort, id: "envwin", virtualHost: "envwins.local", virtualPort: EchoPort),
+        },
+        new BackendSpec
+        {
             Name = "echo-auth", // Basic Auth: 401 without credentials, 200 with
             Image = EchoImage,
             Tag = EchoTag,
@@ -180,6 +197,16 @@ internal static class BackendCatalog
             environment[BackendIdKey] = id;
         }
 
+        return environment;
+    }
+
+    /// <summary>Echo env plus <c>VIRTUAL_HOST</c>/<c>VIRTUAL_PORT</c> set as environment variables (not labels).</summary>
+    private static Dictionary<string, string> EchoEnvRouted(
+        string listenPorts, string id, string virtualHost, string virtualPort)
+    {
+        Dictionary<string, string> environment = EchoEnv(listenPorts, id);
+        environment[VirtualHost] = virtualHost;
+        environment[VirtualPort] = virtualPort;
         return environment;
     }
 }
