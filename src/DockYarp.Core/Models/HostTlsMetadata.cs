@@ -25,4 +25,10 @@ public sealed record HostTlsMetadata
 
     /// <summary>Gets the external HTTPS port (<c>EXTERNAL_HTTPS_PORT</c>) used in the HTTP→HTTPS redirect target, if any.</summary>
     public int? ExternalHttpsPort { get; init; }
+
+    /// <summary>Gets the per-host <c>ENABLE_HTTP_ON_MISSING_CERT</c> override; <see langword="null"/> uses the global default.</summary>
+    public bool? EnableHttpOnMissingCert { get; init; }
+
+    /// <summary>Gets the per-host <c>TRUST_DEFAULT_CERT</c> override; <see langword="null"/> uses the global default.</summary>
+    public bool? TrustDefaultCert { get; init; }
 }

@@ -198,6 +198,26 @@ public sealed class ContainerMapperTests
         result.Contribution.Routes.Single().Tls!.ExternalHttpsPort.Should().Be(8443);
     }
 
+    /// <summary>The per-host missing-cert overrides are carried into the per-host TLS metadata.</summary>
+    [Test]
+    public void MissingCertOverridesAreCarriedIntoTlsMetadata()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.CertName, "shared"),
+                (DockerLabels.EnableHttpOnMissingCert, "false"),
+                (DockerLabels.TrustDefaultCert, "false")));
+
+        HostTlsMetadata? tls = ContainerMapper.Map([container]).Contribution.Routes.Single().Tls;
+
+        tls!.EnableHttpOnMissingCert.Should().BeFalse();
+        tls.TrustDefaultCert.Should().BeFalse();
+    }
+
     /// <summary>VIRTUAL_DEST with a VIRTUAL_PATH strips the path prefix before forwarding.</summary>
     [Test]
     public void VirtualDestStripsPathPrefix()

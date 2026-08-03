@@ -81,6 +81,9 @@ public static class LabelParser
             SslPolicy = GetOrNull(labels, DockerLabels.SslPolicy),
             ServerTokens = GetOrNull(labels, DockerLabels.ServerTokens),
             ExternalHttpsPort = ParseExternalPort(GetOrNull(labels, DockerLabels.ExternalHttpsPort)),
+            EnableHttpOnMissingCert = ParseBool(GetOrNull(labels, DockerLabels.EnableHttpOnMissingCert)),
+            TrustDefaultCert = ParseBool(
+                GetOrNull(labels, DockerLabels.TrustDefaultCert) ?? GetOrNull(labels, DockerLabels.NginxTrustDefaultCert)),
             HttpsMethod = ParseHttpsMethod(GetOrNull(labels, DockerLabels.HttpsMethod)),
             Hsts = GetOrNull(labels, DockerLabels.Hsts),
             LoadBalancingPolicy = ResolveLoadBalancing(labels),
@@ -110,6 +113,9 @@ public static class LabelParser
             SslPolicy = GetOrNull(labels, DockerLabels.SslPolicy),
             ServerTokens = GetOrNull(labels, DockerLabels.ServerTokens),
             ExternalHttpsPort = ParseExternalPort(GetOrNull(labels, DockerLabels.ExternalHttpsPort)),
+            EnableHttpOnMissingCert = ParseBool(GetOrNull(labels, DockerLabels.EnableHttpOnMissingCert)),
+            TrustDefaultCert = ParseBool(
+                GetOrNull(labels, DockerLabels.TrustDefaultCert) ?? GetOrNull(labels, DockerLabels.NginxTrustDefaultCert)),
             LoadBalancingPolicy = ResolveLoadBalancing(labels),
             Priority = ParsePriority(GetOrNull(labels, DockerLabels.Priority)),
             ClientCertificate = ResolveClientCertificate(labels),
@@ -240,6 +246,14 @@ public static class LabelParser
         int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int port) && port is > 0 and <= 65535
             ? port
             : null;
+
+    private static bool? ParseBool(string? value) =>
+        value?.Trim().ToUpperInvariant() switch
+        {
+            "TRUE" or "ON" or "YES" or "1" => true,
+            "FALSE" or "OFF" or "NO" or "0" => false,
+            _ => null,
+        };
 
     /// <summary>Reports whether <c>HTTPS_METHOD</c> is present but not a recognized value.</summary>
     /// <param name="labels">The container labels.</param>

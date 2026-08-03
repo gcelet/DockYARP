@@ -219,6 +219,8 @@ public static class ContainerMapper
                     CertificateName = first.CertName,
                     SslPolicy = first.SslPolicy,
                     ExternalHttpsPort = first.ExternalHttpsPort,
+                    EnableHttpOnMissingCert = first.EnableHttpOnMissingCert,
+                    TrustDefaultCert = first.TrustDefaultCert,
                 }
                 : null;
 
@@ -278,6 +280,8 @@ public static class ContainerMapper
                     CertificateName = common.CertName,
                     SslPolicy = common.SslPolicy,
                     ExternalHttpsPort = common.ExternalHttpsPort,
+                    EnableHttpOnMissingCert = common.EnableHttpOnMissingCert,
+                    TrustDefaultCert = common.TrustDefaultCert,
                 }
                 : null;
 

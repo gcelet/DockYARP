@@ -650,6 +650,15 @@ public sealed class LabelParserTests
         LabelParser.HasInvalidExternalHttpsPort(invalid.Labels).Should().BeTrue();
     }
 
+    /// <summary>ENABLE_HTTP_ON_MISSING_CERT / TRUST_DEFAULT_CERT parse as booleans (the latter also via the alias).</summary>
+    [Test]
+    public void MissingCertOverridesAreParsed()
+    {
+        ParseConfig(DockerLabels.EnableHttpOnMissingCert, "false").EnableHttpOnMissingCert.Should().BeFalse();
+        ParseConfig(DockerLabels.TrustDefaultCert, "false").TrustDefaultCert.Should().BeFalse();
+        ParseConfig(DockerLabels.NginxTrustDefaultCert, "false").TrustDefaultCert.Should().BeFalse();
+    }
+
     private static ContainerLabelConfig ParseConfig(string aliasKey, string aliasValue)
     {
         ContainerInfo container = DiscoveryTestData.Container(

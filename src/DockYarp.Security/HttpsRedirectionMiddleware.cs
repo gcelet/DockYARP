@@ -38,8 +38,12 @@ public sealed class HttpsRedirectionMiddleware(
 
         bool certificateAvailable = certificates.IsAvailable(host);
 
+        // Per-host overrides win over the global default.
+        bool trustDefaultCert = tls.TrustDefaultCert ?? options.TrustDefaultCert;
+        bool enableHttpOnMissingCert = tls.EnableHttpOnMissingCert ?? options.EnableHttpOnMissingCert;
+
         // TRUST_DEFAULT_CERT=false: refuse HTTPS to a host with no real certificate (served via the default one).
-        if (request.IsHttps && !certificateAvailable && !options.TrustDefaultCert)
+        if (request.IsHttps && !certificateAvailable && !trustDefaultCert)
         {
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
             return Task.CompletedTask;
@@ -49,7 +53,7 @@ public sealed class HttpsRedirectionMiddleware(
         // ENABLE_HTTP_ON_MISSING_CERT is disabled (then the redirect is forced regardless).
         if (!request.IsHttps
             && Redirects(tls.Method)
-            && (certificateAvailable || !options.EnableHttpOnMissingCert))
+            && (certificateAvailable || !enableHttpOnMissingCert))
         {
             // Use the host's external HTTPS port when configured (behind a non-standard published port); omit an
             // explicit port at the default 443 so the common case is unchanged.

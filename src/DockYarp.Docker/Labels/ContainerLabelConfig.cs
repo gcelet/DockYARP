@@ -47,6 +47,12 @@ public sealed record ContainerLabelConfig
     /// <summary>Gets the external HTTPS port (<c>EXTERNAL_HTTPS_PORT</c>) used in the redirect target, if any.</summary>
     public int? ExternalHttpsPort { get; init; }
 
+    /// <summary>Gets the per-host <c>ENABLE_HTTP_ON_MISSING_CERT</c> override; <see langword="null"/> uses the global default.</summary>
+    public bool? EnableHttpOnMissingCert { get; init; }
+
+    /// <summary>Gets the per-host <c>TRUST_DEFAULT_CERT</c> override; <see langword="null"/> uses the global default.</summary>
+    public bool? TrustDefaultCert { get; init; }
+
     /// <summary>Gets the HTTPS method (<c>HTTPS_METHOD</c>); defaults to <see cref="Core.Models.HttpsMethod.Redirect"/>.</summary>
     public HttpsMethod HttpsMethod { get; init; } = HttpsMethod.Redirect;
 

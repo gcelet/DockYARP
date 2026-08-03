@@ -200,6 +200,64 @@ public sealed class HttpsRedirectionMiddlewareTests
         context.Response.Headers.Location.ToString().Should().Be("https://app.local:8443/orders");
     }
 
+    /// <summary>A per-host TRUST_DEFAULT_CERT=false refuses HTTPS (500) even when the global default trusts it.</summary>
+    [Test]
+    public async Task PerHostTrustDefaultCertFalseRefusesHttps()
+    {
+        RouteConfigStore store = SecurityTestHelpers.StoreWith(new RouteRule
+        {
+            HostPattern = "app.local",
+            ClusterId = "app",
+            Tls = new HostTlsMetadata
+            {
+                CertificateHost = "app.local",
+                Method = HttpsMethod.NoRedirect,
+                TrustDefaultCert = false,
+            },
+        });
+        HttpsRedirectionMiddleware middleware = new(
+            new RouteLookup(store, new RoutingOptions()),
+            new FakeCertificateAvailability(available: false),
+            new SecurityHeadersOptions()); // global TrustDefaultCert defaults to true
+        DefaultHttpContext context = SecurityTestHelpers.Context("https", "app.local", "/");
+        bool nextCalled = false;
+
+        await middleware.InvokeAsync(context, _ =>
+        {
+            nextCalled = true;
+            return Task.CompletedTask;
+        });
+
+        context.Response.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
+        nextCalled.Should().BeFalse();
+    }
+
+    /// <summary>A per-host ENABLE_HTTP_ON_MISSING_CERT=false forces the redirect even without a certificate.</summary>
+    [Test]
+    public async Task PerHostHttpOnMissingCertFalseForcesRedirect()
+    {
+        RouteConfigStore store = SecurityTestHelpers.StoreWith(new RouteRule
+        {
+            HostPattern = "app.local",
+            ClusterId = "app",
+            Tls = new HostTlsMetadata
+            {
+                CertificateHost = "app.local",
+                Method = HttpsMethod.Redirect,
+                EnableHttpOnMissingCert = false,
+            },
+        });
+        HttpsRedirectionMiddleware middleware = new(
+            new RouteLookup(store, new RoutingOptions()),
+            new FakeCertificateAvailability(available: false),
+            new SecurityHeadersOptions()); // global EnableHttpOnMissingCert defaults to true
+        DefaultHttpContext context = SecurityTestHelpers.Context("http", "app.local", "/orders");
+
+        await middleware.InvokeAsync(context, _ => Task.CompletedTask);
+
+        context.Response.StatusCode.Should().Be(StatusCodes.Status308PermanentRedirect);
+    }
+
     private static HttpsRedirectionMiddleware Middleware(
         HttpsMethod method, bool certificateAvailable, SecurityHeadersOptions? options = null)
     {

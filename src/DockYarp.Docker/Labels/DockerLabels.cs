@@ -40,6 +40,15 @@ public static class DockerLabels
     /// <summary>External HTTPS port used in the HTTP→HTTPS redirect target for this host (default 443).</summary>
     public const string ExternalHttpsPort = "EXTERNAL_HTTPS_PORT";
 
+    /// <summary>Per-host override of whether to serve HTTP when the host has no certificate (default from global).</summary>
+    public const string EnableHttpOnMissingCert = "ENABLE_HTTP_ON_MISSING_CERT";
+
+    /// <summary>Per-host override of whether the host may fall back to the default certificate (default from global).</summary>
+    public const string TrustDefaultCert = "TRUST_DEFAULT_CERT";
+
+    /// <summary>nginx-proxy namespaced label for per-vhost trust-default-cert; aliases <see cref="TrustDefaultCert"/>.</summary>
+    public const string NginxTrustDefaultCert = "com.github.nginx-proxy.nginx-proxy.trust-default-cert";
+
     /// <summary>HTTP↔HTTPS behavior: <c>redirect</c> (default), <c>noredirect</c>, <c>nohttp</c>, <c>nohttps</c>.</summary>
     public const string HttpsMethod = "HTTPS_METHOD";
 
