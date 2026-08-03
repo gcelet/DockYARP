@@ -6,7 +6,9 @@ TBD - created by archiving change add-security-middleware. Update Purpose after 
 ### Requirement: HTTPS enforcement
 The system SHALL redirect an HTTP request to HTTPS when the matched route's TLS metadata selects a
 redirecting HTTPS method (`redirect` or `nohttp`) **and** a certificate is available for the host,
-preserving the host and path. The redirect SHALL use status 308 (permanent, method-preserving) so that a
+preserving the host and path. The redirect target SHALL use the route's external HTTPS port
+(`EXTERNAL_HTTPS_PORT`) when the route declares one, and otherwise the default HTTPS port (omitting an explicit
+port). The redirect SHALL use status 308 (permanent, method-preserving) so that a
 non-GET request keeps its method and body on replay. A `noredirect` or `nohttps` method SHALL never redirect.
 By default a host with no available certificate SHALL be served over HTTP without a redirect; when
 `Security:EnableHttpOnMissingCert` is `false`, a redirecting host SHALL be redirected even when no certificate
@@ -16,6 +18,11 @@ certificate SHALL be refused with status 500 rather than served via the default 
 #### Scenario: HTTP redirected to HTTPS for an enforced host
 - **WHEN** an HTTP request targets a host whose route selects `redirect` and a certificate is available for the host
 - **THEN** the response redirects to the HTTPS URL for the same host and path
+
+#### Scenario: Redirect uses the configured external HTTPS port
+- **WHEN** an enforced host declares `EXTERNAL_HTTPS_PORT=8443` and an HTTP request is redirected
+- **THEN** the redirect target is `https://<host>:8443/<path>`; a host with no `EXTERNAL_HTTPS_PORT` (or `443`)
+  redirects to `https://<host>/<path>` with no explicit port
 
 #### Scenario: No redirect when enforcement is off
 - **WHEN** an HTTP request targets a host whose route selects `noredirect`

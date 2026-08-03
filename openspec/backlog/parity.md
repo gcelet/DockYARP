@@ -112,7 +112,7 @@ docker-gen exposes both `.Env` and `.Labels` with no precedence — the template
 | Remote daemon over TLS (`DOCKER_HOST`+`DOCKER_TLS_VERIFY`/`CERT_PATH`) | ⛔ | Endpoint URI only; no client-cert/CA/verify → [`add-docker-daemon-tls`](items/add-docker-daemon-tls.md). |
 | Event debounce (docker-gen `-wait`) | ⛔ | Reconcile per event; coalesce bursts → [`add-reconcile-debounce`](items/add-reconcile-debounce.md). |
 | `RESOLVERS` (custom DNS) | 🚫 | .NET resolves DNS; not applicable. |
-| Custom external ports (`HTTP_PORT`/`EXTERNAL_*_PORT`) | ⛔ | Listener config → [`add-proxy-protocol`](items/add-proxy-protocol.md) tracks the listener rework; port config folded there. |
+| Custom external ports (`HTTP_PORT`/`HTTPS_PORT`, per-vhost `EXTERNAL_HTTPS_PORT`) | ✅ | Global listeners = `Server:HttpPort`/`HttpsPort` (default 8080/8443); per-vhost `EXTERNAL_HTTPS_PORT` sets the HTTP→HTTPS redirect port. `EXTERNAL_HTTP_PORT` has no per-vhost target (the HTTP listener is global). |
 
 ## Ops & extensibility
 
