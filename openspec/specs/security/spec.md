@@ -13,7 +13,9 @@ non-GET request keeps its method and body on replay. A `noredirect` or `nohttps`
 By default a host with no available certificate SHALL be served over HTTP without a redirect; when
 `Security:EnableHttpOnMissingCert` is `false`, a redirecting host SHALL be redirected even when no certificate
 is available. When `Security:TrustDefaultCert` is `false`, an HTTPS request to a host that has no real
-certificate SHALL be refused with status 500 rather than served via the default certificate.
+certificate SHALL be refused with status 500 rather than served via the default certificate. The
+`EnableHttpOnMissingCert` and `TrustDefaultCert` policies MAY be overridden per host: a route's TLS metadata
+value (from `ENABLE_HTTP_ON_MISSING_CERT` / `TRUST_DEFAULT_CERT`) SHALL take precedence over the global default.
 
 #### Scenario: HTTP redirected to HTTPS for an enforced host
 - **WHEN** an HTTP request targets a host whose route selects `redirect` and a certificate is available for the host
@@ -37,9 +39,19 @@ certificate SHALL be refused with status 500 rather than served via the default 
   available certificate
 - **THEN** the response redirects to the HTTPS URL
 
+#### Scenario: Per-host HTTP-on-missing-cert override forces the redirect
+- **WHEN** the global `Security:EnableHttpOnMissingCert` is `true` but a redirecting host declares
+  `ENABLE_HTTP_ON_MISSING_CERT=false`, and no certificate is available for it
+- **THEN** the response redirects to the HTTPS URL (the per-host value wins)
+
 #### Scenario: HTTPS refused for an untrusted default certificate
 - **WHEN** `Security:TrustDefaultCert` is `false` and an HTTPS request targets a host that has no real certificate
 - **THEN** the request is refused with status 500
+
+#### Scenario: Per-host trust-default-cert override refuses HTTPS
+- **WHEN** the global `Security:TrustDefaultCert` is `true` but a host declares `TRUST_DEFAULT_CERT=false`, and an
+  HTTPS request targets it with no real certificate
+- **THEN** the request is refused with status 500 (the per-host value wins)
 
 #### Scenario: Non-GET request keeps its method on redirect
 - **WHEN** a non-GET HTTP request (e.g. POST) is redirected to HTTPS for an enforced host
