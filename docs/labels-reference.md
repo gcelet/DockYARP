@@ -1,23 +1,33 @@
 # Label reference (DockYarp.Docker)
 
-DockYarp configures itself from Docker container labels. The `VIRTUAL_*` and `LETSENCRYPT_*` labels
-are **nginx-proxy compatible**; DockYarp-specific labels use the `DOCKYARP_` prefix.
+DockYarp configures itself from a Docker container's **labels or environment variables** — every key below can
+be set either way, and when a key is set both ways the **environment variable wins** (nginx-proxy's canonical
+channel; the label is the fallback). The `VIRTUAL_*`, `LETSENCRYPT_*`, `CERT_NAME`, `SSL_POLICY`, `HTTPS_METHOD`,
+`HSTS`, `NETWORK_ACCESS`, `SERVER_TOKENS`, and `EXTERNAL_HTTPS_PORT` keys are **nginx-proxy compatible**;
+DockYarp-specific keys use the `DOCKYARP_` prefix.
 
-## Supported labels
+## Supported keys (label or environment variable)
 
-| Label | Required | Description | Example |
+| Key | Required | Description | Example |
 |---|---|---|---|
 | `VIRTUAL_HOST` | **Yes**\* | Host(s) the container is exposed on; comma-separated for several. | `app.local,www.app.local` |
 | `VIRTUAL_HOST_MULTIPORTS` | No | YAML `host: { path: { port, proto, dest } }`; replaces `VIRTUAL_HOST`/`VIRTUAL_PORT` for multi-port containers. | _(see below)_ |
 | `VIRTUAL_PORT` | Conditional | Target container port. Required when the container exposes more than one port; inferred when exactly one is exposed. | `8080` |
 | `VIRTUAL_PATH` | No | Path prefix the route matches (empty = all paths). | `/api` |
-| `VIRTUAL_PROTO` | No | Backend transport scheme: `http` (default) or `https`. | `https` |
+| `VIRTUAL_PROTO` | No | Backend transport scheme: `http` (default), `https`, `grpc`, `grpcs`. | `https` |
 | `VIRTUAL_DEST` | No | Rewrites the matched path before forwarding; `/` strips the `VIRTUAL_PATH` prefix. | `/` |
 | `LETSENCRYPT_HOST` | No | Host a certificate should be obtained for (enables TLS metadata). | `app.local` |
 | `LETSENCRYPT_EMAIL` | No | Contact email used when requesting the certificate. | `admin@example.com` |
+| `CERT_NAME` | No | Pin the host to a named shared (SAN/wildcard) certificate; the host is not ACME-provisioned. | `wildcard` |
+| `SSL_POLICY` | No | Per-host TLS preset overriding the global posture: `Mozilla-Modern`/`Mozilla-Intermediate`/`Mozilla-Old`. | `Mozilla-Modern` |
 | `HTTPS_METHOD` | No | HTTP↔HTTPS behavior: `redirect` (default), `noredirect`, `nohttp`, `nohttps`. | `noredirect` |
 | `HSTS` | No | Per-host `Strict-Transport-Security` value, or `off` to disable HSTS for the host. | `off` |
-| `DOCKYARP_LB` | No | Load-balancing policy: `round-robin` (default) or `least-requests`. | `least-requests` |
+| `EXTERNAL_HTTPS_PORT` | No | External HTTPS port used in the HTTP→HTTPS redirect target (default 443). | `8443` |
+| `ENABLE_HTTP_ON_MISSING_CERT` | No | Per-host override: serve HTTP (no redirect) while the host has no certificate (default from global). | `false` |
+| `TRUST_DEFAULT_CERT` | No | Per-host override: may the host fall back to the default certificate; else an HTTPS request is refused with 500 (default from global). | `false` |
+| `NETWORK_ACCESS` | No | `internal` restricts the route to internal client ranges (403 otherwise). | `internal` |
+| `SERVER_TOKENS` | No | `off` suppresses the `Server` response header for the host (overrides the global value). | `off` |
+| `DOCKYARP_LB` | No | Load-balancing policy: `round-robin` (default), `least-requests`, `power-of-two-choices`, `random`, `first-alphabetical`. | `least-requests` |
 | `DOCKYARP_PRIORITY` | No | Route priority (DockYarp extension); orders same-host routes, higher wins (default `0`). | `10` |
 | `DOCKYARP_CLIENT_CERT` | No | Client-certificate (mTLS) requirement: `required`, `optional`, or `none`/`off` (default). | `required` |
 | `DOCKYARP_PROXY_TIMEOUT` | No | Proxy request timeout in seconds (cluster activity timeout). | `30` |
@@ -25,6 +35,13 @@ are **nginx-proxy compatible**; DockYarp-specific labels use the `DOCKYARP_` pre
 | `DOCKYARP_AUTH_USER` | No | Basic Auth username protecting the route (with `DOCKYARP_AUTH_PASSWORD`). | `admin` |
 | `DOCKYARP_AUTH_PASSWORD` | No | Basic Auth password. | `s3cret` |
 | `DOCKYARP_AUTH_REALM` | No | Optional Basic Auth realm shown in the challenge. | `Admin area` |
+
+### nginx-proxy namespaced label aliases
+
+DockYarp also accepts these nginx-proxy namespaced **labels** as aliases (the DockYarp-native key wins when both
+are set): `com.github.nginx-proxy.nginx-proxy.loadbalance` → `DOCKYARP_LB` (nginx directives `least_conn`/
+`random`/`round_robin` translate), `com.github.nginx-proxy.nginx-proxy.ssl_verify_client` → `DOCKYARP_CLIENT_CERT`
+(`on`→required, `optional`→optional), `com.github.nginx-proxy.nginx-proxy.trust-default-cert` → `TRUST_DEFAULT_CERT`.
 
 ## Behavior
 
