@@ -110,7 +110,7 @@ docker-gen exposes both `.Env` and `.Labels` with no precedence — the template
 | Multi-network attach / unreachable-network resilience | ✅ | `Docker:ProxyNetworks` → reachability-aware selection; unreachable backends skipped. Runtime auto-detection: → [`e2e-multi-network`](items/e2e-multi-network.md). |
 | Docker Swarm services | ⛔ ➕ | **Beyond nginx-proxy**: docker-gen only exposes *classic-swarm* node metadata (`container.Node`), never Swarm-mode services/tasks. Swarm-mode support would be a DockYarp extension → [`add-docker-swarm-support`](items/add-docker-swarm-support.md). |
 | Remote daemon over TLS (`DOCKER_HOST`+`DOCKER_TLS_VERIFY`/`CERT_PATH`) | ⛔ | Endpoint URI only; no client-cert/CA/verify → [`add-docker-daemon-tls`](items/add-docker-daemon-tls.md). |
-| Event debounce (docker-gen `-wait`) | ⛔ | Reconcile per event; coalesce bursts → [`add-reconcile-debounce`](items/add-reconcile-debounce.md). |
+| Event debounce (docker-gen `-wait`) | ✅ | A burst of Docker events coalesces into one reconcile: a quiet window (`Docker:ReconcileDebounceMin`, default 250 ms, extended per event) capped by `ReconcileDebounceMax` (2 s); `Min=0` disables it. Startup/reconnect passes stay immediate. Policy + coalescing loop unit-validated; live coalescing e2e-deferred (`add-reconcile-debounce`). |
 | `RESOLVERS` (custom DNS) | 🚫 | .NET resolves DNS; not applicable. |
 | Custom external ports (`HTTP_PORT`/`HTTPS_PORT`, per-vhost `EXTERNAL_HTTPS_PORT`) | ✅ | Global listeners = `Server:HttpPort`/`HttpsPort` (default 8080/8443); per-vhost `EXTERNAL_HTTPS_PORT` sets the HTTP→HTTPS redirect port. `EXTERNAL_HTTP_PORT` has no per-vhost target (the HTTP listener is global). |
 
