@@ -533,6 +533,42 @@ public sealed class LabelParserTests
         config!.CertName.Should().Be("shared");
     }
 
+    /// <summary>DOCKYARP_MAX_CONNECTIONS is parsed as a positive connection count.</summary>
+    [Test]
+    public void MaxConnectionsIsParsed()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.MaxConnections, "64")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.MaxConnectionsPerServer.Should().Be(64);
+        LabelParser.HasInvalidMaxConnections(container.Labels).Should().BeFalse();
+    }
+
+    /// <summary>A non-positive DOCKYARP_MAX_CONNECTIONS is ignored and flagged invalid.</summary>
+    [Test]
+    public void InvalidMaxConnectionsIsIgnoredAndFlagged()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.MaxConnections, "0")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.MaxConnectionsPerServer.Should().BeNull();
+        LabelParser.HasInvalidMaxConnections(container.Labels).Should().BeTrue();
+    }
+
     /// <summary>VIRTUAL_PROTO=grpc selects HTTP transport with HTTP/2-only forwarding.</summary>
     [Test]
     public void GrpcProtoIsHttp2OverHttp()

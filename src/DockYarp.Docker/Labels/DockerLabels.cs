@@ -70,6 +70,9 @@ public static class DockerLabels
     /// <summary>Maximum request body size in bytes accepted for the route.</summary>
     public const string MaxBodySize = "DOCKYARP_MAX_BODY_SIZE";
 
+    /// <summary>Maximum concurrent connections opened to the cluster's backend (YARP <c>MaxConnectionsPerServer</c>).</summary>
+    public const string MaxConnections = "DOCKYARP_MAX_CONNECTIONS";
+
     /// <summary>Basic Auth username protecting the route.</summary>
     public const string AuthUser = "DOCKYARP_AUTH_USER";
 

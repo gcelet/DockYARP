@@ -32,6 +32,24 @@ public sealed class ContainerMapperTests
             .Which.Endpoints.Should().HaveCount(2);
     }
 
+    /// <summary>DOCKYARP_MAX_CONNECTIONS is carried onto the cluster.</summary>
+    [Test]
+    public void MaxConnectionsIsCarriedOntoTheCluster()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.MaxConnections, "64")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Clusters.Should().ContainSingle()
+            .Which.MaxConnectionsPerServer.Should().Be(64);
+    }
+
     /// <summary>A comma-separated VIRTUAL_HOST maps the container to one route/cluster per host.</summary>
     [Test]
     public void CommaSeparatedHostsCreateMultipleRoutes()

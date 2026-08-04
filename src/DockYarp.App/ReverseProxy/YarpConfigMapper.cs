@@ -192,7 +192,14 @@ public static class YarpConfigMapper
             Destinations = BuildDestinations(cluster.Endpoints),
             HealthCheck = BuildHealth(cluster.HealthCheck),
             HttpRequest = BuildRequestConfig(cluster),
+            HttpClient = BuildHttpClientConfig(cluster),
         };
+
+    // Per-cluster backend HTTP client tuning; null keeps YARP's default connection pooling unchanged.
+    private static HttpClientConfig? BuildHttpClientConfig(Cluster cluster) =>
+        cluster.MaxConnectionsPerServer is { } max
+            ? new HttpClientConfig { MaxConnectionsPerServer = max }
+            : null;
 
     // gRPC backends require exact HTTP/2 (no downgrade); YARP then forwards gRPC, including trailers.
     private static ForwarderRequestConfig? BuildRequestConfig(Cluster cluster)

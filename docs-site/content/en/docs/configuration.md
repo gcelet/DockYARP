@@ -52,6 +52,7 @@ compatible; DockYARP's own keys use the `DOCKYARP_` prefix.
 | `DOCKYARP_PRIORITY` | Route priority; higher wins when several routes match (default `0`). | `10` |
 | `DOCKYARP_PROXY_TIMEOUT` | Per-route upstream timeout in seconds. | `30` |
 | `DOCKYARP_MAX_BODY_SIZE` | Per-route maximum request body size in bytes. | `1048576` |
+| `DOCKYARP_MAX_CONNECTIONS` | Max concurrent connections to the cluster's backend (YARP `MaxConnectionsPerServer`); unset uses YARP's default pooling. | `64` |
 | `SERVER_TOKENS` | `off` suppresses the `Server` response header for the host (overrides the global value). | `off` |
 
 ### nginx-proxy namespaced label aliases

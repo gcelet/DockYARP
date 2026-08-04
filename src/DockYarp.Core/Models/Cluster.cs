@@ -25,4 +25,7 @@ public sealed record Cluster
 
     /// <summary>Gets a value indicating whether the backend is contacted over HTTP/2 only (a gRPC backend).</summary>
     public bool Http2Only { get; init; }
+
+    /// <summary>Gets the maximum concurrent connections opened to the backend, if set (else YARP's default pooling).</summary>
+    public int? MaxConnectionsPerServer { get; init; }
 }

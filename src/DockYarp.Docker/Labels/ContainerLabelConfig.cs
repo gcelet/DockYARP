@@ -74,6 +74,9 @@ public sealed record ContainerLabelConfig
     /// <summary>Gets the optional maximum request body size in bytes (<c>DOCKYARP_MAX_BODY_SIZE</c>).</summary>
     public long? MaxRequestBodySize { get; init; }
 
+    /// <summary>Gets the maximum concurrent connections opened to the cluster's backend, if set.</summary>
+    public int? MaxConnectionsPerServer { get; init; }
+
     /// <summary>Gets the Basic Auth credentials (<c>DOCKYARP_AUTH_*</c>), set only when complete.</summary>
     public BasicAuthCredentials? Auth { get; init; }
 

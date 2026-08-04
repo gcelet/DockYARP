@@ -32,6 +32,7 @@ DockYarp-specific keys use the `DOCKYARP_` prefix.
 | `DOCKYARP_CLIENT_CERT` | No | Client-certificate (mTLS) requirement: `required`, `optional`, or `none`/`off` (default). | `required` |
 | `DOCKYARP_PROXY_TIMEOUT` | No | Proxy request timeout in seconds (cluster activity timeout). | `30` |
 | `DOCKYARP_MAX_BODY_SIZE` | No | Maximum request body size in bytes for the route. | `1048576` |
+| `DOCKYARP_MAX_CONNECTIONS` | No | Max concurrent connections to the cluster's backend (YARP `MaxConnectionsPerServer`); unset uses YARP's default pooling. | `64` |
 | `DOCKYARP_AUTH_USER` | No | Basic Auth username protecting the route (with `DOCKYARP_AUTH_PASSWORD`). | `admin` |
 | `DOCKYARP_AUTH_PASSWORD` | No | Basic Auth password. | `s3cret` |
 | `DOCKYARP_AUTH_REALM` | No | Optional Basic Auth realm shown in the challenge. | `Admin area` |
@@ -75,8 +76,9 @@ are set): `com.github.nginx-proxy.nginx-proxy.loadbalance` → `DOCKYARP_LB` (ng
   It does **not** override host specificity: an exact host still beats a higher-priority wildcard (matching
   nginx `server_name`). A non-numeric value falls back to `0` and is logged.
 - **Proxy tuning**: `DOCKYARP_PROXY_TIMEOUT` (seconds) sets the cluster's YARP activity timeout;
-  `DOCKYARP_MAX_BODY_SIZE` (bytes) caps the request body for the route. Non-numeric or non-positive
-  values are ignored and logged.
+  `DOCKYARP_MAX_BODY_SIZE` (bytes) caps the request body for the route; `DOCKYARP_MAX_CONNECTIONS` caps
+  concurrent connections to the backend (YARP `MaxConnectionsPerServer`, else default pooling). Non-numeric or
+  non-positive values are ignored and logged.
 - **Path rewrite**: `VIRTUAL_DEST` rewrites the matched path before forwarding. Currently the supported
   form is `VIRTUAL_DEST=/`, which strips the `VIRTUAL_PATH` prefix (so `/api/x` reaches the backend as
   `/x`); richer rewrites are not yet supported.

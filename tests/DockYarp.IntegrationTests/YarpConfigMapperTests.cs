@@ -222,6 +222,35 @@ public sealed class YarpConfigMapperTests
         clusters.Single().HttpRequest!.ActivityTimeout.Should().Be(System.TimeSpan.FromSeconds(30));
     }
 
+    /// <summary>A cluster's max-connections maps to the YARP HttpClient <c>MaxConnectionsPerServer</c>.</summary>
+    [Test]
+    public void ClusterMaxConnectionsMapsToHttpClient()
+    {
+        Cluster withLimit = Cluster("app", LoadBalancingPolicy.RoundRobin) with { MaxConnectionsPerServer = 64 };
+        RouteConfigSnapshot snapshot = new(
+            [new RouteRule { HostPattern = "app.local", ClusterId = "app" }],
+            [withLimit],
+            1);
+
+        (_, System.Collections.Generic.IReadOnlyList<ClusterConfig> clusters) = YarpConfigMapper.Map(snapshot);
+
+        clusters.Single().HttpClient!.MaxConnectionsPerServer.Should().Be(64);
+    }
+
+    /// <summary>A cluster without a max-connections limit keeps YARP's default pooling (no HttpClient override).</summary>
+    [Test]
+    public void ClusterWithoutMaxConnectionsHasNoHttpClient()
+    {
+        RouteConfigSnapshot snapshot = new(
+            [new RouteRule { HostPattern = "app.local", ClusterId = "app" }],
+            [Cluster("app", LoadBalancingPolicy.RoundRobin)],
+            1);
+
+        (_, System.Collections.Generic.IReadOnlyList<ClusterConfig> clusters) = YarpConfigMapper.Map(snapshot);
+
+        clusters.Single().HttpClient.Should().BeNull();
+    }
+
     /// <summary>An HTTP/2-only (gRPC) cluster forwards over exact HTTP/2.</summary>
     [Test]
     public void Http2OnlyClusterForwardsExactHttp2()

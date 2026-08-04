@@ -91,6 +91,7 @@ public static class LabelParser
             ClientCertificate = ResolveClientCertificate(labels),
             ProxyTimeout = ParseTimeoutSeconds(GetOrNull(labels, DockerLabels.ProxyTimeout)),
             MaxRequestBodySize = ParsePositiveLong(GetOrNull(labels, DockerLabels.MaxBodySize)),
+            MaxConnectionsPerServer = ParsePositiveInt(GetOrNull(labels, DockerLabels.MaxConnections)),
             Auth = ParseAuth(labels),
             InternalOnly = ParseInternalOnly(labels),
         };
@@ -121,6 +122,7 @@ public static class LabelParser
             ClientCertificate = ResolveClientCertificate(labels),
             ProxyTimeout = ParseTimeoutSeconds(GetOrNull(labels, DockerLabels.ProxyTimeout)),
             MaxRequestBodySize = ParsePositiveLong(GetOrNull(labels, DockerLabels.MaxBodySize)),
+            MaxConnectionsPerServer = ParsePositiveInt(GetOrNull(labels, DockerLabels.MaxConnections)),
             HttpsMethod = ParseHttpsMethod(GetOrNull(labels, DockerLabels.HttpsMethod)),
             Hsts = GetOrNull(labels, DockerLabels.Hsts),
             Auth = ParseAuth(labels),
@@ -232,6 +234,15 @@ public static class LabelParser
         return GetOrNull(labels, DockerLabels.ExternalHttpsPort) is { } raw && ParseExternalPort(raw) is null;
     }
 
+    /// <summary>Reports whether <c>DOCKYARP_MAX_CONNECTIONS</c> is present but not a positive integer.</summary>
+    /// <param name="labels">The container labels.</param>
+    /// <returns><see langword="true"/> when the value cannot be parsed as a positive connection count.</returns>
+    public static bool HasInvalidMaxConnections(IReadOnlyDictionary<string, string> labels)
+    {
+        ArgumentNullException.ThrowIfNull(labels);
+        return GetOrNull(labels, DockerLabels.MaxConnections) is { } raw && ParsePositiveInt(raw) is null;
+    }
+
     private static TimeSpan? ParseTimeoutSeconds(string? value) =>
         int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int seconds) && seconds > 0
             ? TimeSpan.FromSeconds(seconds)
@@ -239,6 +250,11 @@ public static class LabelParser
 
     private static long? ParsePositiveLong(string? value) =>
         long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out long parsed) && parsed > 0
+            ? parsed
+            : null;
+
+    private static int? ParsePositiveInt(string? value) =>
+        int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed) && parsed > 0
             ? parsed
             : null;
 

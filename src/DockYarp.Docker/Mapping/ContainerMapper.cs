@@ -187,6 +187,11 @@ public static class ContainerMapper
         {
             warnings.Add($"{container.Name} ({id}): invalid {DockerLabels.ExternalHttpsPort}; the default HTTPS port is used.");
         }
+
+        if (LabelParser.HasInvalidMaxConnections(config))
+        {
+            warnings.Add($"{container.Name} ({id}): invalid {DockerLabels.MaxConnections}; default connection pooling is used.");
+        }
     }
 
     private static string ClusterId(string host, string path) =>
@@ -253,6 +258,7 @@ public static class ContainerMapper
                 LoadBalancingPolicy = first.LoadBalancingPolicy ?? LoadBalancingPolicy.RoundRobin,
                 RequestTimeout = first.ProxyTimeout,
                 Http2Only = first.Http2,
+                MaxConnectionsPerServer = first.MaxConnectionsPerServer,
             };
     }
 
@@ -314,6 +320,7 @@ public static class ContainerMapper
                 Endpoints = [.. endpoints],
                 LoadBalancingPolicy = common.LoadBalancingPolicy ?? LoadBalancingPolicy.RoundRobin,
                 RequestTimeout = common.ProxyTimeout,
+                MaxConnectionsPerServer = common.MaxConnectionsPerServer,
             };
     }
 }
