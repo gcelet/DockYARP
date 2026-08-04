@@ -22,7 +22,7 @@ compatible; DockYARP's own keys use the `DOCKYARP_` prefix.
 |-----|---------|---------|
 | `VIRTUAL_HOST` | Host(s) to route to the container (comma-separated for several). | `app.local,www.app.local` |
 | `VIRTUAL_PORT` | Target container port (required when the container exposes several ports; inferred for one). | `8080` |
-| `VIRTUAL_PATH` | Optional path prefix the route matches (empty = all paths). | `/api` |
+| `VIRTUAL_PATH` | Path the route matches: a prefix, or a `~`-prefixed regular expression (`~^/(a|b)/`). Empty = all paths. | `/api` |
 | `VIRTUAL_PROTO` | Backend protocol: `http` (default), `https`, `grpc`, `grpcs`. | `https` |
 | `VIRTUAL_DEST` | Rewrite the matched path before forwarding; `/` strips the `VIRTUAL_PATH` prefix. | `/` |
 | `VIRTUAL_HOST_MULTIPORTS` | YAML `host: { path: { port, proto, dest } }`; replaces `VIRTUAL_HOST`/`VIRTUAL_PORT` for multi-port containers. | _(see below)_ |

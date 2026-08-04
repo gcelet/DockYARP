@@ -25,6 +25,8 @@ reconciling live as containers start and stop.
   (`*.example.com`); `DOCKYARP_PRIORITY` orders same-host routes (higher wins).
 - **Multiport**: `VIRTUAL_HOST_MULTIPORTS` maps host → path → port on a single container.
 - **Path rewrite**: `VIRTUAL_DEST=/` strips the `VIRTUAL_PATH` prefix before forwarding.
+- **Regex paths**: a `~`-prefixed `VIRTUAL_PATH` (for example `~^/(app1|alt1)/`) matches by regular expression; a
+  prefix path beats a regex path, and `VIRTUAL_DEST` does not apply to a regex path.
 - **Replicas & policy**: containers sharing a `VIRTUAL_HOST` form one cluster; `DOCKYARP_LB` selects the
   load-balancing policy — `round-robin` (default), `least-requests`, `power-of-two-choices`, `random`, or
   `first-alphabetical`.
@@ -44,6 +46,24 @@ DockYARP terminates TLS and can obtain certificates automatically.
 - **Mutual TLS**: configure a client CA (`Tls:ClientCaCertificatePath`) and require client certificates per
   route with `DOCKYARP_CLIENT_CERT`.
 - **Enforcement**: `HTTPS_METHOD` controls HTTP↔HTTPS behavior per host (see [Configuration](../configuration/)).
+
+## Access control
+
+- **Basic Auth**: protect a route with `DOCKYARP_AUTH_USER`/`DOCKYARP_AUTH_PASSWORD` labels, **or** with mounted
+  Apache **htpasswd files** (`Security:HtpasswdDirectory`) — a file named `<host>` protects that host and
+  `<host>_<sha1(path)>` protects a specific path. bcrypt, apr1, and SHA1 (`{SHA}`) hashes are verified, and the
+  files are reloaded live. A request is allowed if it matches a label credential **or** any htpasswd entry.
+- **Internal-only**: `NETWORK_ACCESS=internal` restricts a route to the internal client ranges
+  (`Security:InternalRanges`); other clients get `403`.
+- **Mutual TLS**: require client certificates per route with `DOCKYARP_CLIENT_CERT` (see [TLS & ACME](#tls--acme)).
+
+## Proxying
+
+- **Compression**: responses with compressible content types are gzip/brotli-compressed when the client sends
+  `Accept-Encoding` (on by default; disable with `Compression:Enabled=false`). An already-encoded upstream
+  response is never double-compressed.
+- **httpoxy mitigation**: a client-supplied `Proxy` request header is stripped before the request is forwarded
+  to the backend.
 
 ## Observability
 
@@ -72,8 +92,18 @@ curl -H "X-Api-Key: $KEY" "http://localhost:8080/api/resolve?host=app.local&path
 
 ## Static configuration
 
-Point `StaticConfig:Path` at a JSON file describing `Routes`/`Clusters` to configure DockYARP without Docker
-labels. It merges with discovery (static entries win) and is the sole source when `Docker:Enabled=false`.
+Point `StaticConfig:Path` at a JSON file with `Routes`, `Clusters`, and per-host `Overrides` to configure
+DockYARP without Docker labels. It merges with discovery (a static route replaces a discovered one for the same
+host/path) and is the sole source when `Docker:Enabled=false`. An `Overrides` entry injects response headers for
+a host — or `default` for hosts without a specific override:
+
+```json
+{
+  "Clusters": [{ "Id": "app", "Addresses": ["http://app:8080"] }],
+  "Routes": [{ "Host": "app.local", "Path": "/", "Cluster": "app" }],
+  "Overrides": [{ "Host": "default", "ResponseHeaders": { "X-Powered-By": "DockYARP" } }]
+}
+```
 
 ## Custom error pages
 

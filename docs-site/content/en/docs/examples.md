@@ -157,6 +157,27 @@ Requests to `api.example.com` must present a client certificate chaining to the 
 
 Requests without valid credentials get `401` with a `WWW-Authenticate: Basic` challenge.
 
+## Basic Auth from htpasswd files
+
+Mount a directory of Apache htpasswd files and point DockYARP at it. A file named `<host>` protects that host
+(bcrypt/apr1/SHA1 hashes; reloaded live):
+
+```yaml
+  dockyarp:
+    environment:
+      Security__HtpasswdDirectory: "/auth"
+    volumes:
+      - ./auth:/auth:ro            # e.g. a file named "admin.local"
+
+  admin:
+    image: my/admin
+    labels:
+      VIRTUAL_HOST: "admin.local"
+      VIRTUAL_PORT: "8080"
+```
+
+Any user listed in `/auth/admin.local` can authenticate; add `admin.local_<sha1(path)>` to protect a single path.
+
 ## Internal-only route
 
 ```yaml
