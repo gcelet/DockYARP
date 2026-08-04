@@ -23,6 +23,10 @@ public sealed class TlsOptions
     /// <summary>Gets or sets the interval between provisioning/renewal checks.</summary>
     public TimeSpan CheckInterval { get; set; } = TimeSpan.FromHours(12);
 
+    /// <summary>Gets or sets a value indicating whether the ACME HTTP-01 challenge path is served.</summary>
+    /// <remarks>Default <see langword="true"/>. When <see langword="false"/>, the challenge path returns 404.</remarks>
+    public bool Http01ChallengeEnabled { get; set; } = true;
+
     /// <summary>Gets or sets the minimum accepted TLS version (default TLS 1.2).</summary>
     public TlsVersion MinimumTlsVersion { get; set; } = TlsVersion.Tls12;
 

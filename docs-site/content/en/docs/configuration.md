@@ -104,6 +104,7 @@ or as a **double-underscore environment variable** on the proxy container (for e
 | `ContactEmail` | — | Default ACME contact when a host declares no `LETSENCRYPT_EMAIL`. |
 | `RenewBeforeExpiry` | `30.00:00:00` | Renew a certificate this long before it expires. |
 | `CheckInterval` | `12:00:00` | Provisioning / renewal check interval. |
+| `Http01ChallengeEnabled` | `true` | Serve the ACME HTTP-01 challenge path. Challenges are answered by token regardless of host (a not-yet-routed host is served). `false` returns 404 on the challenge path. |
 | `MinimumTlsVersion` | `Tls12` | Global TLS floor (a per-host `SSL_POLICY` overrides it). |
 | `SslPolicy` | — | Global preset: `Mozilla-Modern` / `Mozilla-Intermediate` / `Mozilla-Old`. |
 | `CipherSuites` | — | Explicit cipher allow-list (applied on Linux/macOS only). |

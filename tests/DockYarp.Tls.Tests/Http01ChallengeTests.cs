@@ -18,7 +18,7 @@ public sealed class Http01ChallengeTests
     {
         Http01ChallengeStore store = new();
         store.Set("tok123", "key-auth-value");
-        Http01ChallengeMiddleware middleware = new(store);
+        Http01ChallengeMiddleware middleware = new(store, new TlsOptions());
         DefaultHttpContext context = ContextFor("/.well-known/acme-challenge/tok123");
         using MemoryStream body = new();
         context.Response.Body = body;
@@ -29,11 +29,43 @@ public sealed class Http01ChallengeTests
         ReadBody(body).Should().Be("key-auth-value");
     }
 
+    /// <summary>The token is served independent of the requested host (accept-unknown-host is inherent).</summary>
+    [Test]
+    public async Task TokenServedRegardlessOfHost()
+    {
+        Http01ChallengeStore store = new();
+        store.Set("tok123", "key-auth-value");
+        Http01ChallengeMiddleware middleware = new(store, new TlsOptions());
+        DefaultHttpContext context = ContextFor("/.well-known/acme-challenge/tok123");
+        context.Request.Host = new HostString("unrouted.example");
+        using MemoryStream body = new();
+        context.Response.Body = body;
+
+        await middleware.InvokeAsync(context, _ => Task.CompletedTask);
+
+        context.Response.StatusCode.Should().Be(StatusCodes.Status200OK);
+        ReadBody(body).Should().Be("key-auth-value");
+    }
+
+    /// <summary>When challenge serving is disabled the challenge path returns 404 even for a stored token.</summary>
+    [Test]
+    public async Task DisabledChallengeReturnsNotFound()
+    {
+        Http01ChallengeStore store = new();
+        store.Set("tok123", "key-auth-value");
+        Http01ChallengeMiddleware middleware = new(store, new TlsOptions { Http01ChallengeEnabled = false });
+        DefaultHttpContext context = ContextFor("/.well-known/acme-challenge/tok123");
+
+        await middleware.InvokeAsync(context, _ => Task.CompletedTask);
+
+        context.Response.StatusCode.Should().Be(StatusCodes.Status404NotFound);
+    }
+
     /// <summary>An unknown token returns 404.</summary>
     [Test]
     public async Task UnknownTokenReturnsNotFound()
     {
-        Http01ChallengeMiddleware middleware = new(new Http01ChallengeStore());
+        Http01ChallengeMiddleware middleware = new(new Http01ChallengeStore(), new TlsOptions());
         DefaultHttpContext context = ContextFor("/.well-known/acme-challenge/missing");
 
         await middleware.InvokeAsync(context, _ => Task.CompletedTask);
@@ -45,7 +77,7 @@ public sealed class Http01ChallengeTests
     [Test]
     public async Task OtherPathCallsNext()
     {
-        Http01ChallengeMiddleware middleware = new(new Http01ChallengeStore());
+        Http01ChallengeMiddleware middleware = new(new Http01ChallengeStore(), new TlsOptions());
         DefaultHttpContext context = ContextFor("/app");
         bool nextCalled = false;
 
