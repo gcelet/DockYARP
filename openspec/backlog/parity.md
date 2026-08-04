@@ -94,7 +94,7 @@ docker-gen exposes both `.Env` and `.Labels` with no precedence — the template
 | Backend keepalive / connection pooling (`keepalive` label) | ✅ | Per-cluster `DOCKYARP_MAX_CONNECTIONS` → YARP `HttpClientConfig.MaxConnectionsPerServer` (unset = default pooling). YARP already keeps/reuses backend connections dynamically, so nginx's idle-count `keepalive` maps to a connection **cap**, not a 1:1 port; the namespaced `keepalive` label is intentionally not aliased. |
 | gzip response compression | ✅ | gzip + brotli, on by default; `Compression:Enabled`. |
 | httpoxy mitigation (strip inbound `Proxy` header) | ✅ | Stripped in the forwarded-headers transform. |
-| PROXY protocol (`ENABLE_PROXY_PROTOCOL`) + real client IP | ⛔ | → [`add-proxy-protocol`](items/add-proxy-protocol.md). |
+| PROXY protocol (`ENABLE_PROXY_PROTOCOL`) + real client IP | ✅ | `Server:EnableProxyProtocol` accepts a PROXY v1/v2 header on the edge listeners and sets the connection's remote endpoint to the real client (feeding `X-Forwarded-For`/`X-Real-IP`). Parser + connection middleware unit-tested; live path behind an L4 balancer is e2e-uncovered. External ports were already done. |
 | `NON_GET_REDIRECT` (307/308 for non-GET) | ✅ | DockYarp redirects with 308 (method-preserving) for all methods; no separate knob needed. |
 | Response buffering | 🚫 | YARP streams by design. |
 
