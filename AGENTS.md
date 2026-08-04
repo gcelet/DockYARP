@@ -41,7 +41,11 @@ between work sessions. The entry point is the parity backlog `openspec/backlog/`
    item's `id` is the future change id; its *Why* + *Acceptance criteria* seed the proposal.
 2. **Propose** — `/opsx:propose <id>` → author `proposal.md` / `design.md` / `tasks.md` /
    `specs/<capability>/spec.md`.
-3. **Apply** — `/opsx:apply` → implement; Nuke `Test` gate green.
+3. **Apply** — `/opsx:apply` → implement; Nuke `Test` gate green. **For a user-facing change** (a new or changed
+   container label / env var, an application-config key, a runtime behavior, or a common workflow), **update the
+   docs site in the same change** — `docs-site/content/en/docs/` (`configuration.md` / `features.md` /
+   `examples.md` as relevant) — and keep `docs/labels-reference.md` in sync, so the site never lags. Verify names
+   and defaults against the code. Pure internal refactors and `e2e-*`/verification items are exempt.
 4. **Commit + archive** — commit, then `/opsx:archive <id>` (syncs `openspec/specs/`).
 5. **Close the loop** — **remove** the item file `openspec/backlog/items/<id>.md` from the backlog and flip
    its `parity.md` row to ✅ (the parity matrix keeps the permanent record; update `docs/` if user-facing).
