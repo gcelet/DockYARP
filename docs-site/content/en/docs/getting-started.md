@@ -49,5 +49,7 @@ Labels are read live — DockYARP does not need a restart when a container start
 ## Next steps
 
 - [Configuration](/docs/configuration/) — the full label and application-config reference.
+- [Features](/docs/features/) — what DockYARP does at runtime (discovery, routing, TLS, admin API…).
+- [Examples](/docs/examples/) — copy-pasteable recipes for common setups.
 - [Architecture](/docs/architecture/) — how discovery, routing (YARP), and TLS fit together.
 - [Deployment](/docs/deployment/) — running DockYARP in production.
