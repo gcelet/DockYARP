@@ -21,7 +21,7 @@ docker-gen exposes both `.Env` and `.Labels` with no precedence — the template
 | Source | nginx-proxy | DockYarp | Status | Notes / item |
 |---|---|---|---|---|
 | Container **environment variables** (`-e VIRTUAL_HOST=…`) | canonical for `VIRTUAL_*`, `CERT_NAME`, `NETWORK_ACCESS`, `SERVER_TOKENS`, `EXTERNAL_*_PORT`, per-vhost `HTTPS_METHOD`/`HSTS`/`SSL_POLICY`/`ENABLE_HTTP_ON_MISSING_CERT` | read via per-container inspect; **env wins over label** | ✅ | Live round-trip validated by the Aspire e2e: an env-only backend is routed, and an env var overrides a same-named label. |
-| Container **labels** | namespaced `com.github.nginx-proxy.nginx-proxy.*` (loadbalance, keepalive, ssl_verify_client, http2/3, non-get-redirect, trust-default-cert, debug-endpoint) | reads config as labels (nginx-proxy env names + `DOCKYARP_*`); accepts the namespaced `loadbalance` + `ssl_verify_client` as aliases (native `DOCKYARP_*` wins) | ✅ | The two namespaced labels with a per-route target are aliased (value-translated); the other six map to global/unimplemented features tracked by their own items (`keepalive`→add-backend-keepalive, `non-get-redirect`, per-vhost `http2/3`, `trust-default-cert`/`debug-endpoint` global). |
+| Container **labels** | namespaced `com.github.nginx-proxy.nginx-proxy.*` (loadbalance, keepalive, ssl_verify_client, http2/3, non-get-redirect, trust-default-cert, debug-endpoint) | reads config as labels (nginx-proxy env names + `DOCKYARP_*`); accepts the namespaced `loadbalance` + `ssl_verify_client` as aliases (native `DOCKYARP_*` wins) | ✅ | The two namespaced labels with a per-route target are aliased (value-translated); the other six map to global/unimplemented features (`non-get-redirect`, per-vhost `http2/3`, `trust-default-cert`/`debug-endpoint` global; `keepalive` is intentionally not aliased — DockYarp exposes `DOCKYARP_MAX_CONNECTIONS` instead). |
 | Mounted **files** (certs, htpasswd, dhparam, vhost.d, conf.d) | extensive | certs + htpasswd + static JSON config | ⚠️/➕ | DockYarp uses structured config/overrides, not raw nginx files (see Ops row). |
 
 ## Routing
@@ -91,7 +91,7 @@ docker-gen exposes both `.Env` and `.Labels` with no precedence — the template
 | `X-Forwarded-*` / `X-Real-IP` / Host / downstream-proxy trust | ✅ | |
 | `client_max_body_size` (`DOCKYARP_MAX_BODY_SIZE`) | ✅ | Per-route. |
 | Proxy timeouts (`DOCKYARP_PROXY_TIMEOUT`) | ✅ | Per-cluster activity timeout. |
-| Backend keepalive / connection pooling (`keepalive` label) | ⛔ | YARP default pooling; no per-cluster override → [`add-backend-keepalive`](items/add-backend-keepalive.md). |
+| Backend keepalive / connection pooling (`keepalive` label) | ✅ | Per-cluster `DOCKYARP_MAX_CONNECTIONS` → YARP `HttpClientConfig.MaxConnectionsPerServer` (unset = default pooling). YARP already keeps/reuses backend connections dynamically, so nginx's idle-count `keepalive` maps to a connection **cap**, not a 1:1 port; the namespaced `keepalive` label is intentionally not aliased. |
 | gzip response compression | ✅ | gzip + brotli, on by default; `Compression:Enabled`. |
 | httpoxy mitigation (strip inbound `Proxy` header) | ✅ | Stripped in the forwarded-headers transform. |
 | PROXY protocol (`ENABLE_PROXY_PROTOCOL`) + real client IP | ⛔ | → [`add-proxy-protocol`](items/add-proxy-protocol.md). |
