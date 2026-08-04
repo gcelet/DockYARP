@@ -1,6 +1,6 @@
 ---
 title: Contributing
-weight: 5
+weight: 6
 description: The spec-driven workflow behind DockYARP.
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Deployment
-weight: 4
+weight: 5
 description: Running DockYARP in production.
 ---
 

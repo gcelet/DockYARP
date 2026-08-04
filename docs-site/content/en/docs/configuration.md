@@ -5,7 +5,8 @@ description: Container labels and application configuration.
 ---
 
 DockYARP is configured two ways: **container configuration** (per backend, nginx-proxy compatible) and
-**application configuration** (the proxy's own settings).
+**application configuration** (the proxy's own settings). For what these settings *do* at runtime, see
+[Features](../features/).
 
 ## Container configuration (labels or environment variables)
 
