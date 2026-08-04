@@ -2,6 +2,7 @@ namespace DockYarp.Tls;
 
 using System;
 
+using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
@@ -33,14 +34,27 @@ public sealed class KestrelTlsConfigurator(
 
         // Plaintext HTTP endpoint: ACME HTTP-01 challenge + HTTP→HTTPS redirects. HTTP/2 requires TLS, so this
         // endpoint negotiates HTTP/1.1 only.
-        serverOptions.ListenAnyIP(endpoints.HttpPort, listen => listen.Protocols = HttpProtocols.Http1);
+        serverOptions.ListenAnyIP(endpoints.HttpPort, listen =>
+        {
+            listen.Protocols = HttpProtocols.Http1;
+            ApplyProxyProtocol(listen);
+        });
 
         // HTTPS endpoint: the TLS session (certificate, protocols, ciphers, mTLS) is assembled per connection
         // from the SNI host.
         serverOptions.ListenAnyIP(endpoints.HttpsPort, listen =>
         {
             listen.Protocols = httpsProtocols;
+            ApplyProxyProtocol(listen); // before UseHttps: the PROXY header precedes the TLS ClientHello
             listen.UseHttps(callbackOptions);
         });
+    }
+
+    private void ApplyProxyProtocol(ListenOptions listen)
+    {
+        if (endpoints.EnableProxyProtocol)
+        {
+            listen.Use(next => new ProxyProtocolConnectionMiddleware(next).OnConnectionAsync);
+        }
     }
 }

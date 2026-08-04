@@ -13,4 +13,11 @@ public sealed class ServerEndpointOptions
 
     /// <summary>Gets or sets the HTTPS port (per-SNI TLS). Default <c>8443</c>.</summary>
     public int HttpsPort { get; set; } = 8443;
+
+    /// <summary>Gets or sets a value indicating whether edge connections begin with a PROXY protocol header.</summary>
+    /// <remarks>
+    /// Default <see langword="false"/>. Enable behind an L4 load balancer (NLB/HAProxy) so the real client
+    /// address is recovered from the PROXY protocol (v1 or v2) instead of the balancer's.
+    /// </remarks>
+    public bool EnableProxyProtocol { get; set; }
 }

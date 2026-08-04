@@ -78,6 +78,7 @@ or as a **double-underscore environment variable** on the proxy container (for e
 |-----|---------|---------|
 | `HttpPort` | `8080` | Plaintext HTTP port (ACME challenge + HTTP→HTTPS redirects). |
 | `HttpsPort` | `8443` | HTTPS port (per-SNI TLS). |
+| `EnableProxyProtocol` | `false` | Expect a PROXY protocol header (v1/v2) on edge connections and recover the real client IP (behind an L4 balancer: NLB/HAProxy). A malformed header aborts the connection. |
 
 ### `Docker` — discovery
 

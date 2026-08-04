@@ -39,3 +39,36 @@ the verification result (a header for the backend) is not defined.
 
 ## Notes / risks / references
 - Define the exact passthrough header contract; confirm Kestrel client-cert negotiation for optional mode.
+
+## Findings / scoping notes (2026-08-04 — NOT a clean Windows win; split before doing)
+Investigated while triaging Track-3 clean wins. This item is **more involved than the stub implies** — read this
+before proposing. Recommend splitting into two changes:
+
+**A) CRL revocation — hard on .NET (defer / needs a dependency decision).**
+- **No X509 CRL support in the BCL**: .NET (through .NET 10) has no public CRL reader *or* writer
+  (`System.Security.Cryptography.X509Certificates` has no `X509Crl`). `X509Chain` cannot be handed a CRL file
+  to check offline against a provided CRL.
+- Checking a client cert against a supplied `<host>.crl.pem`/`ca.crl.pem` therefore needs **manual ASN.1
+  parsing** (`System.Formats.Asn1`): walk `TBSCertList.revokedCertificates` → collect revoked serial numbers →
+  test the client cert's serial. ~40–60 lines, fiddly.
+- **Testing is the real blocker**: *generating* a test CRL also has no BCL API, so a unit test needs either a
+  pre-baked CRL fixture (opaque) or **BouncyCastle** (`Portable.BouncyCastle`/`BouncyCastle.Cryptography`) — a
+  new dependency. Decide dependency-vs-fixture before committing.
+- Current state: `ClientCertificateValidator` (src/DockYarp.Tls) validates the client chain vs the CA with
+  `X509RevocationMode.NoCheck`; CRL would extend it.
+
+**B) Optional passthrough — touches handshake behavior (moderate).**
+- mTLS is wired **globally**, not per-route: `SniTlsHandshakeCallback.BuildOptions` sets
+  `ClientCertificateRequired = true` + one `RemoteCertificateValidationCallback` for *all* hosts whenever a
+  client CA is configured (`mutualTls`). Per-host `optional`/`none` is **not** honored at the handshake — the
+  callback rejects a missing/invalid cert connection-wide; `ClientCertificateMiddleware` only adds a per-host
+  *presence* check (Required → 403).
+- Non-blocking `optional` (nginx `ssl_verify_client=optional`) requires the handshake to **accept** a
+  missing/invalid client cert for optional hosts (so the connection isn't dropped), then the middleware
+  re-validates via `ClientCertificateValidator` and forwards the outcome to the backend as a header
+  (`X-Client-Cert-Verify: SUCCESS|FAILED|NONE` + subject/issuer). That means making the handshake callback
+  route/SNI-aware about the requirement, which the current global wiring does not do.
+- This half **is** Windows-unit-testable (middleware + validator), but needs the handshake change first.
+
+Suggested split: `add-mtls-optional-passthrough` (B, clean-ish) now-ish; `add-mtls-crl` (A) once the
+BouncyCastle-vs-ASN.1 decision is made.
