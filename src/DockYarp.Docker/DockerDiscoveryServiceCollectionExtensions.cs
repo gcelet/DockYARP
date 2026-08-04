@@ -5,6 +5,7 @@ using System;
 using DockYarp.Docker.Discovery;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 /// <summary>Dependency-injection registration for Docker discovery.</summary>
 public static class DockerDiscoveryServiceCollectionExtensions
@@ -20,6 +21,7 @@ public static class DockerDiscoveryServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(options);
 
         services.AddSingleton(options);
+        services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<DiscoveryHealthState>();
         services.AddSingleton<IContainerSource, DockerContainerSource>();
         services.AddSingleton<DiscoveryReconciler>();

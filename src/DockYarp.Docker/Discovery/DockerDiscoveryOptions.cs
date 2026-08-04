@@ -44,4 +44,16 @@ public sealed class DockerDiscoveryOptions
 
     /// <summary>Gets or sets the maximum reconnect delay (backoff ceiling).</summary>
     public TimeSpan MaxReconnectDelay { get; set; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>Gets or sets the quiet window after a Docker event before an event-driven reconcile runs.</summary>
+    /// <remarks>
+    /// A burst of events within this window coalesces into a single reconciliation; each further event extends
+    /// the window (up to <see cref="ReconcileDebounceMax"/>). Startup and post-reconnect reconciliations are
+    /// immediate and unaffected. Zero disables debouncing (one reconcile per event).
+    /// </remarks>
+    public TimeSpan ReconcileDebounceMin { get; set; } = TimeSpan.FromMilliseconds(250);
+
+    /// <summary>Gets or sets the maximum time an event-driven reconcile is deferred from a burst's first event.</summary>
+    /// <remarks>Bounds worst-case latency for a burst that never settles within <see cref="ReconcileDebounceMin"/>.</remarks>
+    public TimeSpan ReconcileDebounceMax { get; set; } = TimeSpan.FromSeconds(2);
 }

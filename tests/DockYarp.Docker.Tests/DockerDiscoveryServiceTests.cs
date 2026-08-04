@@ -43,6 +43,38 @@ public sealed class DockerDiscoveryServiceTests
         }
     }
 
+    /// <summary>A burst of events arriving together collapses into a single reconciliation.</summary>
+    [Test]
+    public async Task CoalescesBurstIntoSingleReconcile()
+    {
+        FakeContainerSource source = new();
+        RouteConfigStore store = new();
+        DockerDiscoveryService service = CreateService(source, store);
+        source.SetContainers(Replica("c1", "10.0.0.1"));
+
+        await service.StartAsync(CancellationToken.None);
+        try
+        {
+            // Startup reconcile: wait until the initial route is published (one list call so far).
+            await WaitUntilAsync(() => store.Current.Routes.Any(route => route.HostPattern == "app.local"));
+            int afterStartup = source.ListCallCount;
+
+            // Queue a burst of events together; the debounce window must fold them into one reconcile.
+            for (int index = 0; index < 6; index++)
+            {
+                source.RaiseEvent(new ContainerLifecycleEvent(ContainerEventKind.Started, "c1"));
+            }
+
+            // Wait comfortably past the debounce cap, then assert a single extra reconcile ran for the burst.
+            await Task.Delay(400);
+            (source.ListCallCount - afterStartup).Should().Be(1);
+        }
+        finally
+        {
+            await service.StopAsync(CancellationToken.None);
+        }
+    }
+
     /// <summary>After a watch failure the service reconnects and reconciles again.</summary>
     [Test]
     public async Task ReconnectsAfterWatchFailure()
@@ -72,8 +104,11 @@ public sealed class DockerDiscoveryServiceTests
         {
             InitialReconnectDelay = TimeSpan.FromMilliseconds(5),
             MaxReconnectDelay = TimeSpan.FromMilliseconds(20),
+            ReconcileDebounceMin = TimeSpan.FromMilliseconds(20),
+            ReconcileDebounceMax = TimeSpan.FromMilliseconds(200),
         };
-        return new DockerDiscoveryService(source, reconciler, options, new DiscoveryHealthState(), NullLogger<DockerDiscoveryService>.Instance);
+        return new DockerDiscoveryService(
+            source, reconciler, options, new DiscoveryHealthState(), TimeProvider.System, NullLogger<DockerDiscoveryService>.Instance);
     }
 
     private static ContainerInfo Replica(string id, string address) =>

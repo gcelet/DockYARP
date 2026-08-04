@@ -89,6 +89,7 @@ or as a **double-underscore environment variable** on the proxy container (for e
 | `HostAddress` | — | Address used to reach host-network backends (e.g. `host.docker.internal`). |
 | `ContainerFilters` | — | Docker-native filters scoping discovery, e.g. `Docker:ContainerFilters:label:0 = dockyarp.enable=true`. |
 | `InitialReconnectDelay` / `MaxReconnectDelay` | `00:00:01` / `00:00:30` | Event-stream reconnect backoff. |
+| `ReconcileDebounceMin` / `ReconcileDebounceMax` | `00:00:00.250` / `00:00:02` | Coalesce a burst of Docker events into one reconcile: quiet window after the last event (extended per event), capped from the burst's first event. `ReconcileDebounceMin = 0` reconciles per event. Startup/reconnect passes are immediate. |
 
 ### `Tls` — certificates & ACME
 
