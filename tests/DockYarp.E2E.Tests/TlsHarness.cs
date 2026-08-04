@@ -4,6 +4,7 @@ using System.IO;
 using System.Net.Http;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
@@ -103,12 +104,21 @@ internal static class TlsHarness
     /// <summary>Creates an HTTPS client (no client certificate) that reaches DockYarp keeping the vhost as SNI.</summary>
     /// <param name="capture">Holder the presented server certificate is stored into.</param>
     /// <returns>An HTTP client for absolute <c>https://&lt;vhost&gt;/</c> requests.</returns>
-    internal static HttpClient CreateClient(ServerCertificateHolder capture) => Build(capture, presentedCertificate: null);
+    internal static HttpClient CreateClient(ServerCertificateHolder capture) =>
+        Build(capture, presentedCertificate: null, SslProtocols.None);
+
+    /// <summary>Creates an HTTPS client pinned to a specific TLS protocol version (to probe per-host SSL_POLICY).</summary>
+    /// <param name="capture">Holder the presented server certificate is stored into.</param>
+    /// <param name="enabledProtocols">The only TLS protocol version(s) the client will offer.</param>
+    /// <returns>An HTTP client whose handshake fails when the server refuses <paramref name="enabledProtocols"/>.</returns>
+    internal static HttpClient CreateClientWithProtocol(ServerCertificateHolder capture, SslProtocols enabledProtocols) =>
+        Build(capture, presentedCertificate: null, enabledProtocols);
 
     /// <summary>Creates an HTTPS client that presents the mutual-TLS client certificate.</summary>
     /// <param name="capture">Holder the presented server certificate is stored into.</param>
     /// <returns>An HTTP client for absolute <c>https://&lt;vhost&gt;/</c> requests, carrying the client certificate.</returns>
-    internal static HttpClient CreateMutualTlsClient(ServerCertificateHolder capture) => Build(capture, ClientCertificate);
+    internal static HttpClient CreateMutualTlsClient(ServerCertificateHolder capture) =>
+        Build(capture, ClientCertificate, SslProtocols.None);
 
     /// <summary>Creates a plain HTTP client for DockYarp that does not follow redirects.</summary>
     /// <returns>An HTTP client bound to DockYarp's HTTP endpoint with automatic redirects disabled.</returns>
@@ -118,7 +128,8 @@ internal static class TlsHarness
     // The virtual hosts only resolve inside the Docker network, and SNI must carry the virtual host, so the
     // request URI keeps the vhost (driving SNI and the Host header) while the connect callback dials
     // DockYarp's real HTTPS endpoint.
-    private static HttpClient Build(ServerCertificateHolder capture, X509Certificate2? presentedCertificate)
+    private static HttpClient Build(
+        ServerCertificateHolder capture, X509Certificate2? presentedCertificate, SslProtocols enabledProtocols)
     {
         Uri endpoint = AspireAppHostFixture.HttpsBaseAddress;
         SocketsHttpHandler handler = new()
@@ -143,6 +154,12 @@ internal static class TlsHarness
                 return new NetworkStream(socket, ownsSocket: true);
             },
         };
+
+        if (enabledProtocols != SslProtocols.None)
+        {
+            // Pin the offered TLS version so the handshake fails when the host's SSL_POLICY forbids it.
+            handler.SslOptions.EnabledSslProtocols = enabledProtocols;
+        }
 
         if (presentedCertificate is not null)
         {

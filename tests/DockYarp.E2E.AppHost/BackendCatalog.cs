@@ -36,6 +36,7 @@ internal static class BackendCatalog
     private const string LetsEncryptHost = "LETSENCRYPT_HOST";
     private const string Hsts = "HSTS";
     private const string ClientCert = "DOCKYARP_CLIENT_CERT";
+    private const string SslPolicy = "SSL_POLICY";
 
     /// <summary>Gets every backend the AppHost adds to the distributed system.</summary>
     public static IReadOnlyList<BackendSpec> All { get; } =
@@ -173,6 +174,20 @@ internal static class BackendCatalog
                 Kv(ClientCert, "required"),
             ],
             Environment = EchoEnv(EchoPort, id: "mtls"),
+        },
+        new BackendSpec
+        {
+            Name = "echo-sslpolicy", // per-vhost SSL_POLICY: Mozilla-Modern floors this host at TLS 1.3
+            Image = EchoImage,
+            Tag = EchoTag,
+            Labels =
+            [
+                Kv(VirtualHost, "modern.local"),
+                Kv(VirtualPort, EchoPort),
+                Kv(LetsEncryptHost, "modern.local"),
+                Kv(SslPolicy, "Mozilla-Modern"),
+            ],
+            Environment = EchoEnv(EchoPort, id: "sslpolicy"),
         },
     ];
 

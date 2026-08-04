@@ -79,6 +79,7 @@ builder.AddContainer("acme-http01", "alpine/socat")
     .WithContainerNetworkAlias("tls.local")
     .WithContainerNetworkAlias("hsts.local")
     .WithContainerNetworkAlias("mtls.local")
+    .WithContainerNetworkAlias("modern.local")
     .WithArgs("TCP-LISTEN:80,fork,reuseaddr", "TCP:dockyarp:8080")
     .WaitFor(proxy);
 

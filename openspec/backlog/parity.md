@@ -68,8 +68,8 @@ docker-gen exposes both `.Env` and `.Labels` with no precedence — the template
 | Min TLS version / ciphers / protocols | ⚠️ | Wired as config; cipher allow-list Linux/macOS only. |
 | `CERT_NAME` shared/SAN cert | ✅ | `CERT_NAME` pins a named shared certificate in SNI selection; the host is not ACME-provisioned. |
 | `default.crt` + `TRUST_DEFAULT_CERT` + `ENABLE_HTTP_ON_MISSING_CERT` | ✅ | Operator `default.crt`/`.key` preferred; `Security:TrustDefaultCert` (500 on untrusted) + `Security:EnableHttpOnMissingCert`, each **overridable per host** via `TRUST_DEFAULT_CERT` (also the namespaced `…trust-default-cert` label) / `ENABLE_HTTP_ON_MISSING_CERT`. |
-| `SSL_POLICY` presets — global default | ✅ | `Tls:SslPolicy` Mozilla Modern/Intermediate/Old → version + ciphers. Live negotiation: → [`e2e-ssl-policy-negotiation`](items/e2e-ssl-policy-negotiation.md). |
-| `SSL_POLICY` per-vhost override (`-e`/label) | ⚠️ | Recognized per-container + applied per-SNI (protocols + ciphers), unit-tested; live per-host negotiation → [`e2e-ssl-policy-negotiation`](items/e2e-ssl-policy-negotiation.md) (flips ✅ when green). |
+| `SSL_POLICY` presets — global default | ✅ | `Tls:SslPolicy` Mozilla Modern/Intermediate/Old → version + ciphers (mapping unit-tested; the per-SNI negotiation is proven live by the per-vhost e2e — same handshake path). |
+| `SSL_POLICY` per-vhost override (`-e`/label) | ✅ | Recognized per-container + applied per-SNI; live e2e: a `Mozilla-Modern` host refuses a TLS 1.2 handshake while a global-posture host accepts it. |
 | OCSP stapling (`.chain.pem`) | ⛔ | → [`add-ocsp-stapling`](items/add-ocsp-stapling.md). |
 | ACME DNS-01 | ⛔ | HTTP-01 only → [`add-acme-dns01`](items/add-acme-dns01.md). |
 | DH params (`DHPARAM_*`, per-vhost) | ⛔ | → [`add-dhparam-config`](items/add-dhparam-config.md). |
