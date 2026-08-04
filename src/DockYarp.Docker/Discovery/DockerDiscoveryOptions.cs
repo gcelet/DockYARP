@@ -56,4 +56,15 @@ public sealed class DockerDiscoveryOptions
     /// <summary>Gets or sets the maximum time an event-driven reconcile is deferred from a burst's first event.</summary>
     /// <remarks>Bounds worst-case latency for a burst that never settles within <see cref="ReconcileDebounceMin"/>.</remarks>
     public TimeSpan ReconcileDebounceMax { get; set; } = TimeSpan.FromSeconds(2);
+
+    /// <summary>Gets or sets the directory holding the daemon TLS material (<c>ca.pem</c>, <c>cert.pem</c>, <c>key.pem</c>).</summary>
+    /// <remarks>
+    /// The Docker <c>DOCKER_CERT_PATH</c> convention. When set and the endpoint is <c>tcp://</c>, DockYarp
+    /// presents the client certificate (<c>cert.pem</c>/<c>key.pem</c>); a socket endpoint is unaffected.
+    /// </remarks>
+    public string? CertPath { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether the daemon certificate is verified against <c>ca.pem</c>.</summary>
+    /// <remarks>Custom-root-trust validation (offline, no revocation); ignored without <see cref="CertPath"/>.</remarks>
+    public bool TlsVerify { get; set; }
 }

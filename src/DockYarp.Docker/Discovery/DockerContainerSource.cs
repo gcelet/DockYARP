@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Channels;
@@ -31,7 +32,7 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
     public DockerContainerSource(DockerDiscoveryOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        client = CreateClient(options.DockerEndpoint);
+        client = CreateClient(options);
         preferredNetwork = options.PreferredNetwork;
         hostAddress = options.HostAddress;
         proxyNetworks = [.. options.ProxyNetworks];
@@ -123,12 +124,41 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
         }
     }
 
-    private static IDockerClient CreateClient(string? endpoint)
+    private static IDockerClient CreateClient(DockerDiscoveryOptions options)
     {
-        DockerClientConfiguration configuration = endpoint is { Length: > 0 }
-            ? new DockerClientConfiguration(new Uri(endpoint))
-            : new DockerClientConfiguration();
+        Uri? endpoint = options.DockerEndpoint is { Length: > 0 } uri ? new Uri(uri) : null;
+        Credentials? credentials = BuildTlsCredentials(options, endpoint);
+        DockerClientConfiguration configuration = (endpoint, credentials) switch
+        {
+            (not null, not null) => new DockerClientConfiguration(endpoint, credentials),
+            (not null, null) => new DockerClientConfiguration(endpoint),
+            _ => new DockerClientConfiguration(),
+        };
         return configuration.CreateClient();
+    }
+
+    // Reads the TLS material from CertPath (real IO) and builds credentials for a tcp:// endpoint; a socket
+    // endpoint or a missing CertPath yields null (unchanged connection). The construction itself is unit-tested
+    // via DockerTlsCredentials.
+    private static Credentials? BuildTlsCredentials(DockerDiscoveryOptions options, Uri? endpoint)
+    {
+        if (endpoint is null || options.CertPath is not { Length: > 0 } directory)
+        {
+            return null;
+        }
+
+        return DockerTlsCredentials.Create(
+            endpoint,
+            options.TlsVerify ? DaemonTlsVerification.VerifyAgainstCa : DaemonTlsVerification.AcceptAny,
+            ReadPemOrNull(directory, "ca.pem"),
+            ReadPemOrNull(directory, "cert.pem"),
+            ReadPemOrNull(directory, "key.pem"));
+    }
+
+    private static string? ReadPemOrNull(string directory, string fileName)
+    {
+        string path = Path.Combine(directory, fileName);
+        return File.Exists(path) ? File.ReadAllText(path) : null;
     }
 
     private ContainerInfo ToContainerInfo(ContainerListResponse response, IReadOnlyDictionary<string, string> env)

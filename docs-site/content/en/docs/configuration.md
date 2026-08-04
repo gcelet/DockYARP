@@ -91,6 +91,8 @@ or as a **double-underscore environment variable** on the proxy container (for e
 | `ContainerFilters` | — | Docker-native filters scoping discovery, e.g. `Docker:ContainerFilters:label:0 = dockyarp.enable=true`. |
 | `InitialReconnectDelay` / `MaxReconnectDelay` | `00:00:01` / `00:00:30` | Event-stream reconnect backoff. |
 | `ReconcileDebounceMin` / `ReconcileDebounceMax` | `00:00:00.250` / `00:00:02` | Coalesce a burst of Docker events into one reconcile: quiet window after the last event (extended per event), capped from the burst's first event. `ReconcileDebounceMin = 0` reconciles per event. Startup/reconnect passes are immediate. |
+| `CertPath` | — | Directory with `ca.pem`/`cert.pem`/`key.pem` for a remote `tcp://` daemon over TLS (the Docker `DOCKER_CERT_PATH` convention); DockYarp presents the client certificate. A socket endpoint is unaffected. |
+| `TlsVerify` | `false` | Verify the daemon certificate against `CertPath`'s `ca.pem` (custom root trust). Ignored without `CertPath`. |
 
 ### `Tls` — certificates & ACME
 
