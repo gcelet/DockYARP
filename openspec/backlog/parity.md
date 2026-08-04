@@ -60,7 +60,7 @@ docker-gen exposes both `.Env` and `.Labels` with no precedence — the template
 | Feature | Status | Notes / item |
 |---|---|---|
 | ACME HTTP-01, renewal, SNI, self-signed fallback | ✅ ➕ | HTTPS on 8443. **Note**: in the nginx-proxy world ACME issuance + `LETSENCRYPT_HOST/EMAIL` are the separate **acme-companion** container; DockYarp does this in-process → superset. |
-| ACME HTTP-01 challenge options (`ACME_HTTP_CHALLENGE_LOCATION`/accept-unknown-host) | ⛔ | Challenge served, always-on → [`add-acme-challenge-options`](items/add-acme-challenge-options.md). |
+| ACME HTTP-01 challenge options (`ACME_HTTP_CHALLENGE_LOCATION`/accept-unknown-host) | ✅ | `Tls:Http01ChallengeEnabled` (default true) toggles serving (`false`→404). Accept-unknown-host is inherent: the token-keyed store serves challenges independent of host routing (only tokens DockYarp is provisioning). Middleware unit-tested. |
 | Provided certs (PEM/PFX), wildcard-parent selection | ✅ | |
 | `HTTPS_METHOD` (redirect/noredirect/nohttp/nohttps) | ✅ | Redirect gated on real cert availability. |
 | HSTS (preload + per-host `HSTS`) | ✅ | |
