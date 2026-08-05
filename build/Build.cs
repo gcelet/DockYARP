@@ -42,6 +42,7 @@ class Build : NukeBuild
     AbsolutePath SolutionFile => RootDirectory / "DockYarp.slnx";
     AbsolutePath AppProject => RootDirectory / "src" / "DockYarp.App" / "DockYarp.App.csproj";
     AbsolutePath BackendProject => RootDirectory / "tests" / "DockYarp.E2E.Backend" / "DockYarp.E2E.Backend.csproj";
+    AbsolutePath GrpcBackendProject => RootDirectory / "tests" / "DockYarp.E2E.GrpcBackend" / "DockYarp.E2E.GrpcBackend.csproj";
     AbsolutePath E2EProject => RootDirectory / "tests" / "DockYarp.E2E.Tests" / "DockYarp.E2E.Tests.csproj";
     AbsolutePath ArtifactsDirectory => RootDirectory / "artifacts";
     AbsolutePath E2ELogDirectory => ArtifactsDirectory / "e2e-logs";
@@ -104,6 +105,7 @@ class Build : NukeBuild
         {
             ProcessTasks.StartProcess("docker", $"build -t {LocalProxyImage} .", RootDirectory).AssertZeroExitCode();
             DotNet($"publish \"{BackendProject}\" --configuration {Configuration} -t:PublishContainer");
+            DotNet($"publish \"{GrpcBackendProject}\" --configuration {Configuration} -t:PublishContainer");
 
             // Capture per-resource logs to a durable directory so failures can be diagnosed after the
             // containers are torn down (cleaned at the start of each run so only the last run is kept).

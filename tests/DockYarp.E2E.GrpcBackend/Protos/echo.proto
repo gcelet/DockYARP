@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+option csharp_namespace = "DockYarp.E2E.Grpc";
+
+package echo;
+
+// A minimal echo service used by the end-to-end suite to prove gRPC (HTTP/2 + trailers) proxies through DockYarp.
+service Echoer {
+  // Unary: echoes the request message back.
+  rpc Echo (EchoRequest) returns (EchoReply);
+  // Server streaming: emits `count` replies, each echoing the message with its index.
+  rpc EchoStream (EchoRequest) returns (stream EchoReply);
+}
+
+message EchoRequest {
+  string message = 1;
+  int32 count = 2;
+}
+
+message EchoReply {
+  string message = 1;
+}

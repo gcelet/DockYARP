@@ -14,6 +14,9 @@ internal static class BackendCatalog
     /// <summary>The echo backend image built by <c>dotnet publish -t:PublishContainer</c> before the run.</summary>
     internal const string EchoImage = "dockyarp-e2e-backend";
 
+    /// <summary>The gRPC echo backend image (HTTP/2 h2c) built the same way, for the <c>VIRTUAL_PROTO=grpc</c> scenario.</summary>
+    internal const string GrpcImage = "dockyarp-e2e-grpc-backend";
+
     /// <summary>The virtual host routed to the default backend when no other host matches.</summary>
     internal const string DefaultHost = "default.local";
 
@@ -29,6 +32,7 @@ internal static class BackendCatalog
     private const string VirtualPath = "VIRTUAL_PATH";
     private const string VirtualDest = "VIRTUAL_DEST";
     private const string VirtualHostMultiports = "VIRTUAL_HOST_MULTIPORTS";
+    private const string VirtualProto = "VIRTUAL_PROTO";
     private const string AuthUser = "DOCKYARP_AUTH_USER";
     private const string AuthPassword = "DOCKYARP_AUTH_PASSWORD";
     private const string MaxBodySize = "DOCKYARP_MAX_BODY_SIZE";
@@ -188,6 +192,17 @@ internal static class BackendCatalog
                 Kv(SslPolicy, "Mozilla-Modern"),
             ],
             Environment = EchoEnv(EchoPort, id: "sslpolicy"),
+        },
+        new BackendSpec
+        {
+            // gRPC passthrough: VIRTUAL_PROTO=grpc → an HTTP/2-exact cluster. Served over the HTTPS listener
+            // (gRPC needs h2, and DockYarp's HTTP listener is HTTP/1 only) with the default certificate — no
+            // LETSENCRYPT_HOST, so the scenario does not depend on ACME timing. The backend speaks h2c.
+            Name = "echo-grpc",
+            Image = GrpcImage,
+            Tag = EchoTag,
+            Labels = [Kv(VirtualHost, "grpc.local"), Kv(VirtualPort, EchoPort), Kv(VirtualProto, "grpc")],
+            Environment = EchoEnv(EchoPort, id: null),
         },
     ];
 

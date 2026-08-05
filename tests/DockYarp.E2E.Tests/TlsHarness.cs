@@ -10,6 +10,8 @@ using System.Security.Cryptography.X509Certificates;
 
 using DockYarp.E2E.AppHost;
 
+using global::Grpc.Net.Client;
+
 /// <summary>TLS test material: an ephemeral client CA/leaf for mutual TLS and a TLS-aware HTTPS client factory.</summary>
 /// <remarks>
 /// The client CA is generated in memory and its public certificate is written to <see cref="E2EPaths.ClientCaFile"/>,
@@ -125,10 +127,27 @@ internal static class TlsHarness
     internal static HttpClient CreateNonRedirectingHttpClient() =>
         new(new HttpClientHandler { AllowAutoRedirect = false }) { BaseAddress = AspireAppHostFixture.Proxy.BaseAddress };
 
+    /// <summary>Creates a gRPC channel that reaches DockYarp over HTTP/2 (ALPN h2), keeping <paramref name="host"/> as SNI.</summary>
+    /// <param name="host">The gRPC virtual host (drives SNI and the <c>:authority</c>).</param>
+    /// <param name="capture">Holder the presented server certificate is stored into.</param>
+    /// <returns>A gRPC channel whose calls proxy through DockYarp to the labeled gRPC backend.</returns>
+    internal static GrpcChannel CreateGrpcChannel(string host, ServerCertificateHolder capture)
+    {
+        SocketsHttpHandler handler = BuildHandler(capture, presentedCertificate: null, SslProtocols.None);
+
+        // gRPC requires HTTP/2; offer only h2 over ALPN so the handshake negotiates it against DockYarp's TLS.
+        handler.SslOptions.ApplicationProtocols = [SslApplicationProtocol.Http2];
+        return GrpcChannel.ForAddress($"https://{host}", new GrpcChannelOptions { HttpHandler = handler, DisposeHttpClient = true });
+    }
+
     // The virtual hosts only resolve inside the Docker network, and SNI must carry the virtual host, so the
     // request URI keeps the vhost (driving SNI and the Host header) while the connect callback dials
     // DockYarp's real HTTPS endpoint.
     private static HttpClient Build(
+        ServerCertificateHolder capture, X509Certificate2? presentedCertificate, SslProtocols enabledProtocols) =>
+        new(BuildHandler(capture, presentedCertificate, enabledProtocols));
+
+    private static SocketsHttpHandler BuildHandler(
         ServerCertificateHolder capture, X509Certificate2? presentedCertificate, SslProtocols enabledProtocols)
     {
         Uri endpoint = AspireAppHostFixture.HttpsBaseAddress;
@@ -166,7 +185,7 @@ internal static class TlsHarness
             handler.SslOptions.ClientCertificates = [presentedCertificate];
         }
 
-        return new HttpClient(handler);
+        return handler;
     }
 
     /// <summary>Captures the server certificate presented during a TLS handshake.</summary>

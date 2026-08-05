@@ -27,6 +27,17 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="NUnit3TestAdapter" />
+    <PackageReference Include="Grpc.Net.Client" />
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="Grpc.Tools">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- Client stub generated from the same contract the gRPC backend serves (VIRTUAL_PROTO=grpc passthrough). -->
+  <ItemGroup>
+    <Protobuf Include="../DockYarp.E2E.GrpcBackend/Protos/echo.proto" GrpcServices="Client" Link="Protos/echo.proto" />
   </ItemGroup>
 
   <ItemGroup>
