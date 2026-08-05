@@ -213,10 +213,13 @@ that becomes healthy is added and one that becomes unhealthy is removed.
 The system SHALL select the container address to forward to from the container's Docker networks: when a
 preferred network is configured and the container is attached to it, that network's IP SHALL be used;
 otherwise the system SHALL choose deterministically among the container's networks and SHALL skip the Swarm
-`ingress` network. When the proxy's own networks are configured (`Docker:ProxyNetworks`), the deterministic
-choice SHALL be restricted to networks the proxy shares (reachable), and a container reachable on no shared
-network SHALL be skipped with a warning rather than routed to an unreachable address. When the proxy's networks
-are not configured, the system SHALL fall back to the container name when no network address is available.
+`ingress` network. The reachable set of networks SHALL be `Docker:ProxyNetworks` when configured; when it is
+not configured, the system SHALL detect the proxy's own attached networks (by inspecting its own container,
+resolved from `HOSTNAME`) and use those as the reachable set, falling back to reachability-unaware selection
+when self-detection is not possible. When a reachable set is known, the deterministic choice SHALL be
+restricted to networks the proxy shares (reachable), and a container reachable on no shared network SHALL be
+skipped with a warning rather than routed to an unreachable address. When no network address is available and
+no reachable set is known, the system SHALL fall back to the container name.
 
 #### Scenario: Preferred network is used
 - **WHEN** a container is attached to `frontend` (10.0.1.2) and `backend` (10.0.2.2) and the preferred network is `backend`
@@ -236,8 +239,12 @@ are not configured, the system SHALL fall back to the container name when no net
 - **THEN** the forwarded address is the container's IP on that shared, reachable network
 
 #### Scenario: Backend on no reachable network is skipped
-- **WHEN** a container is attached only to networks absent from `Docker:ProxyNetworks`
+- **WHEN** a container is attached only to networks absent from the reachable set
 - **THEN** it has no forwarded address and is skipped with a warning (no broken route or endpoint)
+
+#### Scenario: Reachable set defaults to the proxy's own networks
+- **WHEN** `Docker:ProxyNetworks` is not configured
+- **THEN** the reachable set is the proxy's own attached networks, detected by inspecting its own container
 
 ### Requirement: Priority label
 The system SHALL read `DOCKYARP_PRIORITY` from a container's labels and use it as the route's priority,
