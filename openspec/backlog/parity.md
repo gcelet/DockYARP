@@ -11,6 +11,12 @@ parser.
 > **Re-analysis 2026-07-31** (fresh read of `nginx.tmpl` + `docs/` + docker-gen `internal/`): the tables below
 > track *which features exist*; the **Configuration source** section below tracks *how config is read* — a
 > distinct axis that surfaced the env-var gap.
+>
+> **Re-comparison 2026-08-05** (deep 3-source read: `nginx.tmpl`, all 43 `test/` behavioral tests, docker-gen
+> engine): confirmed the matrix — **no major untracked feature**. Surfaced 3 minor gaps, now tracked as
+> low/medium items: `add-forwarded-ssl-headers` (X-Forwarded-Ssl / X-Original-URI), `add-ssl-policy-elb-presets`
+> (AWS ELB `SSL_POLICY` presets), `add-per-vhost-http2-toggle` (per-vhost `http2.enable`). Deliberate diffs kept
+> as-is: `NON_GET_REDIRECT` (DockYarp uses 308 for all methods), `ACME_HTTP_CHALLENGE_LOCATION=legacy`.
 
 ## Configuration source
 
@@ -50,7 +56,7 @@ docker-gen exposes both `.Env` and `.Labels` with no precedence — the template
 |---|---|---|
 | `VIRTUAL_PROTO` http/https | ✅ | |
 | WebSocket | ✅ | YARP default. |
-| HTTP/2 | ✅ | Configurable protocols. |
+| HTTP/2 | ✅ | Configurable protocols (global). Per-vhost `http2.enable` toggle → [`add-per-vhost-http2-toggle`](items/add-per-vhost-http2-toggle.md). |
 | `VIRTUAL_PROTO=grpc` | ✅ | grpc/grpcs → HTTP/2-exact cluster (trailers forwarded). E2E round-trip: → [`e2e-grpc-passthrough`](items/e2e-grpc-passthrough.md). |
 | `VIRTUAL_PROTO` fastcgi / uwsgi | 🚫 | Non-HTTP upstreams — out of scope. |
 | HTTP/3 (QUIC) | ⚠️ | Config toggle; needs MsQuic runtime → [`finish-http3`](items/finish-http3.md). |
@@ -68,7 +74,7 @@ docker-gen exposes both `.Env` and `.Labels` with no precedence — the template
 | Min TLS version / ciphers / protocols | ⚠️ | Wired as config; cipher allow-list Linux/macOS only. |
 | `CERT_NAME` shared/SAN cert | ✅ | `CERT_NAME` pins a named shared certificate in SNI selection; the host is not ACME-provisioned. |
 | `default.crt` + `TRUST_DEFAULT_CERT` + `ENABLE_HTTP_ON_MISSING_CERT` | ✅ | Operator `default.crt`/`.key` preferred; `Security:TrustDefaultCert` (500 on untrusted) + `Security:EnableHttpOnMissingCert`, each **overridable per host** via `TRUST_DEFAULT_CERT` (also the namespaced `…trust-default-cert` label) / `ENABLE_HTTP_ON_MISSING_CERT`. |
-| `SSL_POLICY` presets — global default | ✅ | `Tls:SslPolicy` Mozilla Modern/Intermediate/Old → version + ciphers (mapping unit-tested; the per-SNI negotiation is proven live by the per-vhost e2e — same handshake path). |
+| `SSL_POLICY` presets — global default | ✅ | `Tls:SslPolicy` Mozilla Modern/Intermediate/Old → version + ciphers (mapping unit-tested; the per-SNI negotiation is proven live by the per-vhost e2e — same handshake path). The ~20 AWS ELB presets are not mapped → [`add-ssl-policy-elb-presets`](items/add-ssl-policy-elb-presets.md) (niche). |
 | `SSL_POLICY` per-vhost override (`-e`/label) | ✅ | Recognized per-container + applied per-SNI; live e2e: a `Mozilla-Modern` host refuses a TLS 1.2 handshake while a global-posture host accepts it. |
 | OCSP stapling (`.chain.pem`) | ⛔ | → [`add-ocsp-stapling`](items/add-ocsp-stapling.md). |
 | ACME DNS-01 | ⛔ | HTTP-01 only → [`add-acme-dns01`](items/add-acme-dns01.md). |
@@ -88,7 +94,8 @@ docker-gen exposes both `.Env` and `.Labels` with no precedence — the template
 
 | Feature | Status | Notes / item |
 |---|---|---|
-| `X-Forwarded-*` / `X-Real-IP` / Host / downstream-proxy trust | ✅ | |
+| `X-Forwarded-*` / `X-Real-IP` / Host / downstream-proxy trust | ✅ | For/Proto/Host/Port + Real-IP; `TRUST_DOWNSTREAM_PROXY` honored. |
+| `X-Forwarded-Ssl` (`on`/`off`) + `X-Original-URI` | ⛔ | nginx-proxy always sends both; DockYarp sends the other forwarded headers but not these → [`add-forwarded-ssl-headers`](items/add-forwarded-ssl-headers.md). |
 | `client_max_body_size` (`DOCKYARP_MAX_BODY_SIZE`) | ✅ | Per-route. |
 | Proxy timeouts (`DOCKYARP_PROXY_TIMEOUT`) | ✅ | Per-cluster activity timeout. |
 | Backend keepalive / connection pooling (`keepalive` label) | ✅ | Per-cluster `DOCKYARP_MAX_CONNECTIONS` → YARP `HttpClientConfig.MaxConnectionsPerServer` (unset = default pooling). YARP already keeps/reuses backend connections dynamically, so nginx's idle-count `keepalive` maps to a connection **cap**, not a 1:1 port; the namespaced `keepalive` label is intentionally not aliased. |
