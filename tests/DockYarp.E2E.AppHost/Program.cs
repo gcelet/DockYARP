@@ -13,12 +13,22 @@ const string apiKey = "e2e-secret-key";
 // on first boot into the bind-mounted directory; DockYarp and the tests read the root from there.
 // DockYarp is deliberately NOT gated on step-ca (its provisioning retries in the background), because the
 // step-ca image's health check can stay "starting" and would otherwise block DockYarp from ever starting.
+// The image entrypoint (bash /entrypoint.sh) runs `step ca init` when config/ca.json is absent, then `exec "$@"`.
+// We override that CMD: after init has created the ACME provisioner, widen its certificate durations to 60 days
+// (offline ca.json edit — remote management is off) so DockYarp, running its realistic default 30-day renewal
+// margin, never renews during a run (a stable served thumbprint for RestartPersistenceTests). `;` (not `&&`) so
+// a patch hiccup only affects that one test rather than blocking the whole ACME chain. Then serve as the image's
+// default CMD does. This replaces the former Tls__RenewBeforeExpiry test override on the proxy.
+const string stepCaCommand =
+    "step ca provisioner update acme --x509-default-dur=1440h --x509-max-dur=1440h ; " +
+    "exec step-ca --password-file /home/step/secrets/password /home/step/config/ca.json";
 builder.AddContainer("stepca", "smallstep/step-ca")
     .WithBindMount(E2EPaths.StepCaDirectory, "/home/step")
     .WithEnvironment("DOCKER_STEPCA_INIT_NAME", "DockYarp E2E CA")
     .WithEnvironment("DOCKER_STEPCA_INIT_DNS_NAMES", "stepca,localhost")
     .WithEnvironment("DOCKER_STEPCA_INIT_ACME", "true")
     .WithEnvironment("DOCKER_STEPCA_INIT_REMOTE_MANAGEMENT", "false")
+    .WithArgs("sh", "-c", stepCaCommand)
     .WithHttpsEndpoint(targetPort: 9000, name: "acme");
 
 // step-ca serves a leaf signed by its intermediate but does not send the intermediate, so trusting the root
@@ -64,10 +74,9 @@ proxy
     .WithEnvironment("Tls__ClientCaCertificatePath", "/clientca/client-ca.crt")
     .WithEnvironment("Tls__CheckInterval", "00:00:05") // retry provisioning after discovery (startup pass races it; default 12h)
 
-    // step-ca issues ~24h certs while the default renewal margin is 30 days, so every 5s pass would renew and
-    // churn the served thumbprint. A short margin keeps a provisioned cert stable for the restart-reuse test
-    // (RestartPersistenceTests); the more coherent CA-side fix is deferred (backlog e2e-stepca-long-cert-duration).
-    .WithEnvironment("Tls__RenewBeforeExpiry", "00:01:00")
+    // DockYarp runs with its realistic default renewal margin (30 days): step-ca is configured to issue certs
+    // far longer than that (60 days, see the stepca container), so no renewal is due during a run and the served
+    // thumbprint stays stable for the restart-reuse test (RestartPersistenceTests) — no product-option override.
     .WithHttpsEndpoint(targetPort: 8443, name: "https");
 
 // ACME HTTP-01 front door. step-ca validates a challenge by fetching http://<LETSENCRYPT_HOST>/.well-known/...

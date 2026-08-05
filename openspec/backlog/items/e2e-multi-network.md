@@ -38,3 +38,15 @@ a real daemon with a backend on an unreachable network.
 - Requires a Docker-capable session; validate self-inspection (HOSTNAME → container id) across compose/Swarm.
 - Sibling (done): `add-multi-network-attachment` (config-driven reachability logic).
 - Related: `add-host-network-mode` (also needs live host/network validation).
+
+## Findings (2026-08-05 — hard under the current Aspire/DCP harness + needs a code feature)
+Two blockers found while running the e2e batch:
+1. **DCP single-network model.** Aspire attaches every container to one DCP-managed network, so a backend cannot
+   be made *unreachable* from the proxy (the skip path): putting it on a separate network only would need
+   `--network <custom>`, which conflicts with DCP's own `--network` (same constraint as `--network host` — see
+   `e2e-host-network-mode` findings). Making a backend unreachable would require managing it **outside** DCP.
+2. **Criterion (1) is a code feature**, not e2e: auto-detecting the proxy's own networks (Docker self-inspection
+   via HOSTNAME→container id) as the default `ProxyNetworks`. That belongs in a separate change
+   (`add-network-self-detection`), not this e2e item.
+Recommended split: `add-network-self-detection` (the feature, unit-testable) + defer/redesign the live skip e2e
+(needs a non-DCP harness). The config-driven reachability logic is already unit-tested (`add-multi-network-attachment`).
