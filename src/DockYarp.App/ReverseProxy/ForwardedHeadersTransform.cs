@@ -1,8 +1,11 @@
 namespace DockYarp.App.ReverseProxy;
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Http;
@@ -45,7 +48,33 @@ public static class ForwardedHeadersTransform
             // httpoxy mitigation: never forward a client-supplied `Proxy` header to the backend.
             transformContext.ProxyRequest.Headers.Remove("Proxy");
 
+            // X-Forwarded-Ssl mirrors the effective forwarded proto (so it respects downstream-proxy trust).
+            bool https = IsForwardedHttps(transformContext.ProxyRequest.Headers, transformContext.HttpContext.Request);
+            transformContext.ProxyRequest.Headers.Remove("X-Forwarded-Ssl");
+            transformContext.ProxyRequest.Headers.TryAddWithoutValidation("X-Forwarded-Ssl", https ? "on" : "off");
+
+            // X-Original-URI: the original request line (before any route rewrite); always the real URI.
+            HttpRequest request = transformContext.HttpContext.Request;
+            transformContext.ProxyRequest.Headers.Remove("X-Original-URI");
+            transformContext.ProxyRequest.Headers.TryAddWithoutValidation(
+                "X-Original-URI", $"{request.PathBase}{request.Path}{request.QueryString}");
+
             return ValueTask.CompletedTask;
         });
+    }
+
+    // The first hop of X-Forwarded-Proto is the original client scheme (Append mode) or DockYarp's own scheme
+    // (Set mode); falls back to the actual connection when the header is absent.
+    private static bool IsForwardedHttps(HttpRequestHeaders headers, HttpRequest request)
+    {
+        if (headers.TryGetValues("X-Forwarded-Proto", out IEnumerable<string>? values)
+            && values.FirstOrDefault() is { } proto)
+        {
+            int comma = proto.IndexOf(',');
+            ReadOnlySpan<char> firstHop = comma >= 0 ? proto.AsSpan(0, comma) : proto;
+            return firstHop.Trim().Equals("https", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return request.IsHttps;
     }
 }

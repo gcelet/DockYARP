@@ -47,6 +47,34 @@ public sealed class ForwardedHeadersIntegrationTests
         }
     }
 
+    /// <summary>The backend receives <c>X-Forwarded-Ssl</c> and <c>X-Original-URI</c> reflecting scheme + original URI.</summary>
+    [Test]
+    public async Task SslAndOriginalUriHeadersReachBackend()
+    {
+        await using WebApplication backend = BuildEchoBackend();
+        await backend.StartAsync();
+
+        try
+        {
+            using WebApplicationFactory<Program> factory = new();
+            using HttpClient client = factory.CreateClient();
+            IRouteConfigStore store = factory.Services.GetRequiredService<IRouteConfigStore>();
+            store.Apply(
+                [new RouteRule { HostPattern = "backend.local", ClusterId = "backend" }],
+                [new Cluster { Id = "backend", Endpoints = [new ClusterEndpoint("b1", backend.Urls.First())] }]);
+            client.DefaultRequestHeaders.Host = "backend.local";
+
+            string body = await PollForBodyAsync(client, "/orig/path?q=1");
+
+            body.Should().Contain("ssl=off"); // the test client reaches the proxy over HTTP
+            body.Should().Contain("origuri=/orig/path?q=1");
+        }
+        finally
+        {
+            await backend.StopAsync();
+        }
+    }
+
     /// <summary>A client-supplied <c>Proxy</c> header is stripped and never reaches the backend (httpoxy).</summary>
     [Test]
     public async Task ProxyHeaderIsStripped()
@@ -85,15 +113,17 @@ public sealed class ForwardedHeadersIntegrationTests
             $"proto={context.Request.Headers["X-Forwarded-Proto"]};"
             + $"host={context.Request.Headers.Host};"
             + $"xfhost={context.Request.Headers["X-Forwarded-Host"]};"
+            + $"ssl={context.Request.Headers["X-Forwarded-Ssl"]};"
+            + $"origuri={context.Request.Headers["X-Original-URI"]};"
             + $"proxy={context.Request.Headers["Proxy"]}"));
         return app;
     }
 
-    private static async Task<string> PollForBodyAsync(HttpClient client)
+    private static async Task<string> PollForBodyAsync(HttpClient client, string path = "/")
     {
         for (int attempt = 0; attempt < 100; attempt++)
         {
-            using HttpResponseMessage response = await client.GetAsync("/");
+            using HttpResponseMessage response = await client.GetAsync(path);
             if (response.StatusCode == HttpStatusCode.OK)
             {
                 return await response.Content.ReadAsStringAsync();

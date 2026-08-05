@@ -59,6 +59,11 @@ DockYARP terminates TLS and can obtain certificates automatically.
 
 ## Proxying
 
+- **Forwarded headers**: proxied requests carry `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`,
+  `X-Forwarded-Port`, `X-Real-IP`, `X-Forwarded-Ssl` (`on`/`off`, matching the forwarded scheme), and
+  `X-Original-URI` (the original path + query), plus the original `Host`. Client-supplied `X-Forwarded-*` values
+  are trusted and appended by default; set `Proxy:TrustDownstreamProxy=false` to replace them with the real
+  connection values (`X-Original-URI` is always the real request URI).
 - **Compression**: responses with compressible content types are gzip/brotli-compressed when the client sends
   `Accept-Encoding` (on by default; disable with `Compression:Enabled=false`). An already-encoded upstream
   response is never double-compressed.
