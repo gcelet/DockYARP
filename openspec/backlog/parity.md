@@ -95,7 +95,7 @@ docker-gen exposes both `.Env` and `.Labels` with no precedence — the template
 | Feature | Status | Notes / item |
 |---|---|---|
 | `X-Forwarded-*` / `X-Real-IP` / Host / downstream-proxy trust | ✅ | For/Proto/Host/Port + Real-IP; `TRUST_DOWNSTREAM_PROXY` honored. |
-| `X-Forwarded-Ssl` (`on`/`off`) + `X-Original-URI` | ⛔ | nginx-proxy always sends both; DockYarp sends the other forwarded headers but not these → [`add-forwarded-ssl-headers`](items/add-forwarded-ssl-headers.md). |
+| `X-Forwarded-Ssl` (`on`/`off`) + `X-Original-URI` | ✅ | `ForwardedHeadersTransform` sets `X-Forwarded-Ssl` (mirrors the forwarded proto, respects trust) + `X-Original-URI` (the real original path+query, non-spoofable). Integration-tested. |
 | `client_max_body_size` (`DOCKYARP_MAX_BODY_SIZE`) | ✅ | Per-route. |
 | Proxy timeouts (`DOCKYARP_PROXY_TIMEOUT`) | ✅ | Per-cluster activity timeout. |
 | Backend keepalive / connection pooling (`keepalive` label) | ✅ | Per-cluster `DOCKYARP_MAX_CONNECTIONS` → YARP `HttpClientConfig.MaxConnectionsPerServer` (unset = default pooling). YARP already keeps/reuses backend connections dynamically, so nginx's idle-count `keepalive` maps to a connection **cap**, not a 1:1 port; the namespaced `keepalive` label is intentionally not aliased. |
