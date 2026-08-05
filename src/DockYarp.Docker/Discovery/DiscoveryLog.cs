@@ -27,4 +27,16 @@ internal static partial class DiscoveryLog
         Level = LogLevel.Warning,
         Message = "Docker watch ended or failed (attempt {Attempt}); reconnecting in {Delay}.")]
     public static partial void Reconnecting(ILogger logger, int attempt, TimeSpan delay, Exception? exception);
+
+    [LoggerMessage(
+        EventId = 6,
+        Level = LogLevel.Information,
+        Message = "Detected the proxy's own networks: {Networks} (used as the reachable set; Docker:ProxyNetworks unset).")]
+    public static partial void OwnNetworksDetected(ILogger logger, string networks);
+
+    [LoggerMessage(
+        EventId = 7,
+        Level = LogLevel.Information,
+        Message = "Could not determine the proxy's own networks (Docker:ProxyNetworks unset); reachability filtering is disabled.")]
+    public static partial void OwnNetworksUndetermined(ILogger logger);
 }

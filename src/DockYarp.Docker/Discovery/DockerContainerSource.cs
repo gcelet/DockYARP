@@ -15,6 +15,8 @@ using DockYarp.Docker.Models;
 using global::Docker.DotNet;
 using global::Docker.DotNet.Models;
 
+using Microsoft.Extensions.Logging;
+
 /// <summary><see cref="IContainerSource"/> backed by the Docker daemon via Docker.DotNet.</summary>
 public sealed class DockerContainerSource : IContainerSource, IDisposable
 {
@@ -22,26 +24,38 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
         new Dictionary<string, string>(StringComparer.Ordinal);
 
     private readonly IDockerClient client;
+    private readonly ILogger<DockerContainerSource> logger;
     private readonly string? preferredNetwork;
     private readonly string? hostAddress;
-    private readonly IReadOnlyCollection<string> proxyNetworks;
+    private readonly IReadOnlyCollection<string> configuredProxyNetworks;
     private readonly IDictionary<string, IDictionary<string, bool>>? containerFilters;
+
+    // Effective reachable set: the configured networks, or — resolved once on the first listing when unconfigured
+    // — the proxy's own detected networks. Read per container by ResolveAddress.
+    private IReadOnlyCollection<string> proxyNetworks;
+    private bool proxyNetworksResolved;
 
     /// <summary>Initializes the source, creating a Docker client from the options.</summary>
     /// <param name="options">Discovery options (endpoint, preferred/proxy networks, host address, container filters).</param>
-    public DockerContainerSource(DockerDiscoveryOptions options)
+    /// <param name="logger">Logger for the self-network-detection outcome.</param>
+    public DockerContainerSource(DockerDiscoveryOptions options, ILogger<DockerContainerSource> logger)
     {
         ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(logger);
+        this.logger = logger;
         client = CreateClient(options);
         preferredNetwork = options.PreferredNetwork;
         hostAddress = options.HostAddress;
-        proxyNetworks = [.. options.ProxyNetworks];
+        configuredProxyNetworks = [.. options.ProxyNetworks];
+        proxyNetworks = configuredProxyNetworks;
         containerFilters = DockerFilters.Build(options.ContainerFilters);
     }
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<ContainerInfo>> ListRunningContainersAsync(CancellationToken cancellationToken)
     {
+        await EnsureProxyNetworksResolvedAsync(cancellationToken).ConfigureAwait(false);
+
         // Scope discovery to the configured containers; the listing is authoritative (every event reconciles
         // against it), so the event stream itself stays unfiltered. See the change's design.md.
         IList<ContainerListResponse> responses = await client.Containers
@@ -74,6 +88,47 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
             // The container vanished between listing and inspecting, or the daemon rejected the call; fall back
             // to labels only for this container (the next reconcile corrects it).
             return EmptyEnv;
+        }
+    }
+
+    // On the first listing, when the operator did not configure ProxyNetworks, detect the proxy's own networks
+    // by inspecting its own container (resolved from HOSTNAME) so reachability filtering works with no config.
+    private async Task EnsureProxyNetworksResolvedAsync(CancellationToken cancellationToken)
+    {
+        if (proxyNetworksResolved || configuredProxyNetworks.Count > 0)
+        {
+            return;
+        }
+
+        proxyNetworksResolved = true;
+        string? ownId = SelfNetworkDetector.ResolveOwnContainerId(Environment.GetEnvironmentVariable("HOSTNAME"));
+        IReadOnlyCollection<string> detected = ownId is null
+            ? []
+            : await InspectOwnNetworksAsync(ownId, cancellationToken).ConfigureAwait(false);
+        proxyNetworks = SelfNetworkDetector.ChooseReachableNetworks(configuredProxyNetworks, detected);
+
+        if (proxyNetworks.Count > 0)
+        {
+            DiscoveryLog.OwnNetworksDetected(logger, string.Join(", ", proxyNetworks));
+        }
+        else
+        {
+            DiscoveryLog.OwnNetworksUndetermined(logger);
+        }
+    }
+
+    private async Task<IReadOnlyCollection<string>> InspectOwnNetworksAsync(string id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            ContainerInspectResponse inspect =
+                await client.Containers.InspectContainerAsync(id, cancellationToken).ConfigureAwait(false);
+            return inspect.NetworkSettings?.Networks is { } networks ? [.. networks.Keys] : [];
+        }
+        catch (DockerApiException)
+        {
+            // Self-inspection is best-effort; leave the reachable set empty (reachability-unaware) on failure.
+            return [];
         }
     }
 
