@@ -1,0 +1,85 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommitsDisabled"
+  ],
+  "commitMessagePrefix": ":arrow_up: chore:",
+  "commitMessageAction": "upgrade",
+  "schedule": ["before 6am on monday"],
+  "labels": ["dependencies"],
+  "major": { "automerge": false },
+  "nuget": { "enabled": true },
+  "github-actions": { "enabled": true },
+  "npm": { "enabled": true },
+  "packageRules": [
+    {
+      "description": "Pins use the :pushpin: gitmoji convention.",
+      "matchUpdateTypes": ["pin", "pinDigest"],
+      "commitMessagePrefix": ":pushpin: chore:",
+      "commitMessageAction": "pin"
+    },
+    {
+      "description": "Rollbacks use the :arrow_down: gitmoji convention.",
+      "matchUpdateTypes": ["rollback"],
+      "commitMessagePrefix": ":arrow_down: chore:",
+      "commitMessageAction": "downgrade"
+    },
+    {
+      "description": "Pin the Dockerfile base-image FROM to a digest and keep it fresh (feeds add-base-image-rebuild).",
+      "matchCategories": ["docker"],
+      "enabled": true,
+      "pinDigests": true
+    },
+    {
+      "description": "Keep the relaxed .NET SDK floor: do not re-pin global.json to a specific 10.x SDK.",
+      "matchDatasources": ["dotnet-version"],
+      "enabled": false
+    },
+    {
+      "description": "Group the strict code-quality analyzers.",
+      "groupName": "code-quality analyzers",
+      "matchManagers": ["nuget"],
+      "matchPackageNames": [
+        "AsyncFixer",
+        "CSharpGuidelinesAnalyzer",
+        "Meziantou.Analyzer",
+        "Roslynator.Analyzers",
+        "SonarAnalyzer.CSharp",
+        "StyleCop.Analyzers"
+      ]
+    },
+    {
+      "description": "Group Aspire packages.",
+      "groupName": "Aspire",
+      "matchManagers": ["nuget"],
+      "matchPackageNames": ["/^Aspire/"]
+    },
+    {
+      "description": "Group OpenTelemetry packages.",
+      "groupName": "OpenTelemetry",
+      "matchManagers": ["nuget"],
+      "matchPackageNames": ["/^OpenTelemetry/"]
+    },
+    {
+      "description": "Group the gRPC E2E fixture packages.",
+      "groupName": "gRPC",
+      "matchManagers": ["nuget"],
+      "matchPackageNames": ["/^Grpc\\./", "Google.Protobuf"]
+    },
+    {
+      "description": "Group the NUnit / test stack.",
+      "groupName": "test stack",
+      "matchManagers": ["nuget"],
+      "matchPackageNames": [
+        "/^NUnit/",
+        "/^AwesomeAssertions/",
+        "coverlet.collector",
+        "Microsoft.NET.Test.Sdk",
+        "Microsoft.AspNetCore.Mvc.Testing",
+        "/^System.IO.Abstractions/"
+      ]
+    }
+  ]
+}
