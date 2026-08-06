@@ -123,6 +123,10 @@
           "type": "string",
           "description": "Image tag"
         },
+        "Platforms": {
+          "type": "string",
+          "description": "Target platform(s) for the image, comma-separated (multi-arch requires DockerPublish/--push, not a local --load)"
+        },
         "Registry": {
           "type": "string",
           "description": "Container registry host; empty targets Docker Hub"

@@ -26,6 +26,9 @@ class Build : NukeBuild
     [Parameter("Image tag")]
     readonly string ImageTag = "latest";
 
+    [Parameter("Target platform(s) for the image, comma-separated (multi-arch requires DockerPublish/--push, not a local --load)")]
+    readonly string Platforms = "linux/amd64";
+
     [Parameter("Version validated by a release run")]
     readonly string Version = "";
 
@@ -38,6 +41,10 @@ class Build : NukeBuild
     string FullImage => string.IsNullOrEmpty(Registry)
         ? $"{ImageRepository}:{ImageTag}"
         : $"{Registry}/{ImageRepository}:{ImageTag}";
+
+    string LatestImage => string.IsNullOrEmpty(Registry)
+        ? $"{ImageRepository}:latest"
+        : $"{Registry}/{ImageRepository}:latest";
 
     AbsolutePath SolutionFile => RootDirectory / "DockYarp.slnx";
     AbsolutePath AppProject => RootDirectory / "src" / "DockYarp.App" / "DockYarp.App.csproj";
@@ -80,20 +87,24 @@ class Build : NukeBuild
             .SetConfiguration(Configuration)
             .SetOutput(ArtifactsDirectory / "publish")));
 
-    // The Dockerfile's build stage runs the Nuke build (build.sh) itself; this just gates on tests
-    // and invokes `docker build`. Requires Docker on PATH.
+    // The single image-build path (local + CI). The Dockerfile's build stage runs the Nuke build (build.sh)
+    // itself; this gates on tests, then buildx-builds a single-arch image and --loads it into the local Docker
+    // daemon (for `docker run` / the E2E stack). Requires Docker + buildx on PATH.
     Target DockerImage => _ => _
         .DependsOn(Test)
         .Executes(() => ProcessTasks
-            .StartProcess("docker", $"build -t {FullImage} .", RootDirectory)
+            .StartProcess("docker", $"buildx build --platform {Platforms} --load -t {FullImage} .", RootDirectory)
             .AssertZeroExitCode());
 
-    // Pushes the image to the configured registry (Docker Hub by default). Assumes the environment is
-    // already authenticated (`docker login`). Requires Docker on PATH.
+    // Build + push in one buildx step (multi-arch capable), also tagging :latest. The caller sets
+    // --registry/--image-repository/--image-tag/--platforms and must already be authenticated to the registry
+    // (`docker login`); the release CI does that then calls this target. Requires Docker + buildx on PATH.
     Target DockerPublish => _ => _
-        .DependsOn(DockerImage)
         .Executes(() => ProcessTasks
-            .StartProcess("docker", $"push {FullImage}", RootDirectory)
+            .StartProcess(
+                "docker",
+                $"buildx build --platform {Platforms} --push -t {FullImage} -t {LatestImage} .",
+                RootDirectory)
             .AssertZeroExitCode());
 
     // Opt-in end-to-end suite: builds the images the Aspire AppHost consumes (the proxy image and the echo
