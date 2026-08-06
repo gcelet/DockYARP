@@ -1,0 +1,73 @@
+name: Refresh base image
+
+# A merged Renovate digest bump (or any Dockerfile edit) on the default branch rebuilds and republishes :latest
+# with the patched base. Released v* tags stay immutable (they are handled by image.yml).
+on:
+  push:
+    branches: [main]
+    paths: ['Dockerfile']
+  workflow_dispatch:
+
+# `packages: write` is needed for the GHCR default; a custom registry uses the credential secrets below.
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: base-image-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Rebuild & republish :latest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # The Nuke build computes the version via GitVersion, which needs the full history + tags.
+          fetch-depth: 0
+
+      # Resolve the target registry/repository. External values flow through env (never interpolated into the
+      # script) so nothing can inject shell.
+      - name: Resolve target
+        id: cfg
+        env:
+          IN_REGISTRY: ${{ vars.IMAGE_REGISTRY }}
+          IN_REPOSITORY: ${{ vars.IMAGE_REPOSITORY }}
+          DEFAULT_REPOSITORY: ${{ github.repository }}
+        run: |
+          registry="${IN_REGISTRY:-ghcr.io}"
+          repository="${IN_REPOSITORY:-$DEFAULT_REPOSITORY}"
+          {
+            echo "registry=$registry"
+            echo "repository=${repository,,}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up .NET (for the Nuke build)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Default registry is GHCR (github.actor + GITHUB_TOKEN). Point IMAGE_REGISTRY at any other registry —
+      # including a private, non-Docker-Hub one — and set REGISTRY_USERNAME/REGISTRY_PASSWORD to publish there.
+      - name: Log in to the registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ steps.cfg.outputs.registry }}
+          username: ${{ secrets.REGISTRY_USERNAME || github.actor }}
+          password: ${{ secrets.REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}
+
+      # Delegate to the single Nuke image path (no duplicated build logic); rebuild the multi-arch manifest with
+      # the patched base and republish :latest only. Released v* tags are left untouched.
+      - name: Rebuild & push :latest (Nuke DockerPublish)
+        env:
+          REGISTRY: ${{ steps.cfg.outputs.registry }}
+          REPOSITORY: ${{ steps.cfg.outputs.repository }}
+        run: ./build.sh DockerPublish --registry "$REGISTRY" --image-repository "$REPOSITORY" --image-tag latest --platforms linux/amd64,linux/arm64
