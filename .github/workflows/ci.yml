@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Least privilege: the build-and-test gate only reads the repository.
+permissions:
+  contents: read
+
+# Supersede in-flight runs on the same ref (e.g. a force-push to a PR).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: Build & test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET (pinned by global.json)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', 'global.json') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      # The Nuke Test gate: Restore -> Compile (whole solution) -> unit + integration tests.
+      # Warnings are errors; the Aspire end-to-end suite (needs Docker) is intentionally not run here.
+      - name: Build & test
+        run: ./build.sh Test
