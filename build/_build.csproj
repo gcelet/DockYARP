@@ -13,6 +13,9 @@
 
   <ItemGroup>
     <PackageReference Include="Nuke.Common" Version="10.1.0" />
+    <!-- Nuke's [GitVersion] injection resolves the tool from this download at startup (the .config tool manifest
+         is kept for CLI use + Renovate). Keep the version in sync with .config/dotnet-tools.json. -->
+    <PackageDownload Include="GitVersion.Tool" Version="[6.7.0]" />
   </ItemGroup>
 
 </Project>

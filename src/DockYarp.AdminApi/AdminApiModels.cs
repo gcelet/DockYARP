@@ -56,6 +56,10 @@ public static class AdminApiModels
     /// <param name="Discovery">Docker discovery status (<c>connected</c>/<c>disconnected</c>/<c>disabled</c>).</param>
     public sealed record HealthView(string Status, int Routes, int Clusters, int Certificates, string Discovery);
 
+    /// <summary>The running build's version.</summary>
+    /// <param name="Version">The informational version (git-derived, including the commit id when available).</param>
+    public sealed record VersionView(string Version);
+
     /// <summary>A certificate view (host and expiry; never the private key).</summary>
     /// <param name="Host">Certificate host.</param>
     /// <param name="NotAfter">Expiry timestamp (ISO-8601).</param>

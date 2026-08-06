@@ -1,0 +1,14 @@
+# DockYarp is single-trunk (main + feature branches + v* release tags), so GitHubFlow fits better than the
+# reference project's GitFlow. Version increments come from the base + git height + tags, not commit messages
+# (the repo uses gitmoji, which GitVersion does not parse as semver bumps).
+workflow: GitHubFlow/v1
+next-version: 0.1.0
+commit-message-incrementing: Disabled
+branches:
+  # The trunk currently lives on `dockyarp` (history was rewritten during the rename, so it is orphaned relative
+  # to the `master` backup); classify it as a main branch so GitVersion computes from next-version + height
+  # instead of failing to find a base version. `main` is included for after the branch is promoted.
+  main:
+    regex: ^(master|main|dockyarp)$
+  pull-request:
+    label: pr

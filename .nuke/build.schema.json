@@ -29,9 +29,11 @@
         "DockerImage",
         "DockerPublish",
         "E2E",
+        "GenerateVersionDetails",
         "Publish",
         "Release",
         "Restore",
+        "RestoreTools",
         "Smoke",
         "Test"
       ]
@@ -133,7 +135,7 @@
         },
         "Version": {
           "type": "string",
-          "description": "Version validated by a release run"
+          "description": "Explicit full version; when set (e.g. the Docker build-arg case), it is used instead of GitVersion"
         }
       }
     },

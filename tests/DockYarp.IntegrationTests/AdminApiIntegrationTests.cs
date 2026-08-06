@@ -58,6 +58,33 @@ public sealed class AdminApiIntegrationTests
         body.Should().NotContain("secret");
     }
 
+    /// <summary>The version endpoint reports a non-empty build version with a valid key.</summary>
+    [Test]
+    public async Task VersionReturnsBuildVersion()
+    {
+        using WebApplicationFactory<Program> factory = CreateFactory();
+        using HttpClient client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Api-Key", ApiKey);
+
+        using HttpResponseMessage response = await client.GetAsync("/api/version");
+        string body = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        body.Should().Contain("version");
+    }
+
+    /// <summary>The version endpoint requires a valid API key.</summary>
+    [Test]
+    public async Task VersionRequiresApiKey()
+    {
+        using WebApplicationFactory<Program> factory = CreateFactory();
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage response = await client.GetAsync("/api/version");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
     /// <summary>The health endpoint reports a status with a valid key.</summary>
     [Test]
     public async Task HealthReturnsStatus()

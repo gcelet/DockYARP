@@ -7,6 +7,7 @@ using Nuke.Common;
 using Nuke.Common.IO;
 using Nuke.Common.Tooling;
 using Nuke.Common.Tools.DotNet;
+using Nuke.Common.Tools.GitVersion;
 
 using static Nuke.Common.Tools.DotNet.DotNetTasks;
 
@@ -29,8 +30,17 @@ class Build : NukeBuild
     [Parameter("Target platform(s) for the image, comma-separated (multi-arch requires DockerPublish/--push, not a local --load)")]
     readonly string Platforms = "linux/amd64";
 
-    [Parameter("Version validated by a release run")]
+    [Parameter("Explicit full version; when set (e.g. the Docker build-arg case), it is used instead of GitVersion")]
     readonly string Version = "";
+
+    // GitVersion resolves the version from git height + v* tags. Resolved lazily, so RestoreTools can install the
+    // gitversion.tool first; NoFetch/NoCache keep it deterministic in CI.
+    [GitVersion(NoFetch = true, NoCache = true)]
+    readonly GitVersion GitVersion;
+
+    // Populated by GenerateVersionDetails; consumed by Compile/Publish (stamping) and DockerImage/DockerPublish
+    // (the VERSION build-arg). Never accessed before that target runs.
+    VersionDetails VersionDetails;
 
     // NUnit category tagging the Aspire end-to-end suite; excluded by default, run by E2E/Release only.
     const string EndToEndCategory = "EndToEnd";
@@ -61,12 +71,62 @@ class Build : NukeBuild
     Target Restore => _ => _
         .Executes(() => DotNetRestore(s => s.SetProjectFile(SolutionFile)));
 
+    // Restores the local .NET tools (gitversion.tool) before anything reads GitVersion. Skipped when an explicit
+    // --version is supplied (the Docker build stage), where GitVersion is never invoked and .git is absent.
+    Target RestoreTools => _ => _
+        .Before(Restore)
+        .OnlyWhenDynamic(() => string.IsNullOrEmpty(Version))
+        .Executes(() => DotNetToolRestore());
+
+    // Resolves the version once per run: an explicit --version wins (the Docker build-arg case, where .git is
+    // absent), otherwise GitVersion (git height + v* tags), otherwise a deterministic 0.1.0 fallback.
+    Target GenerateVersionDetails => _ => _
+        .DependsOn(RestoreTools)
+        .Executes(() =>
+        {
+            if (!string.IsNullOrEmpty(Version))
+            {
+                VersionDetails = VersionDetails.FromExplicitVersion(Version);
+            }
+            else
+            {
+                try
+                {
+                    bool hasPreRelease = !string.IsNullOrEmpty(GitVersion.PreReleaseLabel);
+                    VersionDetails = new VersionDetails
+                    {
+                        PackageVersionPrefix = GitVersion.MajorMinorPatch,
+                        PackageVersionSuffix = hasPreRelease ? GitVersion.PreReleaseTag : string.Empty,
+                        Version = GitVersion.SemVer,
+                        AssemblyVersion = GitVersion.AssemblySemVer,
+                        FileVersion = GitVersion.AssemblySemFileVer,
+                        InformationalVersion = GitVersion.InformationalVersion,
+                    };
+                }
+                catch (Exception exception)
+                {
+                    Serilog.Log.Warning(exception, "GitVersion unavailable; using the fallback version.");
+                    VersionDetails = VersionDetails.BuildDefaultFallbackVersion();
+                }
+            }
+
+            Serilog.Log.Information(
+                "Version = {Version} (informational {Informational}).",
+                VersionDetails.Version,
+                VersionDetails.InformationalVersion);
+        });
+
     Target Compile => _ => _
         .DependsOn(Restore)
+        .DependsOn(GenerateVersionDetails)
         .Executes(() => DotNetBuild(s => s
             .SetProjectFile(SolutionFile)
             .SetConfiguration(Configuration)
-            .EnableNoRestore()));
+            .EnableNoRestore()
+            .SetVersion(VersionDetails.Version)
+            .SetAssemblyVersion(VersionDetails.AssemblyVersion)
+            .SetFileVersion(VersionDetails.FileVersion)
+            .SetInformationalVersion(VersionDetails.InformationalVersion)));
 
     // Unit/integration suite. The end-to-end project is excluded by project (not by a filter that would match
     // no tests, which makes a solution-wide `dotnet test` flake on the exit code), so the default build is
@@ -85,25 +145,34 @@ class Build : NukeBuild
         .Executes(() => DotNetPublish(s => s
             .SetProject(AppProject)
             .SetConfiguration(Configuration)
-            .SetOutput(ArtifactsDirectory / "publish")));
+            .SetOutput(ArtifactsDirectory / "publish")
+            .SetVersion(VersionDetails.Version)
+            .SetAssemblyVersion(VersionDetails.AssemblyVersion)
+            .SetFileVersion(VersionDetails.FileVersion)
+            .SetInformationalVersion(VersionDetails.InformationalVersion)));
 
     // The single image-build path (local + CI). The Dockerfile's build stage runs the Nuke build (build.sh)
     // itself; this gates on tests, then buildx-builds a single-arch image and --loads it into the local Docker
     // daemon (for `docker run` / the E2E stack). Requires Docker + buildx on PATH.
     Target DockerImage => _ => _
         .DependsOn(Test)
+        .DependsOn(GenerateVersionDetails)
         .Executes(() => ProcessTasks
-            .StartProcess("docker", $"buildx build --platform {Platforms} --load -t {FullImage} .", RootDirectory)
+            .StartProcess(
+                "docker",
+                $"buildx build --platform {Platforms} --build-arg VERSION={VersionDetails.Version} --load -t {FullImage} .",
+                RootDirectory)
             .AssertZeroExitCode());
 
     // Build + push in one buildx step (multi-arch capable), also tagging :latest. The caller sets
     // --registry/--image-repository/--image-tag/--platforms and must already be authenticated to the registry
     // (`docker login`); the release CI does that then calls this target. Requires Docker + buildx on PATH.
     Target DockerPublish => _ => _
+        .DependsOn(GenerateVersionDetails)
         .Executes(() => ProcessTasks
             .StartProcess(
                 "docker",
-                $"buildx build --platform {Platforms} --push -t {FullImage} -t {LatestImage} .",
+                $"buildx build --platform {Platforms} --build-arg VERSION={VersionDetails.Version} --push -t {FullImage} -t {LatestImage} .",
                 RootDirectory)
             .AssertZeroExitCode());
 

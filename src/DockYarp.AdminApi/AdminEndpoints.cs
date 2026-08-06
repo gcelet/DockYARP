@@ -2,6 +2,7 @@ namespace DockYarp.AdminApi;
 
 using System;
 using System.Linq;
+using System.Reflection;
 
 using DockYarp.Core.Configuration;
 using DockYarp.Core.Interfaces;
@@ -15,7 +16,7 @@ using Microsoft.AspNetCore.Routing;
 /// <summary>Maps the read-only admin API endpoints.</summary>
 public static class AdminEndpoints
 {
-    /// <summary>Maps <c>/api/{routes,clusters,certs,health}</c> behind the API-key filter.</summary>
+    /// <summary>Maps <c>/api/{version,routes,clusters,certs,resolve,health}</c> behind the API-key filter.</summary>
     /// <param name="endpoints">The endpoint route builder.</param>
     /// <returns>The same endpoint route builder for chaining.</returns>
     public static IEndpointRouteBuilder MapAdminApi(this IEndpointRouteBuilder endpoints)
@@ -24,6 +25,7 @@ public static class AdminEndpoints
 
         RouteGroupBuilder group = endpoints.MapGroup("/api").AddEndpointFilter<ApiKeyEndpointFilter>();
 
+        group.MapGet("/version", static () => Results.Json(new AdminApiModels.VersionView(ResolveVersion())));
         group.MapGet("/routes", static (IRouteConfigStore store) => Results.Json(AdminMapper.Routes(store.Current)));
         group.MapGet("/clusters", static (IRouteConfigStore store) => Results.Json(AdminMapper.Clusters(store.Current)));
         group.MapGet("/certs", static (ICertificateInventory inventory) => Results.Json(inventory.List()));
@@ -66,5 +68,20 @@ public static class AdminEndpoints
         });
 
         return endpoints;
+    }
+
+    // The entry assembly (DockYarp.App) carries the version stamped by the build; strip any trailing "+<sha>"
+    // source-revision metadata the SDK appends to the informational version.
+    private static string ResolveVersion()
+    {
+        Assembly assembly = Assembly.GetEntryAssembly() ?? typeof(AdminEndpoints).Assembly;
+        string? informational = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        if (informational is { Length: > 0 })
+        {
+            int plus = informational.IndexOf('+', StringComparison.Ordinal);
+            return plus < 0 ? informational : informational[..plus];
+        }
+
+        return assembly.GetName().Version?.ToString() ?? "unknown";
     }
 }

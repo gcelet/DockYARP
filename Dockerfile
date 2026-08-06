@@ -2,10 +2,13 @@
 
 # ---- build (driven by the Nuke pipeline via build.sh) ----
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# The version is computed on the host (GitVersion needs .git, which is excluded from this context) and injected
+# here; the Nuke build stamps it explicitly instead of recomputing.
+ARG VERSION=0.0.0-dev
 WORKDIR /src
 COPY . .
 # build.sh bootstraps and runs the Nuke build in any .NET environment.
-RUN bash build.sh Publish --configuration Release
+RUN bash build.sh Publish --configuration Release --version "$VERSION"
 
 # Seed an empty directory to become the app-owned /certs in the (shell-less) chiseled runtime.
 RUN mkdir -p /certs-seed

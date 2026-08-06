@@ -85,6 +85,7 @@ Read-only JSON endpoints for operators, protected by an API key. Set `AdminApi:A
 
 | Endpoint | Returns |
 |----------|---------|
+| `GET /api/version` | the running build's version (git-derived) |
 | `GET /api/routes` | the active routing configuration (no secrets — Basic Auth is flagged, never shown) |
 | `GET /api/clusters` | the active clusters and their endpoints |
 | `GET /api/certs` | stored certificates (host + expiry, no private keys) |
