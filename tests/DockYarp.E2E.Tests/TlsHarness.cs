@@ -56,7 +56,13 @@ internal static class TlsHarness
 
         byte[] serial = [1, 2, 3, 4, 5, 6, 7, 8];
         using X509Certificate2 leaf = leafRequest.Create(ca, from, to, serial);
-        clientCertificate = leaf.CopyWithPrivateKey(leafKey);
+        using X509Certificate2 leafWithKey = leaf.CopyWithPrivateKey(leafKey);
+
+        // On Windows, SChannel cannot use the ephemeral CNG key produced by CopyWithPrivateKey for SslStream client
+        // authentication (it fails with SEC_E_UNKNOWN_CREDENTIALS). Round-trip through PKCS#12 so the private key
+        // lands in a key set the platform TLS stack accepts (a no-op on Linux/OpenSSL).
+        clientCertificate = X509CertificateLoader.LoadPkcs12(
+            leafWithKey.Export(X509ContentType.Pkcs12), password: null);
     }
 
     private static void PrepareCertsDirectory()
