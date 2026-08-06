@@ -64,3 +64,4 @@ Decide the harness approach before spending another `./build.sh E2E`.
 - Assert a request `Host: hostnet.local` through DockYarp reaches the echo backend. Caveat: setting
   `HostAddress` is global, so the unset-skip criterion needs a **separate** run/config (or rely on its unit test).
 - Risk: the out-of-DCP container must share the same Docker daemon Aspire uses; port must be free on the host/VM.
+- **Enabler now tracked: `add-nondcp-e2e-harness`** (the Process-driven non-DCP docker fixture this depends on).

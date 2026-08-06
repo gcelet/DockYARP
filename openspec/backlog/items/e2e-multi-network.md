@@ -50,3 +50,6 @@ Two blockers found while running the e2e batch:
    (`add-network-self-detection`), not this e2e item.
 Recommended split: `add-network-self-detection` (the feature, unit-testable) + defer/redesign the live skip e2e
 (needs a non-DCP harness). The config-driven reachability logic is already unit-tested (`add-multi-network-attachment`).
+
+**Update (2026-08-06):** `add-network-self-detection` is **done** (criterion 1 shipped). The live skip e2e now
+depends only on the non-DCP harness, tracked as **`add-nondcp-e2e-harness`**.
