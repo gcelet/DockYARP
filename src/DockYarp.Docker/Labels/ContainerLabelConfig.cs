@@ -41,6 +41,10 @@ public sealed record ContainerLabelConfig
     /// <summary>Gets the per-host TLS preset (<c>SSL_POLICY</c>) overriding the global policy, if any.</summary>
     public string? SslPolicy { get; init; }
 
+    /// <summary>Gets the per-host frontend HTTP/2 toggle (<c>DOCKYARP_HTTP2</c>); <see langword="null"/> uses the global protocols.</summary>
+    /// <remarks>Controls whether HTTP/2 is offered to clients via ALPN for this host; distinct from <see cref="Http2"/> (the backend transport).</remarks>
+    public bool? Http2Enabled { get; init; }
+
     /// <summary>Gets the per-host <c>Server</c> header control (<c>SERVER_TOKENS</c>); <c>off</c> suppresses it.</summary>
     public string? ServerTokens { get; init; }
 

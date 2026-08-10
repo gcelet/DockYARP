@@ -25,6 +25,7 @@ DockYarp-specific keys use the `DOCKYARP_` prefix.
 | `EXTERNAL_HTTPS_PORT` | No | External HTTPS port used in the HTTP→HTTPS redirect target (default 443). | `8443` |
 | `ENABLE_HTTP_ON_MISSING_CERT` | No | Per-host override: serve HTTP (no redirect) while the host has no certificate (default from global). | `false` |
 | `TRUST_DEFAULT_CERT` | No | Per-host override: may the host fall back to the default certificate; else an HTTPS request is refused with 500 (default from global). | `false` |
+| `DOCKYARP_HTTP2` | No | Per-host toggle offering HTTP/2 to clients via ALPN; `false` narrows the host to HTTP/1.1 (only narrows — default from the global protocols). | `false` |
 | `NETWORK_ACCESS` | No | `internal` restricts the route to internal client ranges (403 otherwise). | `internal` |
 | `SERVER_TOKENS` | No | `off` suppresses the `Server` response header for the host (overrides the global value). | `off` |
 | `DOCKYARP_LB` | No | Load-balancing policy: `round-robin` (default), `least-requests`, `power-of-two-choices`, `random`, `first-alphabetical`. | `least-requests` |
@@ -42,7 +43,8 @@ DockYarp-specific keys use the `DOCKYARP_` prefix.
 DockYarp also accepts these nginx-proxy namespaced **labels** as aliases (the DockYarp-native key wins when both
 are set): `com.github.nginx-proxy.nginx-proxy.loadbalance` → `DOCKYARP_LB` (nginx directives `least_conn`/
 `random`/`round_robin` translate), `com.github.nginx-proxy.nginx-proxy.ssl_verify_client` → `DOCKYARP_CLIENT_CERT`
-(`on`→required, `optional`→optional), `com.github.nginx-proxy.nginx-proxy.trust-default-cert` → `TRUST_DEFAULT_CERT`.
+(`on`→required, `optional`→optional), `com.github.nginx-proxy.nginx-proxy.trust-default-cert` → `TRUST_DEFAULT_CERT`,
+`com.github.nginx-proxy.nginx-proxy.http2.enable` → `DOCKYARP_HTTP2`.
 
 ## Behavior
 

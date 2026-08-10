@@ -29,6 +29,10 @@ public sealed class SniTlsHandshakeCallback
     private readonly IRouteConfigStore routes;
     private readonly ILogger<SniTlsHandshakeCallback> logger;
     private readonly List<SslApplicationProtocol> applicationProtocols;
+
+    // The ALPN list a host advertises when it disables HTTP/2; a strict subset of the global set, so it never
+    // offers a protocol the listener (bound from the global protocols) cannot process.
+    private readonly List<SslApplicationProtocol> http1OnlyProtocols = [SslApplicationProtocol.Http11];
     private readonly PreparedPolicy globalPolicy;
     private readonly IReadOnlyDictionary<string, PreparedPolicy> presetPolicies;
     private readonly bool mutualTls;
@@ -105,7 +109,7 @@ public sealed class SniTlsHandshakeCallback
         {
             ServerCertificate = selector.Select(host),
             EnabledSslProtocols = policy.Protocols,
-            ApplicationProtocols = applicationProtocols,
+            ApplicationProtocols = ResolveApplicationProtocols(host),
         };
 
         if (policy.Ciphers is not null)
@@ -131,6 +135,18 @@ public sealed class SniTlsHandshakeCallback
             ? new CipherSuitesPolicy(ciphers)
             : null;
         return new PreparedPolicy(TlsHardening.ToSslProtocols(resolution.MinimumTlsVersion), cipherPolicy);
+    }
+
+    private List<SslApplicationProtocol> ResolveApplicationProtocols(string? host)
+    {
+        // A host that explicitly disables HTTP/2 advertises HTTP/1.1 only; unset (or true) keeps the global set,
+        // which already reflects what the listener can process — so enabling beyond it is a no-op by construction.
+        if (host is { Length: > 0 } name && HostHttp2Resolver.Resolve(routes.Current, name) is false)
+        {
+            return http1OnlyProtocols;
+        }
+
+        return applicationProtocols;
     }
 
     private PreparedPolicy ResolvePolicy(string? host)

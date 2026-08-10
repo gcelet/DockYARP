@@ -49,6 +49,12 @@ public static class DockerLabels
     /// <summary>nginx-proxy namespaced label for per-vhost trust-default-cert; aliases <see cref="TrustDefaultCert"/>.</summary>
     public const string NginxTrustDefaultCert = "com.github.nginx-proxy.nginx-proxy.trust-default-cert";
 
+    /// <summary>Per-host toggle offering HTTP/2 to clients via ALPN (<c>true</c>/<c>false</c>); default from the global protocols.</summary>
+    public const string Http2Enabled = "DOCKYARP_HTTP2";
+
+    /// <summary>nginx-proxy namespaced label for the per-vhost HTTP/2 toggle; aliases <see cref="Http2Enabled"/>.</summary>
+    public const string NginxHttp2Enable = "com.github.nginx-proxy.nginx-proxy.http2.enable";
+
     /// <summary>HTTP↔HTTPS behavior: <c>redirect</c> (default), <c>noredirect</c>, <c>nohttp</c>, <c>nohttps</c>.</summary>
     public const string HttpsMethod = "HTTPS_METHOD";
 

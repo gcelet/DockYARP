@@ -59,6 +59,74 @@ public sealed class LabelParserTests
         config!.InternalOnly.Should().BeFalse();
     }
 
+    /// <summary>DOCKYARP_HTTP2 sets the per-host frontend HTTP/2 toggle.</summary>
+    [Test]
+    public void Http2ToggleIsParsedFromNativeLabel()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.Http2Enabled, "false")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.Http2Enabled.Should().BeFalse();
+    }
+
+    /// <summary>The nginx-proxy http2.enable label aliases the native toggle.</summary>
+    [Test]
+    public void Http2ToggleIsParsedFromNginxAlias()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.NginxHttp2Enable, "true")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.Http2Enabled.Should().BeTrue();
+    }
+
+    /// <summary>The native DOCKYARP_HTTP2 wins over the nginx alias.</summary>
+    [Test]
+    public void Http2ToggleNativeWinsOverNginxAlias()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.Http2Enabled, "false"),
+                (DockerLabels.NginxHttp2Enable, "true")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.Http2Enabled.Should().BeFalse();
+    }
+
+    /// <summary>Without an HTTP/2 toggle the value is null (the global protocols apply).</summary>
+    [Test]
+    public void Http2ToggleDefaultsToNull()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.Http2Enabled.Should().BeNull();
+    }
+
     /// <summary>A VIRTUAL_DEST destination rewrites the matched prefix: strip VIRTUAL_PATH and prepend the dest.</summary>
     [Test]
     public void VirtualDestRewritesPrefix()

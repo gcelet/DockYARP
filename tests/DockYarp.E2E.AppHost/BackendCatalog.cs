@@ -41,6 +41,7 @@ internal static class BackendCatalog
     private const string Hsts = "HSTS";
     private const string ClientCert = "DOCKYARP_CLIENT_CERT";
     private const string SslPolicy = "SSL_POLICY";
+    private const string DockYarpHttp2 = "DOCKYARP_HTTP2";
 
     /// <summary>Gets every backend the AppHost adds to the distributed system.</summary>
     public static IReadOnlyList<BackendSpec> All { get; } =
@@ -178,6 +179,21 @@ internal static class BackendCatalog
                 Kv(ClientCert, "required"),
             ],
             Environment = EchoEnv(EchoPort, id: "mtls"),
+        },
+        new BackendSpec
+        {
+            // per-vhost HTTP/2 disable: DOCKYARP_HTTP2=false restricts ALPN so this host negotiates HTTP/1.1 only.
+            Name = "echo-http1",
+            Image = EchoImage,
+            Tag = EchoTag,
+            Labels =
+            [
+                Kv(VirtualHost, "http1.local"),
+                Kv(VirtualPort, EchoPort),
+                Kv(LetsEncryptHost, "http1.local"),
+                Kv(DockYarpHttp2, "false"),
+            ],
+            Environment = EchoEnv(EchoPort, id: "http1"),
         },
         new BackendSpec
         {

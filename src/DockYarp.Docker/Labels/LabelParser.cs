@@ -79,6 +79,8 @@ public static class LabelParser
             LetsEncryptEmail = GetOrNull(labels, DockerLabels.LetsEncryptEmail),
             CertName = GetOrNull(labels, DockerLabels.CertName),
             SslPolicy = GetOrNull(labels, DockerLabels.SslPolicy),
+            Http2Enabled = ParseBool(
+                GetOrNull(labels, DockerLabels.Http2Enabled) ?? GetOrNull(labels, DockerLabels.NginxHttp2Enable)),
             ServerTokens = GetOrNull(labels, DockerLabels.ServerTokens),
             ExternalHttpsPort = ParseExternalPort(GetOrNull(labels, DockerLabels.ExternalHttpsPort)),
             EnableHttpOnMissingCert = ParseBool(GetOrNull(labels, DockerLabels.EnableHttpOnMissingCert)),
@@ -112,6 +114,8 @@ public static class LabelParser
             LetsEncryptEmail = GetOrNull(labels, DockerLabels.LetsEncryptEmail),
             CertName = GetOrNull(labels, DockerLabels.CertName),
             SslPolicy = GetOrNull(labels, DockerLabels.SslPolicy),
+            Http2Enabled = ParseBool(
+                GetOrNull(labels, DockerLabels.Http2Enabled) ?? GetOrNull(labels, DockerLabels.NginxHttp2Enable)),
             ServerTokens = GetOrNull(labels, DockerLabels.ServerTokens),
             ExternalHttpsPort = ParseExternalPort(GetOrNull(labels, DockerLabels.ExternalHttpsPort)),
             EnableHttpOnMissingCert = ParseBool(GetOrNull(labels, DockerLabels.EnableHttpOnMissingCert)),

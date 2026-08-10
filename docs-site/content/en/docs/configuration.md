@@ -40,6 +40,7 @@ compatible; DockYARP's own keys use the `DOCKYARP_` prefix.
 | `EXTERNAL_HTTPS_PORT` | External HTTPS port used in the HTTP→HTTPS redirect (behind a non-standard published port). | `443` | `8443` |
 | `ENABLE_HTTP_ON_MISSING_CERT` | Per-host override: serve HTTP (no redirect) while the host has no certificate. | global (`true`) | `false` |
 | `TRUST_DEFAULT_CERT` | Per-host override: may the host fall back to the default certificate (else an HTTPS request → 500). | global (`true`) | `false` |
+| `DOCKYARP_HTTP2` | Per-host toggle offering HTTP/2 to clients via ALPN (`true`/`false`); `false` narrows the host to HTTP/1.1. Only narrows — enabling has no effect unless HTTP/2 is on globally. | global protocols | `false` |
 
 ### Access control, headers & tuning
 
@@ -65,6 +66,7 @@ DockYARP-native key wins when both are set):
 | `com.github.nginx-proxy.nginx-proxy.loadbalance` | `DOCKYARP_LB` (`least_conn`→least-requests, `random`, `round_robin`) |
 | `com.github.nginx-proxy.nginx-proxy.ssl_verify_client` | `DOCKYARP_CLIENT_CERT` (`on`→required, `optional`→optional) |
 | `com.github.nginx-proxy.nginx-proxy.trust-default-cert` | `TRUST_DEFAULT_CERT` |
+| `com.github.nginx-proxy.nginx-proxy.http2.enable` | `DOCKYARP_HTTP2` |
 
 ## Application configuration
 

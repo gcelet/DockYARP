@@ -118,6 +118,32 @@ public sealed class SniTlsHandshakeCallbackTests
         callback.BuildOptions("weird.local").EnabledSslProtocols.Should().Be(SslProtocols.Tls12 | SslProtocols.Tls13);
     }
 
+    /// <summary>A host disabling HTTP/2 advertises HTTP/1.1 only; other hosts keep the global ALPN set.</summary>
+    [Test]
+    public void PerHostHttp2DisableNarrowsAlpnToHttp11()
+    {
+        FakeCertificateStore store = new();
+        using DefaultCertificateProvider fallback = new(new TlsOptions(), new MockFileSystem());
+        SniTlsHandshakeCallback callback =
+            Callback(store, fallback, new TlsOptions(), routes: RoutesWithHttp2("h1.local", enabled: false));
+
+        callback.BuildOptions("h1.local").ApplicationProtocols.Should().Equal(SslApplicationProtocol.Http11);
+        callback.BuildOptions("other.local").ApplicationProtocols
+            .Should().Equal(SslApplicationProtocol.Http2, SslApplicationProtocol.Http11);
+    }
+
+    /// <summary>Enabling HTTP/2 per-host cannot exceed the global set: an HTTP/1.1-only listener stays HTTP/1.1.</summary>
+    [Test]
+    public void PerHostHttp2EnableBeyondGlobalIsNoOp()
+    {
+        FakeCertificateStore store = new();
+        using DefaultCertificateProvider fallback = new(new TlsOptions(), new MockFileSystem());
+        SniTlsHandshakeCallback callback =
+            Callback(store, fallback, new TlsOptions { HttpProtocols = "Http1" }, routes: RoutesWithHttp2("h2.local", enabled: true));
+
+        callback.BuildOptions("h2.local").ApplicationProtocols.Should().Equal(SslApplicationProtocol.Http11);
+    }
+
     private static SniTlsHandshakeCallback Callback(
         FakeCertificateStore store,
         DefaultCertificateProvider fallback,
@@ -141,6 +167,15 @@ public sealed class SniTlsHandshakeCallbackTests
         RouteConfigStore store = new();
         store.Apply(
             [new RouteRule { HostPattern = host, ClusterId = host, Tls = new HostTlsMetadata { CertificateHost = host, SslPolicy = policy } }],
+            []);
+        return store;
+    }
+
+    private static RouteConfigStore RoutesWithHttp2(string host, bool enabled)
+    {
+        RouteConfigStore store = new();
+        store.Apply(
+            [new RouteRule { HostPattern = host, ClusterId = host, Tls = new HostTlsMetadata { CertificateHost = host, Http2Enabled = enabled } }],
             []);
         return store;
     }

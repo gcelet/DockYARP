@@ -23,6 +23,10 @@ public sealed record HostTlsMetadata
     /// <remarks>When set to a recognized preset, the SNI handshake for this host uses that preset's version and ciphers.</remarks>
     public string? SslPolicy { get; init; }
 
+    /// <summary>Gets the per-host frontend HTTP/2 toggle (<c>DOCKYARP_HTTP2</c>); <see langword="null"/> uses the global protocols.</summary>
+    /// <remarks>When <see langword="false"/>, the SNI handshake for this host advertises only HTTP/1.1 via ALPN.</remarks>
+    public bool? Http2Enabled { get; init; }
+
     /// <summary>Gets the external HTTPS port (<c>EXTERNAL_HTTPS_PORT</c>) used in the HTTP→HTTPS redirect target, if any.</summary>
     public int? ExternalHttpsPort { get; init; }
 
