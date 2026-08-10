@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [develop, main]
   pull_request:
 
 # Least privilege: the build-and-test gate only reads the repository.
