@@ -56,7 +56,7 @@ docker-gen exposes both `.Env` and `.Labels` with no precedence — the template
 |---|---|---|
 | `VIRTUAL_PROTO` http/https | ✅ | |
 | WebSocket | ✅ | YARP default. |
-| HTTP/2 | ✅ | Configurable protocols (global). Per-vhost `http2.enable` toggle → [`add-per-vhost-http2-toggle`](items/add-per-vhost-http2-toggle.md). |
+| HTTP/2 | ✅ | Configurable protocols (global) + per-vhost `DOCKYARP_HTTP2` toggle (ALPN restricts a host to HTTP/1.1). |
 | `VIRTUAL_PROTO=grpc` | ✅ | grpc/grpcs → HTTP/2-exact cluster (trailers forwarded). E2E round-trip: → [`e2e-grpc-passthrough`](items/e2e-grpc-passthrough.md). |
 | `VIRTUAL_PROTO` fastcgi / uwsgi | 🚫 | Non-HTTP upstreams — out of scope. |
 | HTTP/3 (QUIC) | ⚠️ | Config toggle; needs MsQuic runtime → [`finish-http3`](items/finish-http3.md). |
