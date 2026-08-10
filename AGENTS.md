@@ -132,6 +132,9 @@ CPM is **enabled**. Versions live **only** in `Directory.Packages.props`.
 - One `*.Tests` project per source project; `IsPackable=false`.
 - Use `AwesomeAssertions` (`result.Should()…`) for assertions.
 - HTTP integration tests: `Microsoft.AspNetCore.Mvc.Testing` (`DockYarp.IntegrationTests`).
+- **Test strategy + e2e coverage map**: `docs/testing.md` (the pyramid, and what each e2e proves / deliberately
+  does not). Follow the pyramid — an e2e only for behavior unit/integration cannot prove; **update the coverage map
+  when you add or remove an e2e test**.
 
 ## Guardrails
 
