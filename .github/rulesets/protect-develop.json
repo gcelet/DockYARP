@@ -1,0 +1,17 @@
+{
+  "name": "Protect develop (trunk)",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["refs/heads/develop"],
+      "exclude": []
+    }
+  },
+  "rules": [
+    { "type": "deletion" },
+    { "type": "required_linear_history" },
+    { "type": "non_fast_forward" }
+  ],
+  "bypass_actors": []
+}

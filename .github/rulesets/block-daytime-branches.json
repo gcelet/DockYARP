@@ -1,0 +1,19 @@
+{
+  "name": "Block daytime branches (*-by-day)",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": [
+        "refs/heads/*-by-day",
+        "refs/heads/**/*-by-day"
+      ],
+      "exclude": []
+    }
+  },
+  "rules": [
+    { "type": "creation" },
+    { "type": "update" }
+  ],
+  "bypass_actors": []
+}
