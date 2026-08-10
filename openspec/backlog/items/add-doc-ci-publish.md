@@ -34,6 +34,15 @@ N/A — internal initiative. No `parity.md` row.
 - **WHEN** a PR changes documentation **THEN** CI builds the site; **WHEN** it merges to `main` **THEN** CI
   republishes.
 
+## Status update (2026-08-10) — now UNBLOCKED, and a trigger gap to fix
+- The GitHub repo `gcelet/DockYARP` **now exists** → this item is unblocked (no workflow yet).
+- ⚠️ **Publish-on-`main` won't fire pre-1.0**: `main` stays empty until the first release, so a `push: main` deploy
+  would never publish the site before v1. Publish from **`develop`** pre-1.0 (and/or add `workflow_dispatch`), then
+  switch/extend to `main` at v1.
+- **Do a TEST publish before v1** (the user's call): stand up the Pages pipeline now and validate it live from
+  `develop`, rather than discovering Pages/Docsy/submodule issues at the v1 launch. Keep the day→evening push +
+  evening-hours workflow in mind for any doc-branch pushes.
+
 ## Notes / risks / references
 - Depends on [[add-doc-site-foundation]] (and benefits from [[add-doc-brand-theme]], [[add-doc-search]],
   [[add-doc-versioning]] when present).
