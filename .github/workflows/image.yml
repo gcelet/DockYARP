@@ -25,6 +25,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # GitVersion (run by the Nuke build during DockerPublish) needs the full history + tags.
+          fetch-depth: 0
 
       # Resolve the target registry/repository/version. External values flow through env (never interpolated
       # into the script) so a crafted tag or dispatch input cannot inject shell.
