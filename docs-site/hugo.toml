@@ -36,7 +36,8 @@ theme = ["docsy/theme"]
 [params]
   copyright = "DockYARP contributors"
   github_repo = "https://github.com/gcelet/DockYARP"
-  github_branch = "main"
+  # Pre-1.0 the default branch is `develop` (main stays empty until the first release). Switch to `main` at v1.
+  github_branch = "develop"
   github_subdir = "docs-site"
   description = "Automatic reverse proxy for Docker, powered by .NET & YARP."
   images = ["/images/dockyarp-github-banner.png"]
@@ -72,7 +73,7 @@ theme = ["docsy/theme"]
   [params.links]
     [[params.links.user]]
       name = "Docker Hub"
-      url = "https://hub.docker.com/r/dockyarp/dockyarp"
+      url = "https://hub.docker.com/r/gcelet/dockyarp"
       icon = "fab fa-docker"
       desc = "Pull the image"
     [[params.links.developer]]

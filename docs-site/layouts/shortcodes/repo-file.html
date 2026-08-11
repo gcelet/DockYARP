@@ -1,0 +1,4 @@
+{{- /* Build a link to a repo file on the configured target branch, so all such links follow one knob:
+       params.github_branch (in hugo.toml). Usage: {{< repo-file "openspec/backlog/parity.md" >}} */ -}}
+{{- $path := .Get 0 -}}
+{{- printf "%s/blob/%s/%s" site.Params.github_repo site.Params.github_branch $path -}}

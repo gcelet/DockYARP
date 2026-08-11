@@ -178,4 +178,4 @@ or as a **double-underscore environment variable** on the proxy container (for e
 
 > See the [container configuration](#container-configuration-labels-or-environment-variables) above for per-backend
 > labels/env vars, and the
-> [parity matrix](https://github.com/gcelet/DockYARP/blob/main/openspec/backlog/parity.md) for the full feature set.
+> [parity matrix]({{< repo-file "openspec/backlog/parity.md" >}}) for the full feature set.
