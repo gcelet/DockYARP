@@ -33,6 +33,9 @@ class Build : NukeBuild
     [Parameter("Explicit full version; when set (e.g. the Docker build-arg case), it is used instead of GitVersion")]
     readonly string Version = "";
 
+    [Parameter("Base URL for the documentation build (the GitHub Pages project URL by default)")]
+    readonly string DocsBaseUrl = "https://gcelet.github.io/DockYARP/";
+
     // GitVersion resolves the version from git height + v* tags. Resolved lazily, so RestoreTools can install the
     // gitversion.tool first; NoFetch/NoCache keep it deterministic in CI.
     [GitVersion(NoFetch = true, NoCache = true)]
@@ -63,6 +66,7 @@ class Build : NukeBuild
     AbsolutePath E2EProject => RootDirectory / "tests" / "DockYarp.E2E.Tests" / "DockYarp.E2E.Tests.csproj";
     AbsolutePath ArtifactsDirectory => RootDirectory / "artifacts";
     AbsolutePath E2ELogDirectory => ArtifactsDirectory / "e2e-logs";
+    AbsolutePath DocsDirectory => RootDirectory / "docs-site";
 
     Target Clean => _ => _
         .Before(Restore)
@@ -127,6 +131,19 @@ class Build : NukeBuild
             .SetAssemblyVersion(VersionDetails.AssemblyVersion)
             .SetFileVersion(VersionDetails.FileVersion)
             .SetInformationalVersion(VersionDetails.InformationalVersion)));
+
+    // Builds the documentation site reproducibly (docs-site/, Hugo + Docsy), isolated from the .NET solution.
+    // `npm ci` installs the pinned Hugo Extended + PostCSS and initializes the Docsy submodule (the `prepare`
+    // script); Hugo then renders the static site into docs-site/public. Requires Node/npm on PATH
+    // (CI: actions/setup-node). The CI workflow uploads docs-site/public as the GitHub Pages artifact.
+    Target Docs => _ => _
+        .Executes(() =>
+        {
+            string npm = OperatingSystem.IsWindows() ? "npm.cmd" : "npm";
+            string npx = OperatingSystem.IsWindows() ? "npx.cmd" : "npx";
+            ProcessTasks.StartProcess(npm, "ci", DocsDirectory).AssertZeroExitCode();
+            ProcessTasks.StartProcess(npx, $"hugo --minify --baseURL {DocsBaseUrl}", DocsDirectory).AssertZeroExitCode();
+        });
 
     // Unit/integration suite. The end-to-end project is excluded by project (not by a filter that would match
     // no tests, which makes a solution-wide `dotnet test` flake on the exit code), so the default build is

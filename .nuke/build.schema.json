@@ -28,6 +28,7 @@
         "Compile",
         "DockerImage",
         "DockerPublish",
+        "Docs",
         "E2E",
         "GenerateVersionDetails",
         "Publish",
@@ -116,6 +117,10 @@
             "Debug",
             "Release"
           ]
+        },
+        "DocsBaseUrl": {
+          "type": "string",
+          "description": "Base URL for the documentation build (the GitHub Pages project URL by default)"
         },
         "ImageRepository": {
           "type": "string",

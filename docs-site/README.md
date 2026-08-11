@@ -5,32 +5,30 @@ from the .NET solution.
 
 ## Requirements
 
-- **Hugo Extended ≥ 0.160.1** — the *extended* build (SCSS/PostCSS) is required by Docsy.
-  `winget install Hugo.Hugo.Extended` — verify with `hugo version` (must contain `extended`).
-- **Node.js LTS** — managed by **fnm** on this machine (not active by default): activate fnm, then
-  `fnm install --lts` / `fnm default lts-latest`. Used by Docsy/PostCSS to build the CSS.
-- **No Go / no Hugo Modules.** Docsy is installed as a **Git submodule** (see below), so the Go toolchain is
-  not needed on Windows.
+- **Node.js** — managed by **fnm** on this machine (not active by default: activate fnm first). Node is the only
+  toolchain dependency: **Hugo Extended is pinned as an npm devDependency** (`hugo-extended`), so no ambient Hugo
+  install is needed; PostCSS/autoprefixer also come from npm.
+- **No Go / no Hugo Modules.** Docsy is a **Git submodule**, initialized automatically by `npm install` (the
+  `prepare` script) — no Go toolchain.
 
-## Install (Docsy via Git submodule — no Go)
+## Install
 
 ```bash
 cd docs-site
-git submodule add https://github.com/google/docsy.git themes/docsy
-(cd themes/docsy && git checkout v0.16.0)
-(cd themes/docsy && npm run postinstall)   # theme runtime deps — NOT `npm install`
-npm install                                # project PostCSS/autoprefixer
+npm install     # pinned Hugo Extended + PostCSS, and initializes the Docsy submodule (prepare script)
 ```
-
-After the first clone of the repo, `npm install` at `docs-site/` runs the `prepare` script, which initializes
-the submodule and its dependencies automatically.
 
 ## Run
 
 ```bash
-hugo serve        # http://localhost:1313/
-hugo --minify     # production build into public/
+npm run serve     # http://localhost:1313/  (Hugo from node_modules/.bin)
+npm run build     # production build into public/
 ```
+
+**Reproducible build / CI:** from the repo root, `./build.ps1 Docs` (or `./build.sh Docs`) runs the Nuke **`Docs`**
+target — `npm ci` + Hugo → `docs-site/public`. The `Docs` workflow (`.github/workflows/docs.yml`) builds on every
+PR and publishes to **GitHub Pages** on push to `develop`. One-time repo setup: **Settings → Pages → Source =
+GitHub Actions**.
 
 > The site config sets `theme = ["docsy/theme"]` (the theme lives under `themes/docsy/theme` in Docsy's
 > monorepo layout).

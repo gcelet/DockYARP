@@ -1,0 +1,65 @@
+name: Docs
+
+# Build the docs on every PR (check only); build + publish to GitHub Pages on push to develop. `main` is empty
+# until v1, so publishing from develop is what keeps the site live pre-1.0 (extend to main at the first release).
+on:
+  push:
+    branches: [develop]
+    paths: ['docs-site/**', '.github/workflows/docs.yml']
+  pull_request:
+    paths: ['docs-site/**', '.github/workflows/docs.yml']
+  workflow_dispatch:
+
+# Least privilege + the tokens the Pages deploy needs.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Serialize Pages deployments (don't cancel an in-flight publish).
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive   # the Docsy theme is a git submodule
+          fetch-depth: 0          # Hugo enableGitInfo (git lastmod)
+
+      - name: Set up .NET (for the Nuke build)
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # Delegate to the single Nuke build path: npm ci (pinned Hugo Extended + PostCSS) then Hugo -> docs-site/public.
+      - name: Build the site (Nuke Docs)
+        run: ./build.sh Docs
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: docs-site/public
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5
