@@ -21,14 +21,17 @@ npm install     # pinned Hugo Extended + PostCSS, and initializes the Docsy subm
 ## Run
 
 ```bash
+# One-time (or after a clean checkout): vendor Docsy's SCSS deps (Bootstrap, Font Awesome) into the theme.
+npm install --prefix themes/docsy/theme --omit=dev --omit=peer   # requires Node >= 24 (Docsy v0.16)
 npm run serve     # http://localhost:1313/  (Hugo from node_modules/.bin)
 npm run build     # production build into public/
 ```
 
 **Reproducible build / CI:** from the repo root, `./build.ps1 Docs` (or `./build.sh Docs`) runs the Nuke **`Docs`**
-target — `npm ci` + Hugo → `docs-site/public`. The `Docs` workflow (`.github/workflows/docs.yml`) builds on every
-PR and publishes to **GitHub Pages** on push to `develop`. One-time repo setup: **Settings → Pages → Source =
-GitHub Actions**.
+target — `npm ci`, then vendors Docsy's theme SCSS deps (the command above), then Hugo → `docs-site/public`. So a
+one-shot `nuke Docs` also prepares a clean checkout for `npm run serve`. The `Docs` workflow
+(`.github/workflows/docs.yml`) builds on every PR and publishes to **GitHub Pages** on push to `develop`. One-time
+repo setup: **Settings → Pages → Source = GitHub Actions**.
 
 > The site config sets `theme = ["docsy/theme"]` (the theme lives under `themes/docsy/theme` in Docsy's
 > monorepo layout).

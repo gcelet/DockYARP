@@ -141,7 +141,17 @@ class Build : NukeBuild
         {
             string npm = OperatingSystem.IsWindows() ? "npm.cmd" : "npm";
             string npx = OperatingSystem.IsWindows() ? "npx.cmd" : "npx";
+
+            // Project deps (pinned Hugo Extended + PostCSS) + the Docsy submodule (the `prepare` script).
             ProcessTasks.StartProcess(npm, "ci", DocsDirectory).AssertZeroExitCode();
+
+            // Vendor Docsy's SCSS deps (Bootstrap, Font Awesome) into themes/docsy/theme/node_modules, which its
+            // SCSS imports. This is Docsy's own `install:theme-deps`, invoked directly (one npm process) to avoid
+            // its postinstall re-spawning npm (which loses PATH under fnm on Windows). Requires Node >= 24 (Docsy).
+            ProcessTasks
+                .StartProcess(npm, "install --prefix themes/docsy/theme --omit=dev --omit=peer --no-audit --no-fund", DocsDirectory)
+                .AssertZeroExitCode();
+
             ProcessTasks.StartProcess(npx, $"hugo --minify --baseURL {DocsBaseUrl}", DocsDirectory).AssertZeroExitCode();
         });
 
