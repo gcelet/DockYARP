@@ -66,6 +66,14 @@ container under several names.
 
 `http://app.local/api/orders` is forwarded to `api` as `/orders` (the `/api` prefix is stripped).
 
+{{% alert title="Heads-up: /api and the Admin API" color="warning" %}}
+DockYARP's Admin API and `/metrics` currently serve a few **exact** paths on **all** hosts, taking precedence over
+proxying: `/api/version`, `/api/routes`, `/api/clusters`, `/api/certs`, `/api/resolve`, `/api/health`, and `/metrics`.
+A backend that exposes one of these **exact** paths (notably the very common `/api/health`) is **shadowed** — the
+request is answered by DockYARP (a `401` without an API key) instead of being proxied. Other paths such as
+`/api/orders` proxy normally. Isolating the admin interface behind a dedicated host/port is planned.
+{{% /alert %}}
+
 ## Multiple ports on one container
 
 ```yaml
