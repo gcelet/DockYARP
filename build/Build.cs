@@ -8,8 +8,10 @@ using Nuke.Common.IO;
 using Nuke.Common.Tooling;
 using Nuke.Common.Tools.DotNet;
 using Nuke.Common.Tools.GitVersion;
+using Nuke.Common.Tools.Npm;
 
 using static Nuke.Common.Tools.DotNet.DotNetTasks;
+using static Nuke.Common.Tools.Npm.NpmTasks;
 
 class Build : NukeBuild
 {
@@ -139,20 +141,16 @@ class Build : NukeBuild
     Target Docs => _ => _
         .Executes(() =>
         {
-            string npm = OperatingSystem.IsWindows() ? "npm.cmd" : "npm";
-            string npx = OperatingSystem.IsWindows() ? "npx.cmd" : "npx";
-
             // Project deps (pinned Hugo Extended + PostCSS) + the Docsy submodule (the `prepare` script).
-            ProcessTasks.StartProcess(npm, "ci", DocsDirectory).AssertZeroExitCode();
+            NpmCi(s => s.SetProcessWorkingDirectory(DocsDirectory));
 
             // Vendor Docsy's SCSS deps (Bootstrap, Font Awesome) into themes/docsy/theme/node_modules, which its
             // SCSS imports. This is Docsy's own `install:theme-deps`, invoked directly (one npm process) to avoid
             // its postinstall re-spawning npm (which loses PATH under fnm on Windows). Requires Node >= 24 (Docsy).
-            ProcessTasks
-                .StartProcess(npm, "install --prefix themes/docsy/theme --omit=dev --omit=peer --no-audit --no-fund", DocsDirectory)
-                .AssertZeroExitCode();
+            Npm("install --prefix themes/docsy/theme --omit=dev --omit=peer --no-audit --no-fund", DocsDirectory);
 
-            ProcessTasks.StartProcess(npx, $"hugo --minify --baseURL {DocsBaseUrl}", DocsDirectory).AssertZeroExitCode();
+            // `npm run build` (= `hugo --minify`) renders the static site into docs-site/public.
+            Npm($"run build -- --baseURL {DocsBaseUrl}", DocsDirectory);
         });
 
     // Unit/integration suite. The end-to-end project is excluded by project (not by a filter that would match
