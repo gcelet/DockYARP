@@ -10,6 +10,7 @@
 Automatic service discovery from container labels, dynamic routing, automatic TLS (ACME),
 security middleware, and an admin API — an `nginx-proxy`-style experience, in modern .NET.
 
+[![Documentation](https://img.shields.io/badge/docs-gcelet.github.io-2A7AE2)](https://gcelet.github.io/DockYARP/)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4)
 ![Reverse proxy](https://img.shields.io/badge/proxy-YARP-0078D4)
 ![Build](https://img.shields.io/badge/build-Nuke-yellow)
@@ -169,6 +170,9 @@ openspec/                # spec-driven development (specs + changes)
 ```
 
 ## Documentation
+
+📖 **The full documentation site is published at [gcelet.github.io/DockYARP](https://gcelet.github.io/DockYARP/).**
+The in-repo capability docs below go deeper on each concern:
 
 | Topic | Document |
 |---|---|
