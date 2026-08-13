@@ -45,12 +45,11 @@ runtime behavior through the real proxy.
 | · `ProxyTimeout_CancelsSlowResponse` | `DOCKYARP_PROXY_TIMEOUT` cancels a slow backend response. |
 | **RestartPersistenceTests** · `ProvisionedCertificate_IsReusedAfterRestart` | A provisioned certificate survives a proxy restart (persistent store + Data Protection). |
 | **AdminApiTests** · `Routes_ReflectDiscoveredContainers` / `Health_ReportsDiscoveryConnected` / `Routes_RejectMissingApiKey` | The admin API reflects live discovery and enforces the API key. |
+| **ProxyProtocolTests** · `ProxyProtocolV1_…` / `ProxyProtocolV2_…` | A PROXY v1/v2 header on the edge recovers the real client IP into `X-Real-IP` / `X-Forwarded-For` (dedicated `Server:EnableProxyProtocol` instance). |
 
 ## Deliberately **not** covered by e2e (and why)
 - **Pipeline behaviors** (access control `NETWORK_ACCESS`, `SERVER_TOKENS`, response compression, forwarded-SSL
   headers, redirect status codes): proven in **integration** (`Mvc.Testing`) — no real stack needed.
-- **PROXY protocol live path** (`ENABLE_PROXY_PROTOCOL`): the parser + middleware are unit-tested; the live edge path
-  is the one genuine runtime gap → tracked as [`e2e-proxy-protocol`](../openspec/backlog/items/e2e-proxy-protocol.md).
 - **Remote Docker daemon over TLS**: construction/verification unit-tested; a live `tcp://` TLS daemon in the test
   environment is not worth the setup.
 - **Event debounce (reconcile coalescing)**: policy + loop unit-tested; a live timing assertion would be flaky.

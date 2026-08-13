@@ -29,6 +29,7 @@ public static class AspireAppHostFixture
     private const string ProxyResource = "dockyarp";
     private const string ProxyEndpoint = "http";
     private const string ProxyHttpsEndpoint = "https";
+    private const string ProxyProtocolResource = "dockyarp-pp";
     private const int StartupTimeoutSeconds = 180;
 
     private static DistributedApplication? application;
@@ -38,6 +39,9 @@ public static class AspireAppHostFixture
 
     /// <summary>Gets the base address of DockYarp's HTTPS endpoint (TLS clients are built against it).</summary>
     internal static Uri HttpsBaseAddress { get; private set; } = null!;
+
+    /// <summary>Gets the HTTP edge of the dedicated PROXY-protocol DockYarp instance (raw-socket clients target it).</summary>
+    internal static Uri ProxyProtocolBaseAddress { get; private set; } = null!;
 
     /// <summary>Gets the directory where per-resource logs are captured for post-mortem diagnostics.</summary>
     internal static string LogDirectory { get; private set; } = string.Empty;
@@ -72,6 +76,11 @@ public static class AspireAppHostFixture
         Proxy = application.CreateHttpClient(ProxyResource, ProxyEndpoint);
         using HttpClient httpsProbe = application.CreateHttpClient(ProxyResource, ProxyHttpsEndpoint);
         HttpsBaseAddress = httpsProbe.BaseAddress!;
+
+        // The PROXY-protocol instance has no health gate (a plain probe would be rejected); its endpoint is
+        // allocated at start and the proxy-protocol test polls the edge over a raw socket until the route is live.
+        using HttpClient proxyProtocolProbe = application.CreateHttpClient(ProxyProtocolResource, ProxyEndpoint);
+        ProxyProtocolBaseAddress = proxyProtocolProbe.BaseAddress!;
     }
 
     /// <summary>Restarts the DockYarp container and waits for it to report healthy again.</summary>

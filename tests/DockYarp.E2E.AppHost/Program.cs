@@ -79,6 +79,20 @@ proxy
     // thumbprint stays stable for the restart-reuse test (RestartPersistenceTests) — no product-option override.
     .WithHttpsEndpoint(targetPort: 8443, name: "https");
 
+// Dedicated DockYarp instance with the PROXY protocol enabled on its edge, for the proxy-protocol scenario. It
+// MUST be separate: with Server__EnableProxyProtocol every edge connection has to be prefixed by a PROXY header,
+// which would break the plain-HTTP connections every other scenario makes against the shared proxy. It reuses the
+// read-only socket proxy for discovery; no TLS is configured (the test drives the plaintext HTTP edge, sending the
+// PROXY header before the request). No health check — a plain /metrics probe would be rejected for lacking the
+// PROXY preamble; the test polls the edge until the route is live instead.
+builder.AddContainer("dockyarp-pp", "dockyarp", "local")
+    .WithEnvironment("Docker__Enabled", "true")
+    .WithEnvironment("Docker__DockerEndpoint", "tcp://dockerproxy:2375")
+    .WithEnvironment("Routing__DefaultHost", BackendCatalog.DefaultHost)
+    .WithEnvironment("Server__EnableProxyProtocol", "true")
+    .WithHttpEndpoint(targetPort: 8080, name: "http")
+    .WaitFor(dockerproxy);
+
 // ACME HTTP-01 front door. step-ca validates a challenge by fetching http://<LETSENCRYPT_HOST>/.well-known/...
 // on port 80. Under DCP, containers resolve each other by resource name only, and DockYarp is non-root on
 // 8080 (cannot bind 80). This socat sidecar carries the TLS host names as native network aliases and forwards
