@@ -1,5 +1,6 @@
 namespace DockYarp.IntegrationTests;
 
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -8,6 +9,7 @@ using AwesomeAssertions;
 
 using DockYarp.Core.Interfaces;
 using DockYarp.Core.Models;
+using DockYarp.Tls;
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -183,6 +185,39 @@ public sealed class AdminApiIntegrationTests
         using HttpResponseMessage response = await client.SendAsync(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    /// <summary>With the admin host opted in (<c>AdminApi:LetsEncrypt</c>), it is contributed as a reserved cert host.</summary>
+    [Test]
+    public void AdminReservedHost_OptedIn_ContributesAdminHost()
+    {
+        using WebApplicationFactory<Program> factory = new WebApplicationFactory<Program>()
+            .WithWebHostBuilder(builder =>
+            {
+                builder.UseSetting("AdminApi:ApiKey", ApiKey);
+                builder.UseSetting("AdminApi:Host", "admin.local");
+                builder.UseSetting("AdminApi:LetsEncrypt", "true");
+            });
+
+        IReservedCertificateHosts reserved = factory.Services.GetRequiredService<IReservedCertificateHosts>();
+
+        reserved.Reserved.Select(entry => entry.Host).Should().ContainSingle().Which.Should().Be("admin.local");
+    }
+
+    /// <summary>Without the opt-in, no admin host is reserved (the default/operator certificate is kept).</summary>
+    [Test]
+    public void AdminReservedHost_NotOptedIn_IsEmpty()
+    {
+        using WebApplicationFactory<Program> factory = new WebApplicationFactory<Program>()
+            .WithWebHostBuilder(builder =>
+            {
+                builder.UseSetting("AdminApi:ApiKey", ApiKey);
+                builder.UseSetting("AdminApi:Host", "admin.local");
+            });
+
+        IReservedCertificateHosts reserved = factory.Services.GetRequiredService<IReservedCertificateHosts>();
+
+        reserved.Reserved.Should().BeEmpty();
     }
 
     private static WebApplicationFactory<Program> CreateFactory() =>

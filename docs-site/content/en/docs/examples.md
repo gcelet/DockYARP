@@ -74,6 +74,27 @@ Set **`AdminApi:Host`** to scope the admin API and `/metrics` to a dedicated hos
 that host and are proxied normally on your application hosts. (Other paths such as `/api/orders` always proxy.)
 {{% /alert %}}
 
+## Dedicated admin host (with its own HTTPS certificate)
+
+Scope the admin API + `/metrics` to a dedicated host so they never shadow a backend's `/api/*`, and let DockYARP
+obtain an ACME certificate for that host too:
+
+```yaml
+  dockyarp:
+    environment:
+      AdminApi__ApiKey: "change-me"
+      AdminApi__Host: "admin.example.com"        # admin API + /metrics answer only here
+      AdminApi__LetsEncrypt: "true"              # provision a real certificate for the admin host
+      AdminApi__ContactEmail: "admin@example.com"  # optional; falls back to Tls__ContactEmail
+      Tls__AcmeDirectoryUri: "https://acme-v02.api.letsencrypt.org/directory"
+      Tls__AcceptTermsOfService: "true"
+```
+
+`https://admin.example.com/api/health` reaches the admin API (behind the `X-Api-Key`), served with an ACME
+certificate; on every application host the same paths are proxied to the backend. The admin host needs public DNS
+and a reachable port 80 for the HTTP-01 challenge, like any other certified host. Leave `AdminApi__LetsEncrypt`
+unset (or `false`) to keep the self-signed/operator certificate on the admin host.
+
 ## Multiple ports on one container
 
 ```yaml

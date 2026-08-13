@@ -1,6 +1,7 @@
 namespace DockYarp.App.Observability;
 
 using DockYarp.AdminApi;
+using DockYarp.Tls;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +23,10 @@ internal static class ObservabilityServiceCollectionExtensions
         configuration.GetSection("AdminApi").Bind(adminApiOptions);
         services.AddSingleton(adminApiOptions);
         services.AddSingleton<ICertificateInventory, CertificateInventoryAdapter>();
+
+        // Contribute the admin host to TLS provisioning (opt-in via AdminApi:LetsEncrypt). Registered after
+        // AddDockYarpTls's TryAdd default, so this implementation wins; harmless no-op when not opted in.
+        services.AddSingleton<IReservedCertificateHosts, AdminReservedCertificateHosts>();
 
         AccessLogOptions accessLog = new();
         configuration.GetSection("AccessLog").Bind(accessLog);

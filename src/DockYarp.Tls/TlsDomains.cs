@@ -26,4 +26,32 @@ public static class TlsDomains
                 .DistinctBy(desired => desired.Host, StringComparer.OrdinalIgnoreCase),
         ];
     }
+
+    /// <summary>Returns the route-derived desired hosts plus any reserved host not already covered by a route.</summary>
+    /// <param name="snapshot">The routing snapshot.</param>
+    /// <param name="reserved">Hosts to provision that are not derived from routes (for example the admin host).</param>
+    /// <returns>The merged desired certificate hosts, deduplicated by host (a route wins over a reserved clash).</returns>
+    public static IReadOnlyList<DesiredCertificate> Desired(
+        RouteConfigSnapshot snapshot,
+        IReadOnlyList<DesiredCertificate> reserved)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        ArgumentNullException.ThrowIfNull(reserved);
+
+        IReadOnlyList<DesiredCertificate> fromRoutes = Desired(snapshot);
+        if (reserved.Count == 0)
+        {
+            return fromRoutes;
+        }
+
+        HashSet<string> seen = new(fromRoutes.Select(desired => desired.Host), StringComparer.OrdinalIgnoreCase);
+
+        // Route desires win on a name clash (a real route already provisions that host); append reserved hosts
+        // not already covered, deduping reserved-vs-reserved by host as well.
+        return
+        [
+            .. fromRoutes,
+            .. reserved.Where(desired => seen.Add(desired.Host)),
+        ];
+    }
 }

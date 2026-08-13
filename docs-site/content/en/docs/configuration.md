@@ -158,6 +158,8 @@ or as a **double-underscore environment variable** on the proxy container (for e
 |-----|---------|---------|
 | `ApiKey` | — (closed) | Key required in the `X-Api-Key` header; empty closes the admin API. |
 | `Host` | — (all hosts) | Dedicated host to scope the admin API (`/api/*`) and `/metrics` to. When set, those paths answer only on this host; on any other host they fall through to proxying (so a backend's `/api/*` is not shadowed). |
+| `LetsEncrypt` | `false` | Opt in to ACME-provision a certificate for `Host` (needs `Host` set). When enabled, the admin host is provisioned and renewed like any vhost; otherwise it keeps the default/operator certificate. |
+| `ContactEmail` | — | ACME contact email for the admin host; falls back to `Tls:ContactEmail` when unset. |
 
 ### `Compression`
 

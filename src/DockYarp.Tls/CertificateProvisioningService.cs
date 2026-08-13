@@ -18,12 +18,14 @@ using Microsoft.Extensions.Logging;
 /// <param name="store">The routing store (source of desired hosts).</param>
 /// <param name="certificates">The certificate store.</param>
 /// <param name="acme">The ACME client.</param>
+/// <param name="reserved">Non-route hosts to provision as well (for example the dedicated admin host).</param>
 /// <param name="options">TLS options.</param>
 /// <param name="logger">Logger.</param>
 public sealed class CertificateProvisioningService(
     IRouteConfigStore store,
     ICertificateStore certificates,
     IAcmeClient acme,
+    IReservedCertificateHosts reserved,
     TlsOptions options,
     ILogger<CertificateProvisioningService> logger) : BackgroundService
 {
@@ -48,7 +50,7 @@ public sealed class CertificateProvisioningService(
 
         // Provision hosts concurrently (bounded) so one host's slow/failing ACME validation does not block the
         // others. Per-host failures stay isolated; cancellation propagates so a shutdown stops the pass.
-        return Parallel.ForEachAsync(TlsDomains.Desired(snapshot), parallelOptions, async (desired, token) =>
+        return Parallel.ForEachAsync(TlsDomains.Desired(snapshot, reserved.Reserved), parallelOptions, async (desired, token) =>
         {
             if (!NeedsCertificate(desired.Host))
             {

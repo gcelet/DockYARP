@@ -116,7 +116,7 @@ public sealed class CertificateProvisioningServiceTests
         FakeCertificateStore certificates,
         IAcmeClient acme,
         TlsOptions options) =>
-        new(routes, certificates, acme, options, NullLogger<CertificateProvisioningService>.Instance);
+        new(routes, certificates, acme, new NoReservedCertificateHosts(), options, NullLogger<CertificateProvisioningService>.Instance);
 
     /// <summary>A fake ACME client where each of two hosts waits for the other to start, so both requests
     /// complete only when provisioning runs them concurrently.</summary>
