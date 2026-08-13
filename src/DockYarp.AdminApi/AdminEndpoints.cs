@@ -18,12 +18,20 @@ public static class AdminEndpoints
 {
     /// <summary>Maps <c>/api/{version,routes,clusters,certs,resolve,health}</c> behind the API-key filter.</summary>
     /// <param name="endpoints">The endpoint route builder.</param>
+    /// <param name="host">The dedicated admin host, or <see langword="null"/>/empty to respond on all hosts.</param>
     /// <returns>The same endpoint route builder for chaining.</returns>
-    public static IEndpointRouteBuilder MapAdminApi(this IEndpointRouteBuilder endpoints)
+    public static IEndpointRouteBuilder MapAdminApi(this IEndpointRouteBuilder endpoints, string? host)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
 
         RouteGroupBuilder group = endpoints.MapGroup("/api").AddEndpointFilter<ApiKeyEndpointFilter>();
+
+        // Scope the whole group to a dedicated host so /api/* on any other host falls through to proxying
+        // (a backend's /api/health etc. is not shadowed by the admin API).
+        if (host is { Length: > 0 } adminHost)
+        {
+            group.RequireHost(adminHost);
+        }
 
         group.MapGet("/version", static () => Results.Json(new AdminApiModels.VersionView(ResolveVersion())));
         group.MapGet("/routes", static (IRouteConfigStore store) => Results.Json(AdminMapper.Routes(store.Current)));

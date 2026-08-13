@@ -159,7 +159,41 @@ public sealed class AdminApiIntegrationTests
         body.Should().Contain("dockyarp");
     }
 
+    /// <summary>With a dedicated admin host, an admin path on another host is not shadowed (no admin 401) — it falls through to proxying.</summary>
+    [Test]
+    public async Task AdminHost_OtherHostIsNotShadowed()
+    {
+        using WebApplicationFactory<Program> factory = CreateFactoryWithAdminHost("admin.local");
+        using HttpClient client = factory.CreateClient();
+
+        using HttpRequestMessage request = new(HttpMethod.Get, "/api/health") { Headers = { Host = "other.local" } };
+        using HttpResponseMessage response = await client.SendAsync(request);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
+    }
+
+    /// <summary>With a dedicated admin host, the admin endpoints still apply on that host (401 without the key).</summary>
+    [Test]
+    public async Task AdminHost_ServesAdminOnTheAdminHost()
+    {
+        using WebApplicationFactory<Program> factory = CreateFactoryWithAdminHost("admin.local");
+        using HttpClient client = factory.CreateClient();
+
+        using HttpRequestMessage request = new(HttpMethod.Get, "/api/health") { Headers = { Host = "admin.local" } };
+        using HttpResponseMessage response = await client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
     private static WebApplicationFactory<Program> CreateFactory() =>
         new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder => builder.UseSetting("AdminApi:ApiKey", ApiKey));
+
+    private static WebApplicationFactory<Program> CreateFactoryWithAdminHost(string adminHost) =>
+        new WebApplicationFactory<Program>()
+            .WithWebHostBuilder(builder =>
+            {
+                builder.UseSetting("AdminApi:ApiKey", ApiKey);
+                builder.UseSetting("AdminApi:Host", adminHost);
+            });
 }

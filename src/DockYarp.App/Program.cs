@@ -115,9 +115,9 @@ app.UseDockYarpSecurity();
 // Apply per-route request limits before proxying.
 app.UseMiddleware<RequestBodySizeMiddleware>();
 
-// Explicit endpoints take routing precedence over YARP's catch-all.
-app.MapAdminApi();
-app.MapPrometheusScrapingEndpoint();
+// Explicit endpoints take routing precedence over YARP's catch-all. The admin API + /metrics are scoped to
+// AdminApi:Host when set, so a backend's /api/* is not shadowed on other hosts.
+app.MapDockYarpAdmin();
 app.MapReverseProxy();
 
 // Terminal fallback: requests matching no route (and no default host) get the configured default response.
