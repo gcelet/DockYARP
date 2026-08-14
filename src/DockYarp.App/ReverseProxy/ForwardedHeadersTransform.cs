@@ -16,6 +16,10 @@ using Yarp.ReverseProxy.Transforms.Builder;
 /// <summary>Configures the forwarded headers added to proxied requests.</summary>
 public static class ForwardedHeadersTransform
 {
+    // Client-certificate passthrough headers. Always stripped from the inbound request (anti-spoof) and re-set only
+    // from the connection's verified client certificate, so a backend never sees a client-forged value.
+    private static readonly string[] ClientCertificateHeaders = ["X-SSL-Client-Verify", "X-SSL-Client-S-DN", "X-SSL-Client-I-DN"];
+
     /// <summary>Applies the forwarded-header transforms to all routes.</summary>
     /// <param name="context">The transform builder context.</param>
     /// <param name="xForwardedAction">
@@ -58,6 +62,21 @@ public static class ForwardedHeadersTransform
             transformContext.ProxyRequest.Headers.Remove("X-Original-URI");
             transformContext.ProxyRequest.Headers.TryAddWithoutValidation(
                 "X-Original-URI", $"{request.PathBase}{request.Path}{request.QueryString}");
+
+            // mTLS passthrough: strip any client-supplied client-cert headers (anti-spoof), then forward the verified
+            // client identity when a certificate is present. A present cert is verified (untrusted certs are rejected
+            // at the handshake), so the status is SUCCESS; its absence means "no verified client certificate".
+            foreach (string header in ClientCertificateHeaders)
+            {
+                transformContext.ProxyRequest.Headers.Remove(header);
+            }
+
+            if (transformContext.HttpContext.Connection.ClientCertificate is { } clientCertificate)
+            {
+                transformContext.ProxyRequest.Headers.TryAddWithoutValidation("X-SSL-Client-Verify", "SUCCESS");
+                transformContext.ProxyRequest.Headers.TryAddWithoutValidation("X-SSL-Client-S-DN", clientCertificate.Subject);
+                transformContext.ProxyRequest.Headers.TryAddWithoutValidation("X-SSL-Client-I-DN", clientCertificate.Issuer);
+            }
 
             return ValueTask.CompletedTask;
         });

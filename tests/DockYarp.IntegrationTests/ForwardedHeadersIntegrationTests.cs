@@ -104,6 +104,38 @@ public sealed class ForwardedHeadersIntegrationTests
         }
     }
 
+    /// <summary>A client-supplied <c>X-SSL-Client-*</c> header is stripped (anti-spoof); with no verified client
+    /// certificate on the connection, no such header reaches the backend.</summary>
+    [Test]
+    public async Task SpoofedClientCertHeadersAreStripped()
+    {
+        await using WebApplication backend = BuildEchoBackend();
+        await backend.StartAsync();
+
+        try
+        {
+            using WebApplicationFactory<Program> factory = new();
+            using HttpClient client = factory.CreateClient();
+            IRouteConfigStore store = factory.Services.GetRequiredService<IRouteConfigStore>();
+            store.Apply(
+                [new RouteRule { HostPattern = "backend.local", ClusterId = "backend" }],
+                [new Cluster { Id = "backend", Endpoints = [new ClusterEndpoint("b1", backend.Urls.First())] }]);
+            client.DefaultRequestHeaders.Host = "backend.local";
+            client.DefaultRequestHeaders.TryAddWithoutValidation("X-SSL-Client-Verify", "SUCCESS");
+            client.DefaultRequestHeaders.TryAddWithoutValidation("X-SSL-Client-S-DN", "CN=attacker");
+
+            string body = await PollForBodyAsync(client);
+
+            body.Should().NotContain("attacker");
+            body.Should().Contain("sslverify=;");
+            body.Should().Contain("ssldn=;");
+        }
+        finally
+        {
+            await backend.StopAsync();
+        }
+    }
+
     private static WebApplication BuildEchoBackend()
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
@@ -115,6 +147,8 @@ public sealed class ForwardedHeadersIntegrationTests
             + $"xfhost={context.Request.Headers["X-Forwarded-Host"]};"
             + $"ssl={context.Request.Headers["X-Forwarded-Ssl"]};"
             + $"origuri={context.Request.Headers["X-Original-URI"]};"
+            + $"sslverify={context.Request.Headers["X-SSL-Client-Verify"]};"
+            + $"ssldn={context.Request.Headers["X-SSL-Client-S-DN"]};"
             + $"proxy={context.Request.Headers["Proxy"]}"));
         return app;
     }

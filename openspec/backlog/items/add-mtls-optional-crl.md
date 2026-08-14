@@ -72,3 +72,10 @@ before proposing. Recommend splitting into two changes:
 
 Suggested split: `add-mtls-optional-passthrough` (B, clean-ish) now-ish; `add-mtls-crl` (A) once the
 BouncyCastle-vs-ASN.1 decision is made.
+
+### Update 2026-08-14 — identity-passthrough half split off
+The **identity** passthrough (forward `X-SSL-Client-Verify: SUCCESS` + subject/issuer for a *verified* client cert,
+strip spoofed values) was split into **`add-mtls-optional-passthrough`** and implemented there. This item now retains:
+(A) **CRL** revocation, and the harder part of (B) — the **non-blocking `optional_no_ca`** behavior (accept an
+untrusted/absent cert at the handshake for `optional` hosts and forward `FAILED`/`NONE`), which needs the
+`SniTlsHandshakeCallback` to become route/SNI-aware. Those remain deferred.

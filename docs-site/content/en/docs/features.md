@@ -48,7 +48,9 @@ DockYARP terminates TLS and can obtain certificates automatically.
   `SSL_POLICY` overrides the global posture. Presets are the Mozilla ones (`Modern`/`Intermediate`/`Old`) and the
   classic AWS ELB policy names (clamped to DockYARP's TLS 1.2 floor, best-effort ciphers).
 - **Mutual TLS**: configure a client CA (`Tls:ClientCaCertificatePath`) and require client certificates per
-  route with `DOCKYARP_CLIENT_CERT`.
+  route with `DOCKYARP_CLIENT_CERT`. When a verified client certificate is presented, its identity is passed to the
+  backend as `X-SSL-Client-Verify: SUCCESS`, `X-SSL-Client-S-DN` (subject), and `X-SSL-Client-I-DN` (issuer);
+  client-supplied `X-SSL-Client-*` headers are always stripped (anti-spoof).
 - **Enforcement**: `HTTPS_METHOD` controls HTTP↔HTTPS behavior per host (see [Configuration](../configuration/)).
 
 ## Access control

@@ -1,8 +1,10 @@
 namespace DockYarp.E2E.Tests;
 
 using System;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 using AwesomeAssertions;
@@ -103,7 +105,8 @@ public sealed class TlsTests : E2ETestBase
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
-    /// <summary>The same host accepts a request presenting a certificate chaining to the configured client CA.</summary>
+    /// <summary>The same host accepts a request presenting a certificate chaining to the configured client CA, and
+    /// the verified client identity is passed through to the backend.</summary>
     [Test]
     public async Task MutualTls_AcceptsValidClientCertificate()
     {
@@ -117,5 +120,24 @@ public sealed class TlsTests : E2ETestBase
             TlsPollSeconds);
 
         response.IsSuccessStatusCode.Should().BeTrue();
+
+        // The backend echoes request headers: the verified client cert is forwarded as X-SSL-Client-Verify + S-DN.
+        JsonElement echo = await ReadJsonAsync(response);
+        JsonElement headers = echo.GetProperty("headers");
+        HeaderValue(headers, "X-SSL-Client-Verify").Should().Be("SUCCESS");
+        HeaderValue(headers, "X-SSL-Client-S-DN").Should().NotBeEmpty();
+    }
+
+    private static string HeaderValue(JsonElement headers, string name)
+    {
+        foreach (JsonProperty header in headers.EnumerateObject())
+        {
+            if (string.Equals(header.Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                return header.Value.GetString() ?? string.Empty;
+            }
+        }
+
+        return string.Empty;
     }
 }
