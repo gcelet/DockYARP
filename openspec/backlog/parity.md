@@ -87,7 +87,7 @@ docker-gen exposes both `.Env` and `.Labels` with no precedence — the template
 |---|---|---|
 | Mutual TLS (`DOCKYARP_CLIENT_CERT` + CA), per-host enforcement | ✅ | CA validation + enforcement; handshake proven by the Aspire e2e (step-ca). |
 | Basic Auth (`DOCKYARP_AUTH_*` labels) | ✅ | Label-based. |
-| `ssl_verify_client=optional` passthrough + CRL + global CA | ⛔ | CRL/optional-passthrough missing → [`add-mtls-optional-crl`](items/add-mtls-optional-crl.md). |
+| `ssl_verify_client=optional` passthrough + CRL + global CA | ⚠️ | **Identity passthrough done**: a verified client cert is forwarded to the backend as `X-SSL-Client-Verify: SUCCESS` + `X-SSL-Client-S-DN`/`I-DN` (client-supplied values stripped), integration + mTLS e2e (`add-mtls-optional-passthrough`). Still deferred → [`add-mtls-optional-crl`](items/add-mtls-optional-crl.md): CRL revocation, non-blocking `optional_no_ca` (`FAILED`/`NONE` for an untrusted/absent cert — needs a route/SNI-aware handshake), and global CA. |
 | htpasswd files (per vhost + per path) | ✅ | bcrypt / apr1 / SHA1; `Security:HtpasswdDirectory`; hot-reloaded. |
 | `NETWORK_ACCESS=internal` (403 for external clients) | ✅ | Per-route client-IP gate; configurable `Security:InternalRanges`. |
 
