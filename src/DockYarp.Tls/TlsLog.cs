@@ -13,6 +13,14 @@ internal static partial class TlsLog
     [LoggerMessage(EventId = 2, Level = LogLevel.Error, Message = "Failed to provision certificate for {Host}.")]
     public static partial void ProvisioningFailed(ILogger logger, string host, Exception exception);
 
+    // No Exception argument on purpose: a transient failure the reconcile loop retries should not render a stack
+    // trace (that misleading noise is what this message replaces until the failure persists and escalates to Error).
+    [LoggerMessage(
+        EventId = 5,
+        Level = LogLevel.Warning,
+        Message = "Provisioning certificate for {Host} did not succeed yet (attempt {Attempt}); will retry: {Reason}")]
+    public static partial void ProvisioningRetrying(ILogger logger, string host, int attempt, string reason);
+
     [LoggerMessage(
         EventId = 3,
         Level = LogLevel.Warning,

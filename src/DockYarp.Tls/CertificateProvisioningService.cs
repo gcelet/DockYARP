@@ -1,6 +1,7 @@
 namespace DockYarp.Tls;
 
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
@@ -32,6 +33,14 @@ public sealed class CertificateProvisioningService(
     // Bounded so concurrent ACME orders do not trip the authority's rate limits.
     private const int MaxConcurrentProvisions = 8;
 
+    // The first consecutive per-host failures are treated as transient (Warning, no stack trace) — this silences the
+    // common startup validation race, which the next pass resolves — before a persistent failure escalates to Error.
+    private const int TransientFailureThreshold = 2;
+
+    // Per-host count of consecutive provisioning failures; reset on success. Concurrent because a pass provisions
+    // hosts in parallel (distinct keys per pass, but the map itself must be thread-safe).
+    private readonly ConcurrentDictionary<string, int> consecutiveFailures = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Performs one provisioning/renewal pass.</summary>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     /// <returns>A task that completes when the pass finishes.</returns>
@@ -62,6 +71,7 @@ public sealed class CertificateProvisioningService(
                 X509Certificate2 certificate =
                     await acme.RequestCertificateAsync(desired.Host, desired.Email, token).ConfigureAwait(false);
                 certificates.Save(desired.Host, certificate);
+                consecutiveFailures.TryRemove(desired.Host, out _);
                 TlsLog.CertificateProvisioned(logger, desired.Host);
             }
             catch (OperationCanceledException)
@@ -70,9 +80,24 @@ public sealed class CertificateProvisioningService(
             }
             catch (Exception exception)
             {
-                TlsLog.ProvisioningFailed(logger, desired.Host, exception);
+                LogProvisioningFailure(desired.Host, exception);
             }
         });
+    }
+
+    // A per-host failure the reconcile loop retries is logged as transient (Warning, no stack trace) until it persists
+    // past the threshold, at which point it escalates to Error with the exception (a genuine, actionable failure).
+    private void LogProvisioningFailure(string host, Exception exception)
+    {
+        int attempt = consecutiveFailures.AddOrUpdate(host, 1, static (_, previous) => previous + 1);
+        if (attempt <= TransientFailureThreshold)
+        {
+            TlsLog.ProvisioningRetrying(logger, host, attempt, exception.Message);
+        }
+        else
+        {
+            TlsLog.ProvisioningFailed(logger, host, exception);
+        }
     }
 
     /// <inheritdoc />
