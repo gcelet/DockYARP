@@ -14,8 +14,9 @@ parser.
 >
 > **Re-comparison 2026-08-05** (deep 3-source read: `nginx.tmpl`, all 43 `test/` behavioral tests, docker-gen
 > engine): confirmed the matrix — **no major untracked feature**. Surfaced 3 minor gaps, now tracked as
-> low/medium items: `add-forwarded-ssl-headers` (X-Forwarded-Ssl / X-Original-URI), `add-ssl-policy-elb-presets`
-> (AWS ELB `SSL_POLICY` presets), `add-per-vhost-http2-toggle` (per-vhost `http2.enable`). Deliberate diffs kept
+> low/medium items (**all three now shipped**): `add-forwarded-ssl-headers` (X-Forwarded-Ssl / X-Original-URI),
+> `add-ssl-policy-elb-presets` (AWS ELB `SSL_POLICY` presets), `add-per-vhost-http2-toggle` (per-vhost
+> `http2.enable`). Deliberate diffs kept
 > as-is: `NON_GET_REDIRECT` (DockYarp uses 308 for all methods), `ACME_HTTP_CHALLENGE_LOCATION=legacy`.
 
 ## Configuration source
@@ -74,7 +75,7 @@ docker-gen exposes both `.Env` and `.Labels` with no precedence — the template
 | Min TLS version / ciphers / protocols | ⚠️ | Wired as config; cipher allow-list Linux/macOS only. |
 | `CERT_NAME` shared/SAN cert | ✅ | `CERT_NAME` pins a named shared certificate in SNI selection; the host is not ACME-provisioned. |
 | `default.crt` + `TRUST_DEFAULT_CERT` + `ENABLE_HTTP_ON_MISSING_CERT` | ✅ | Operator `default.crt`/`.key` preferred; `Security:TrustDefaultCert` (500 on untrusted) + `Security:EnableHttpOnMissingCert`, each **overridable per host** via `TRUST_DEFAULT_CERT` (also the namespaced `…trust-default-cert` label) / `ENABLE_HTTP_ON_MISSING_CERT`. |
-| `SSL_POLICY` presets — global default | ✅ | `Tls:SslPolicy` Mozilla Modern/Intermediate/Old → version + ciphers (mapping unit-tested; the per-SNI negotiation is proven live by the per-vhost e2e — same handshake path). The ~20 AWS ELB presets are not mapped → [`add-ssl-policy-elb-presets`](items/add-ssl-policy-elb-presets.md) (niche). |
+| `SSL_POLICY` presets — global default | ✅ | `Tls:SslPolicy` Mozilla Modern/Intermediate/Old **and** the classic AWS ELB names → version + ciphers (mapping unit-tested; the per-SNI negotiation is proven live by the per-vhost e2e — same handshake path). ELB names are clamped to DockYarp's TLS 1.2 floor (1.3 for the 1.3-only policy) with best-effort ciphers; FIPS/PQ/RFC 9151 variants are intentionally not mapped. |
 | `SSL_POLICY` per-vhost override (`-e`/label) | ✅ | Recognized per-container + applied per-SNI; live e2e: a `Mozilla-Modern` host refuses a TLS 1.2 handshake while a global-posture host accepts it. |
 | OCSP stapling (`.chain.pem`) | ⛔ | → [`add-ocsp-stapling`](items/add-ocsp-stapling.md). |
 | ACME DNS-01 | ⛔ | HTTP-01 only → [`add-acme-dns01`](items/add-acme-dns01.md). |
