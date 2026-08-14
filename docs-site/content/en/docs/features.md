@@ -16,6 +16,9 @@ reconciling live as containers start and stop.
 - **Network selection**: on multi-network setups, `Docker:PreferredNetwork` picks the backend address;
   `Docker:ProxyNetworks` restricts selection to a network the proxy shares (reachable), and `Docker:HostAddress`
   reaches host-network backends (which have no container IP).
+- **IPv6**: the edge listens dual-stack by default (IPv6 **and** IPv4 clients are served — no toggle needed, unlike
+  nginx-proxy's opt-in `ENABLE_IPV6`). Set `Docker:PreferIpv6` to forward to a backend's IPv6 address when it has one
+  (nginx-proxy `PREFER_IPV6_NETWORK`); a single family is used per backend, so there are no duplicate endpoints.
 - **Filtering**: `Docker:ContainerFilters` scopes discovery with Docker-native filters (for example, only
   containers labelled `dockyarp.enable=true`).
 

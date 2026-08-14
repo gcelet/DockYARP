@@ -10,12 +10,12 @@ using DockYarp.Docker.Discovery;
 /// <summary>Tests for <see cref="BackendAddressResolver"/>.</summary>
 public sealed class BackendAddressResolverTests
 {
-    private static Dictionary<string, string?> Networks(params (string Name, string? Ip)[] entries)
+    private static Dictionary<string, NetworkAddresses> Networks(params (string Name, string? Ip)[] entries)
     {
-        Dictionary<string, string?> networks = new(StringComparer.Ordinal);
+        Dictionary<string, NetworkAddresses> networks = new(StringComparer.Ordinal);
         foreach ((string Name, string? Ip) entry in entries)
         {
-            networks[entry.Name] = entry.Ip;
+            networks[entry.Name] = new NetworkAddresses(entry.Ip, null);
         }
 
         return networks;

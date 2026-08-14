@@ -27,6 +27,7 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
     private readonly ILogger<DockerContainerSource> logger;
     private readonly string? preferredNetwork;
     private readonly string? hostAddress;
+    private readonly AddressFamilyPreference addressFamilyPreference;
     private readonly IReadOnlyCollection<string> configuredProxyNetworks;
     private readonly IDictionary<string, IDictionary<string, bool>>? containerFilters;
 
@@ -46,6 +47,7 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
         client = CreateClient(options);
         preferredNetwork = options.PreferredNetwork;
         hostAddress = options.HostAddress;
+        addressFamilyPreference = options.PreferIpv6 ? AddressFamilyPreference.Ipv6 : AddressFamilyPreference.Ipv4;
         configuredProxyNetworks = [.. options.ProxyNetworks];
         proxyNetworks = configuredProxyNetworks;
         containerFilters = DockerFilters.Build(options.ContainerFilters);
@@ -218,7 +220,7 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
 
     private ContainerInfo ToContainerInfo(ContainerListResponse response, IReadOnlyDictionary<string, string> env)
     {
-        Dictionary<string, string?> networks = BuildNetworks(response);
+        Dictionary<string, NetworkAddresses> networks = BuildNetworks(response);
         bool hostMode = BackendAddressResolver.IsHostNetwork(networks);
         return new()
         {
@@ -241,16 +243,22 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
     private static string ResolveName(IList<string>? names) =>
         names is { Count: > 0 } ? names[0].TrimStart('/') : string.Empty;
 
-    private static Dictionary<string, string?> BuildNetworks(ContainerListResponse response) =>
+    private static Dictionary<string, NetworkAddresses> BuildNetworks(ContainerListResponse response) =>
         response.NetworkSettings?.Networks is { } map
-            ? map.ToDictionary(pair => pair.Key, pair => pair.Value?.IPAddress, StringComparer.Ordinal)
-            : new Dictionary<string, string?>(StringComparer.Ordinal);
+            ? map.ToDictionary(
+                pair => pair.Key,
+                pair => new NetworkAddresses(pair.Value?.IPAddress, pair.Value?.GlobalIPv6Address),
+                StringComparer.Ordinal)
+            : new Dictionary<string, NetworkAddresses>(StringComparer.Ordinal);
 
-    private string ResolveAddress(ContainerListResponse response, Dictionary<string, string?> networks, bool hostMode)
+    private string ResolveAddress(ContainerListResponse response, Dictionary<string, NetworkAddresses> networks, bool hostMode)
     {
         // Host mode has no container IP; otherwise select by network (preferred, ingress skipped, reachable-only,
-        // deterministic). The resolver falls back to the host address, empty (skip), or the container name.
-        string? ip = hostMode ? null : NetworkAddressSelector.Select(networks, preferredNetwork, proxyNetworks);
+        // deterministic) and address family (IPv4 by default, IPv6 when Docker:PreferIpv6). The resolver falls back
+        // to the host address, empty (skip), or the container name.
+        string? ip = hostMode
+            ? null
+            : NetworkAddressSelector.Select(networks, preferredNetwork, proxyNetworks, addressFamilyPreference);
         return BackendAddressResolver.Resolve(
             networks, hostAddress, ip, ResolveName(response.Names), proxyNetworks);
     }

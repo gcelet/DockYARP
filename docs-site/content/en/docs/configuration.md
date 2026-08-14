@@ -89,6 +89,7 @@ or as a **double-underscore environment variable** on the proxy container (for e
 | `Enabled` | `false` | Turn on Docker discovery (when off, only the static configuration is applied). |
 | `DockerEndpoint` | platform default | Docker API URI (`unix:///var/run/docker.sock`, `npipe://./pipe/docker_engine`, or `tcp://…`). |
 | `PreferredNetwork` | — | Network whose container IP is preferred for the backend address. |
+| `PreferIpv6` | `false` | Forward to a backend's IPv6 address when it has one (nginx-proxy `PREFER_IPV6_NETWORK`). A single family is chosen per network, falling back to the other when the preferred one is absent. |
 | `ProxyNetworks` | auto-detected | Networks the proxy is attached to (restricts address selection to a reachable one; a backend on no shared network is skipped). When unset, DockYarp detects its own attached networks by inspecting its own container (via `HOSTNAME`). |
 | `HostAddress` | — | Address used to reach host-network backends (e.g. `host.docker.internal`). |
 | `ContainerFilters` | — | Docker-native filters scoping discovery, e.g. `Docker:ContainerFilters:label:0 = dockyarp.enable=true`. |

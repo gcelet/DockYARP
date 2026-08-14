@@ -23,6 +23,10 @@ public sealed class DockerDiscoveryOptions
     /// <remarks>Set this to the network the proxy shares with its backends; <see langword="null"/> selects deterministically.</remarks>
     public string? PreferredNetwork { get; set; }
 
+    /// <summary>Gets or sets a value indicating whether to forward to a backend's IPv6 address when it has one.</summary>
+    /// <remarks>The nginx-proxy <c>PREFER_IPV6_NETWORK</c> equivalent. Default <see langword="false"/> (IPv4). A single family is selected on the chosen network, falling back to the other when the preferred one is absent.</remarks>
+    public bool PreferIpv6 { get; set; }
+
     /// <summary>Gets or sets the address the proxy uses to reach the Docker host, for host-network backends.</summary>
     /// <remarks>
     /// A host-network container has no container IP; DockYarp forwards to this address (e.g.

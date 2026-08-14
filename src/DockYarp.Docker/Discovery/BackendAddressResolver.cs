@@ -12,23 +12,23 @@ public static class BackendAddressResolver
     private const string HostNetwork = "host";
 
     /// <summary>Determines whether the container runs in host network mode.</summary>
-    /// <param name="networkAddresses">Map of network name to the container's IP on that network.</param>
+    /// <param name="networkAddresses">Map of network name to the container's addresses on that network.</param>
     /// <returns><see langword="true"/> when the container is attached to the reserved <c>host</c> network.</returns>
-    public static bool IsHostNetwork(IReadOnlyDictionary<string, string?> networkAddresses)
+    public static bool IsHostNetwork(IReadOnlyDictionary<string, NetworkAddresses> networkAddresses)
     {
         ArgumentNullException.ThrowIfNull(networkAddresses);
         return networkAddresses.ContainsKey(HostNetwork);
     }
 
     /// <summary>Resolves the backend host address.</summary>
-    /// <param name="networkAddresses">Map of network name to the container's IP on that network.</param>
+    /// <param name="networkAddresses">Map of network name to the container's addresses on that network.</param>
     /// <param name="hostAddress">The configured Docker host address, or <see langword="null"/>.</param>
     /// <param name="selectedNetworkIp">The IP chosen among the container's networks, or <see langword="null"/>.</param>
     /// <param name="nameFallback">The container name, usable when the proxy's networks are unknown.</param>
     /// <param name="proxyNetworks">The proxy's own networks; a non-empty set means reachability is known.</param>
     /// <returns>The backend host address, or an empty string when the backend should be skipped.</returns>
     public static string Resolve(
-        IReadOnlyDictionary<string, string?> networkAddresses,
+        IReadOnlyDictionary<string, NetworkAddresses> networkAddresses,
         string? hostAddress,
         string? selectedNetworkIp,
         string nameFallback,
