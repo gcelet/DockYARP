@@ -221,6 +221,11 @@ restricted to networks the proxy shares (reachable), and a container reachable o
 skipped with a warning rather than routed to an unreachable address. When no network address is available and
 no reachable set is known, the system SHALL fall back to the container name.
 
+Within the chosen network, the system SHALL forward to the container's IPv4 address by default, or to its IPv6
+address when `Docker:PreferIpv6` is enabled. Exactly **one** address family SHALL be selected (never both, to avoid
+duplicate endpoints); when the preferred family is absent on the chosen network, the system SHALL fall back to the
+other family, so a backend that has only an IPv6 address is still routable.
+
 #### Scenario: Preferred network is used
 - **WHEN** a container is attached to `frontend` (10.0.1.2) and `backend` (10.0.2.2) and the preferred network is `backend`
 - **THEN** the forwarded address is `10.0.2.2`
@@ -245,6 +250,18 @@ no reachable set is known, the system SHALL fall back to the container name.
 #### Scenario: Reachable set defaults to the proxy's own networks
 - **WHEN** `Docker:ProxyNetworks` is not configured
 - **THEN** the reachable set is the proxy's own attached networks, detected by inspecting its own container
+
+#### Scenario: IPv4 is used by default
+- **WHEN** the chosen network has both an IPv4 and an IPv6 address and `Docker:PreferIpv6` is not enabled
+- **THEN** the forwarded address is the IPv4 address
+
+#### Scenario: IPv6 is preferred when enabled
+- **WHEN** the chosen network has both families and `Docker:PreferIpv6` is enabled
+- **THEN** the forwarded address is the IPv6 address (a single family, no duplicate endpoint)
+
+#### Scenario: Falls back to the other family
+- **WHEN** `Docker:PreferIpv6` is enabled but the chosen network has only an IPv4 address
+- **THEN** the forwarded address is that IPv4 address (and, symmetrically, an IPv6-only network is routable by default)
 
 ### Requirement: Priority label
 The system SHALL read `DOCKYARP_PRIORITY` from a container's labels and use it as the route's priority,
