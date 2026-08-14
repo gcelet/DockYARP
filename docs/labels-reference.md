@@ -19,7 +19,7 @@ DockYarp-specific keys use the `DOCKYARP_` prefix.
 | `LETSENCRYPT_HOST` | No | Host a certificate should be obtained for (enables TLS metadata). | `app.local` |
 | `LETSENCRYPT_EMAIL` | No | Contact email used when requesting the certificate. | `admin@example.com` |
 | `CERT_NAME` | No | Pin the host to a named shared (SAN/wildcard) certificate; the host is not ACME-provisioned. | `wildcard` |
-| `SSL_POLICY` | No | Per-host TLS preset overriding the global posture: `Mozilla-Modern`/`Mozilla-Intermediate`/`Mozilla-Old`. | `Mozilla-Modern` |
+| `SSL_POLICY` | No | Per-host TLS preset overriding the global posture: `Mozilla-Modern`/`Mozilla-Intermediate`/`Mozilla-Old`, or a classic AWS ELB policy name (e.g. `ELBSecurityPolicy-TLS13-1-2-2021-06`; clamped to the TLS 1.2 floor, best-effort ciphers, FIPS/PQ/RFC 9151 variants not recognized). | `Mozilla-Modern` |
 | `HTTPS_METHOD` | No | HTTP↔HTTPS behavior: `redirect` (default), `noredirect`, `nohttp`, `nohttps`. | `noredirect` |
 | `HSTS` | No | Per-host `Strict-Transport-Security` value, or `off` to disable HSTS for the host. | `off` |
 | `EXTERNAL_HTTPS_PORT` | No | External HTTPS port used in the HTTP→HTTPS redirect target (default 443). | `8443` |

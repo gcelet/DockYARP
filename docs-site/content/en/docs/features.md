@@ -45,7 +45,8 @@ DockYARP terminates TLS and can obtain certificates automatically.
 - **Provided & shared certs**: drop PEM/PFX files in the certificate directory; `CERT_NAME` pins a host to a
   shared SAN/wildcard certificate (not ACME-provisioned).
 - **Per-connection policy**: the certificate, TLS version, and ciphers are selected per SNI host — a per-host
-  `SSL_POLICY` overrides the global posture.
+  `SSL_POLICY` overrides the global posture. Presets are the Mozilla ones (`Modern`/`Intermediate`/`Old`) and the
+  classic AWS ELB policy names (clamped to DockYARP's TLS 1.2 floor, best-effort ciphers).
 - **Mutual TLS**: configure a client CA (`Tls:ClientCaCertificatePath`) and require client certificates per
   route with `DOCKYARP_CLIENT_CERT`.
 - **Enforcement**: `HTTPS_METHOD` controls HTTP↔HTTPS behavior per host (see [Configuration](../configuration/)).

@@ -36,11 +36,35 @@ public static class SslPolicyPresets
         "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384",
     ];
 
+    // Classic AWS ELB (ALB) security policies. DockYarp floors at TLS 1.2 (never enables 1.0/1.1), so every policy
+    // collapses to two version outcomes: Tls13 for the 1.3-only policy, Tls12 for the rest. Ciphers are best-effort —
+    // AWS publishes OpenSSL names, which TlsHardening.ParseCipherSuites would drop; we reuse the nearest Mozilla suite
+    // array by tier (Intermediate = GCM/FS-only 1.2 policies, Old = broader policies including CBC-SHA). FIPS/PQ/
+    // RFC9151 variants are intentionally absent (unmodelable ciphers) and keep the unrecognized-policy fallback.
     private static readonly Dictionary<string, SslPolicyResolution> Presets = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Mozilla-Modern"] = new SslPolicyResolution(TlsVersion.Tls13, Tls13Suites),
         ["Mozilla-Intermediate"] = new SslPolicyResolution(TlsVersion.Tls12, IntermediateSuites),
         ["Mozilla-Old"] = new SslPolicyResolution(TlsVersion.Tls12, OldSuites),
+
+        ["ELBSecurityPolicy-TLS13-1-3-2021-06"] = new SslPolicyResolution(TlsVersion.Tls13, Tls13Suites),
+
+        ["ELBSecurityPolicy-TLS-1-2-2017-01"] = new SslPolicyResolution(TlsVersion.Tls12, IntermediateSuites),
+        ["ELBSecurityPolicy-FS-1-2-2019-08"] = new SslPolicyResolution(TlsVersion.Tls12, IntermediateSuites),
+        ["ELBSecurityPolicy-FS-1-2-Res-2019-08"] = new SslPolicyResolution(TlsVersion.Tls12, IntermediateSuites),
+        ["ELBSecurityPolicy-FS-1-2-Res-2020-10"] = new SslPolicyResolution(TlsVersion.Tls12, IntermediateSuites),
+        ["ELBSecurityPolicy-TLS13-1-2-2021-06"] = new SslPolicyResolution(TlsVersion.Tls12, IntermediateSuites),
+        ["ELBSecurityPolicy-TLS13-1-2-Res-2021-06"] = new SslPolicyResolution(TlsVersion.Tls12, IntermediateSuites),
+
+        ["ELBSecurityPolicy-2016-08"] = new SslPolicyResolution(TlsVersion.Tls12, OldSuites),
+        ["ELBSecurityPolicy-TLS-1-1-2017-01"] = new SslPolicyResolution(TlsVersion.Tls12, OldSuites),
+        ["ELBSecurityPolicy-TLS-1-2-Ext-2018-06"] = new SslPolicyResolution(TlsVersion.Tls12, OldSuites),
+        ["ELBSecurityPolicy-FS-2018-06"] = new SslPolicyResolution(TlsVersion.Tls12, OldSuites),
+        ["ELBSecurityPolicy-FS-1-1-2019-08"] = new SslPolicyResolution(TlsVersion.Tls12, OldSuites),
+        ["ELBSecurityPolicy-TLS13-1-0-2021-06"] = new SslPolicyResolution(TlsVersion.Tls12, OldSuites),
+        ["ELBSecurityPolicy-TLS13-1-1-2021-06"] = new SslPolicyResolution(TlsVersion.Tls12, OldSuites),
+        ["ELBSecurityPolicy-TLS13-1-2-Ext1-2021-06"] = new SslPolicyResolution(TlsVersion.Tls12, OldSuites),
+        ["ELBSecurityPolicy-TLS13-1-2-Ext2-2021-06"] = new SslPolicyResolution(TlsVersion.Tls12, OldSuites),
     };
 
     /// <summary>Gets the names of the recognized <c>SSL_POLICY</c> presets.</summary>

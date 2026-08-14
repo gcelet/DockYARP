@@ -34,7 +34,7 @@ compatible; DockYARP's own keys use the `DOCKYARP_` prefix.
 | `LETSENCRYPT_HOST` | Host to provision an ACME certificate for (enables TLS metadata). | — | `app.local` |
 | `LETSENCRYPT_EMAIL` | Contact email for the ACME account. | global | `admin@example.com` |
 | `CERT_NAME` | Pin the host to a named shared (SAN/wildcard) certificate; the host is not ACME-provisioned. | — | `wildcard` |
-| `SSL_POLICY` | Per-host TLS preset: `Mozilla-Modern`, `Mozilla-Intermediate`, `Mozilla-Old`. | global | `Mozilla-Modern` |
+| `SSL_POLICY` | Per-host TLS preset: `Mozilla-Modern`/`Mozilla-Intermediate`/`Mozilla-Old`, or a classic AWS ELB policy name (e.g. `ELBSecurityPolicy-TLS13-1-2-2021-06`). | global | `Mozilla-Modern` |
 | `HTTPS_METHOD` | HTTP↔HTTPS behavior: `redirect` (default), `noredirect`, `nohttp`, `nohttps`. | `redirect` | `noredirect` |
 | `HSTS` | Per-host `Strict-Transport-Security` value, or `off` to disable it. | global | `off` |
 | `EXTERNAL_HTTPS_PORT` | External HTTPS port used in the HTTP→HTTPS redirect (behind a non-standard published port). | `443` | `8443` |
@@ -110,7 +110,7 @@ or as a **double-underscore environment variable** on the proxy container (for e
 | `CheckInterval` | `12:00:00` | Provisioning / renewal check interval. |
 | `Http01ChallengeEnabled` | `true` | Serve the ACME HTTP-01 challenge path. Challenges are answered by token regardless of host (a not-yet-routed host is served). `false` returns 404 on the challenge path. |
 | `MinimumTlsVersion` | `Tls12` | Global TLS floor (a per-host `SSL_POLICY` overrides it). |
-| `SslPolicy` | — | Global preset: `Mozilla-Modern` / `Mozilla-Intermediate` / `Mozilla-Old`. |
+| `SslPolicy` | — | Global preset: `Mozilla-Modern`/`Mozilla-Intermediate`/`Mozilla-Old`, or a classic AWS ELB policy name. ELB names are clamped to the TLS 1.2 floor (TLS 1.3 for the 1.3-only policy) with best-effort ciphers; FIPS/PQ/RFC 9151 variants are not recognized. |
 | `CipherSuites` | — | Explicit cipher allow-list (applied on Linux/macOS only). |
 | `HttpProtocols` | `Http1AndHttp2` | Enabled HTTP protocols on the HTTPS endpoint. |
 | `ClientCaCertificatePath` | — | Client CA (PEM) enabling mutual TLS. |
