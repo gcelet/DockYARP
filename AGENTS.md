@@ -46,9 +46,17 @@ between work sessions. The entry point is the parity backlog `openspec/backlog/`
    docs site in the same change** — `docs-site/content/en/docs/` (`configuration.md` / `features.md` /
    `examples.md` as relevant) — and keep `docs/labels-reference.md` in sync, so the site never lags. Verify names
    and defaults against the code. Pure internal refactors and `e2e-*`/verification items are exempt.
-4. **Commit + archive** — commit, then `/opsx:archive <id>` (syncs `openspec/specs/`).
+4. **Commit** — [gitmoji](https://gitmoji.dev/) + Conventional Commits, e.g. `:sparkles: feat: <description>`,
+   `:bug: fix: <description>`. A change that carries a `specs/<capability>/spec.md` delta needs **two** commits:
+   the implementation first, then `/opsx:archive <id>` (syncs `openspec/specs/`) as its own commit,
+   `:card_file_box: chore: archive <id> into specs`, with a body summarizing what was synced. A backlog item with
+   **no** spec delta (an `e2e-*` verification, pure test-infra, or a doc fix fulfilling an already open-ended
+   requirement) has no archive step — it lands in a single commit.
 5. **Close the loop** — **remove** the item file `openspec/backlog/items/<id>.md` from the backlog and flip
    its `parity.md` row to ✅ (the parity matrix keeps the permanent record; update `docs/` if user-facing).
+
+Anyone without direct push access (any external contributor, always — not only pre-1.0) runs the same loop on a
+fork/branch and opens a pull request bundling those commits.
 
 ## Layout
 
@@ -141,6 +149,11 @@ CPM is **enabled**. Versions live **only** in `Directory.Packages.props`.
 - Do not edit `.editorconfig` / `Directory.*.props` to make a build pass: fix the code instead.
 - Do not touch the stop-files `build/Directory.Build.props` / `build/Directory.Build.targets`.
 - Respect the `DockYarp.slnx` solution structure and CPM.
+- **The Nuke build (`build/Build.cs`) is the single source of truth for build/image/publish/release logic.**
+  When a CI workflow needs a build/package/publish step, extend or parameterize the relevant Nuke target and
+  call it — the workflow only orchestrates (checkout, login, buildx setup); never duplicate build steps in YAML.
+- In the Nuke build, prefer its built-in tool tasks (`DotNetTasks`, `NpmTasks`, `DockerTasks`, `GitVersion`, …)
+  over raw `ProcessTasks` — a "missing" API is almost always just a missing `using`.
 
 ## Available MCP servers
 
