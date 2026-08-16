@@ -6,13 +6,38 @@ description: Run DockYARP and expose your first container.
 
 ## Run the proxy
 
-DockYARP watches the Docker socket and routes to containers based on their labels.
+DockYARP watches the Docker socket and routes to containers based on their labels. Its runtime image is
+non-root, so it cannot open `/var/run/docker.sock` directly — it reaches the Docker API through a read-only
+[socket proxy](https://github.com/Tecnativa/docker-socket-proxy) instead:
+
+```yaml
+services:
+  dockerproxy:
+    image: tecnativa/docker-socket-proxy
+    environment:
+      CONTAINERS: "1"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  dockyarp:
+    image: gcelet/dockyarp   # or dockyarp:local for a local build
+    ports:
+      - "80:8080"
+      - "443:8443"
+    environment:
+      Docker__Enabled: "true"
+      Docker__DockerEndpoint: "tcp://dockerproxy:2375"
+      AdminApi__ApiKey: "change-me"
+    volumes:
+      - certs:/certs
+    depends_on: [dockerproxy]
+
+volumes:
+  certs:
+```
 
 ```bash
-docker run -d --name dockyarp \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -p 80:80 -p 443:443 \
-  dockyarp
+docker compose up -d
 ```
 
 ## Expose a container

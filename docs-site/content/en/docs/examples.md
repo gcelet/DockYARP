@@ -9,8 +9,9 @@ Task-oriented recipes. Each builds on the **base stack** below and uses real lab
 
 ## Base stack
 
-DockYARP behind a read-only Docker socket proxy (so the proxy stays non-root). Add the backend services from the
-recipes below to this `docker-compose.yml`.
+DockYARP's runtime image is non-root and cannot open `/var/run/docker.sock` directly — a read-only Docker
+socket proxy is **required**, not optional hardening, for it to reach the Docker API at all. Add the backend
+services from the recipes below to this `docker-compose.yml`.
 
 ```yaml
 services:
@@ -22,7 +23,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
   dockyarp:
-    image: dockyarp:local            # or your published image
+    image: gcelet/dockyarp           # or dockyarp:local for a local build
     ports:
       - "80:8080"
       - "443:8443"

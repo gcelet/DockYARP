@@ -16,6 +16,8 @@ services:
     restart: unless-stopped
 
   dockyarp:
+    # Builds and tags the local image. To use the published image instead, drop `build:` and set
+    # `image: gcelet/dockyarp`.
     build:
       context: .
       dockerfile: Dockerfile
