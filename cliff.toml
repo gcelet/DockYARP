@@ -1,0 +1,62 @@
+# git-cliff configuration — generates GitHub Release notes on a `v*` tag push.
+# https://git-cliff.org/docs/configuration
+#
+# DockYarp commits are gitmoji-prefixed Conventional Commits (e.g. ":sparkles: feat: add X"), which is why
+# `conventional_commits` is disabled below: git-cliff's strict Conventional Commits parser anchors on the type
+# at the very start of the message and would treat every commit here as "unconventional" (the same limitation
+# that ruled out release-please — see openspec/changes/add-release-changelog/design.md). Categorization instead
+# comes entirely from the custom `commit_parsers` regexes, which treat the leading gitmoji as a wildcard token.
+
+[changelog]
+# Rendered once per release; used with `--latest --strip header` to produce just the section list for a
+# GitHub Release body (the release page itself already shows the tag/date).
+body = """
+{% if version %}\
+    ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+    ## [unreleased]
+{% endif %}\
+{% for entry in commits | commit_groups(groups=commit_parsers_groups) %}
+    ### {{ entry.group | striptags | trim | upper_first }}
+    {% for commit in entry.commits %}
+        - {% if commit.scope %}*({{ commit.scope }})* {% endif %}\
+            {% if commit.breaking %}[**breaking**] {% endif %}\
+            {{ commit.message | upper_first }}\
+    {% endfor %}
+{% endfor %}
+"""
+trim = true
+render_always = true
+
+[git]
+# See the note above: strict Conventional Commits parsing does not tolerate the leading gitmoji.
+conventional_commits = false
+filter_unconventional = false
+require_conventional = false
+split_commits = false
+protect_breaking_commits = false
+
+# Order matters: the first matching parser wins. The archive-commit parser MUST precede the general
+# `chore` parser, or archive commits would never reach it.
+commit_parsers = [
+  { message = "^:\\w+:\\s*chore:\\s*archive\\b", skip = true },
+  { message = "^:\\w+:\\s*feat(\\(.*\\))?!?:", group = "<!-- 0 -->Features" },
+  { message = "^:\\w+:\\s*fix(\\(.*\\))?!?:", group = "<!-- 1 -->Fixes" },
+  { message = "^:\\w+:\\s*perf(\\(.*\\))?!?:", group = "<!-- 2 -->Performance" },
+  { message = "^:\\w+:\\s*docs?(\\(.*\\))?!?:", group = "<!-- 3 -->Documentation" },
+  { message = "^:\\w+:\\s*refactor(\\(.*\\))?!?:", group = "<!-- 4 -->Refactoring" },
+  { message = "^:\\w+:\\s*(chore|build|ci|test|style)(\\(.*\\))?!?:", skip = true },
+  { message = ".*", group = "<!-- 5 -->Other" },
+]
+
+filter_commits = false
+fail_on_unmatched_commit = false
+link_parsers = []
+use_branch_tags = false
+topo_order = false
+topo_order_commits = true
+sort_commits = "oldest"
+recurse_submodules = false
+
+# Only real release tags feed the changelog — GitVersion prerelease builds on `develop` are not tagged.
+tag_pattern = "^v[0-9]+\\.[0-9]+\\.[0-9]+$"

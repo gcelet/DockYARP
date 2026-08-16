@@ -19,6 +19,15 @@ workflow** (how a version is cut) and the **changelog tool** — so it was split
 - `add-release-versioning` stamps assemblies + the image + `/api/version` from the GitVersion version. No GitHub
   Release, no changelog. `image.yml` already publishes the image on a `v*` tag.
 
+## Scope reconciliation (2026-08-16) — GitFlow supersedes this stub's "single-trunk" premise
+This stub was written 2026-08-06 morning assuming single-trunk GitHubFlow. The branching model was finalized
+that same evening as **GitFlow** ([[github-repo-init-plan]]): `develop` is the long-lived trunk; `main` is
+created **only at the first release** (`develop` merged in, tagged `v0.1.0`) and stays empty until then.
+**Decided scope for this item: automation only.** Build the release workflow (release-please or git-cliff) so
+it is ready to fire **on `main`** once `main` exists — do **not** create `main` / cut `v0.1.0` as part of this
+item. Cutting the first release is a separate, later, manual decision (and pulls in the `add-doc-ci-publish`
+v1 follow-up — flip the docs-publish trigger + `params.github_branch` from `develop` to `main`).
+
 ## Release workflow — DECISION TO MAKE (git flow for cutting a version)
 The user wants version creation to be **as automatic as possible**, incl. the GitHub Release, but is unsure whether
 to go through a release branch, a merge to `main`, or something else. Options (repo is single-trunk / GitHubFlow):

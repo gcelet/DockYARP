@@ -1,0 +1,40 @@
+name: Release changelog
+
+on:
+  push:
+    tags: ['v*']
+
+# Only writes a GitHub Release for the pushed tag; no other repo state changes.
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # git-cliff walks the full tag history to build the changelog (same reason GitVersion needs it).
+          fetch-depth: 0
+
+      # Gitmoji-prefixed Conventional Commits (":sparkles: feat: …") are not strict Conventional Commits, so
+      # cliff.toml disables git-cliff's built-in conventional parser and categorizes via custom regexes instead
+      # — see cliff.toml's header comment and openspec/changes/add-release-changelog/design.md.
+      - name: Generate changelog
+        id: git-cliff
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: -vv --latest --strip header
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          body: ${{ steps.git-cliff.outputs.content }}

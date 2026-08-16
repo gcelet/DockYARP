@@ -54,6 +54,14 @@ Run the gates with Nuke:
 For a map of the modules and how a request flows through the proxy, see
 [`docs/architecture.md`]({{< repo-file "docs/architecture.md" >}}).
 
+## Releases
+
+Cutting a `vX.Y.Z` tag stays a manual, [GitVersion](https://gitversion.net/)-informed step. Pushing that tag
+triggers `.github/workflows/release.yml`: [git-cliff](https://git-cliff.org/) builds a changelog from the
+commits since the previous release (grouped by type — Features, Fixes, …) and publishes it as the GitHub
+Release notes; the existing tagged-image workflow publishes the image for that version. Pre-1.0, DockYARP
+develops directly on `develop`; `main` is created only at the first release.
+
 ## This documentation site
 
 Lives under `docs-site/` (Hugo + Docsy). See its `README.md` for local setup and build.
