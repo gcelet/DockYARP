@@ -23,6 +23,14 @@ internal static class ObservabilityServiceCollectionExtensions
     {
         AdminApiOptions adminApiOptions = new();
         configuration.GetSection("AdminApi").Bind(adminApiOptions);
+        if (adminApiOptions is { Surface: not AdminApiSurface.Disabled, Host: null or "" })
+        {
+            throw new InvalidOperationException(
+                $"AdminApi:Surface is '{adminApiOptions.Surface}' but AdminApi:Host is not set. Set AdminApi:Host " +
+                "to the dedicated admin hostname, or set AdminApi:Surface to 'Disabled' (its default) to turn the " +
+                "admin surface off.");
+        }
+
         services.AddSingleton(adminApiOptions);
         services.AddSingleton<ICertificateInventory, CertificateInventoryAdapter>();
         services.AddDockYarpDashboard(adminApiOptions);

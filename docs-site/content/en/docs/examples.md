@@ -30,7 +30,6 @@ services:
     environment:
       Docker__Enabled: "true"
       Docker__DockerEndpoint: "tcp://dockerproxy:2375"
-      AdminApi__ApiKey: "change-me"
     volumes:
       - certs:/certs
       - ./config:/config
@@ -39,6 +38,9 @@ services:
 volumes:
   certs:
 ```
+
+The admin API and dashboard are off by default (`AdminApi:Surface: Disabled`) — see
+[Dedicated admin host](#dedicated-admin-host-with-its-own-https-certificate) below to turn them on.
 
 ## Basic virtual host
 
@@ -68,26 +70,28 @@ container under several names.
 `http://app.local/api/orders` is forwarded to `api` as `/orders` (the `/api` prefix is stripped).
 
 {{% alert title="Heads-up: /api, /dashboard, and the Admin API" color="warning" %}}
-By default the Admin API, the read-only dashboard, and `/metrics` serve a few **exact** paths on **all** hosts,
-taking precedence over proxying: `/api/version`, `/api/routes`, `/api/clusters`, `/api/certs`, `/api/resolve`,
-`/api/health`, `/dashboard`, and `/metrics`. So a backend that exposes one of these **exact** paths (notably the
-very common `/api/health`) would be **shadowed**. Set **`AdminApi:Host`** to scope the admin API, the dashboard,
-and `/metrics` to a dedicated host — then those paths answer only on that host and are proxied normally on your
-application hosts. (Other paths such as `/api/orders` always proxy.) The dashboard has **no application-level
-authentication** of its own — unlike `/api/*`, which requires the `X-Api-Key` header — so only expose
-`AdminApi:Host` on a trusted network, or set **`AdminApi:DashboardEnabled: false`** to remove it entirely.
+The admin surface — the JSON API (`/api/version`, `/api/routes`, `/api/clusters`, `/api/certs`, `/api/resolve`,
+`/api/health`), the read-only dashboard (`/dashboard`), and `/metrics` — is **off by default**
+(`AdminApi:Surface: Disabled`), so none of those exact paths are intercepted and a backend that happens to own
+one of them (notably the very common `/api/health`) is never shadowed. Turning it on (`AdminApi:Surface: Api` or
+`ApiAndDashboard`) **requires `AdminApi:Host` to be set** — DockYARP refuses to start otherwise — so once
+enabled, those paths answer only on the dedicated host and are proxied normally everywhere else. (Other paths
+such as `/api/orders` always proxy, regardless of `Surface`.) The dashboard has **no application-level
+authentication** of its own — unlike `/api/*`, which requires the `X-Api-Key` header — so only opt into
+`ApiAndDashboard` on a host you keep off the public internet.
 {{% /alert %}}
 
 ## Dedicated admin host (with its own HTTPS certificate)
 
-Scope the admin API + `/metrics` to a dedicated host so they never shadow a backend's `/api/*`, and let DockYARP
-obtain an ACME certificate for that host too:
+Turn on the admin API + `/metrics`, scoped to a dedicated host, and let DockYARP obtain an ACME certificate for
+that host too:
 
 ```yaml
   dockyarp:
     environment:
       AdminApi__ApiKey: "change-me"
-      AdminApi__Host: "admin.example.com"        # admin API + /metrics answer only here
+      AdminApi__Surface: "Api"                   # "ApiAndDashboard" also serves /dashboard
+      AdminApi__Host: "admin.example.com"        # required whenever Surface isn't Disabled
       AdminApi__LetsEncrypt: "true"              # provision a real certificate for the admin host
       AdminApi__ContactEmail: "admin@example.com"  # optional; falls back to Tls__ContactEmail
       Tls__AcmeDirectoryUri: "https://acme-v02.api.letsencrypt.org/directory"

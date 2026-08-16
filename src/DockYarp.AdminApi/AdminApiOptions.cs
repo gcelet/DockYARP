@@ -17,9 +17,11 @@ public sealed class AdminApiOptions
     /// <summary>Gets or sets the ACME contact email for the admin host; falls back to <c>Tls:ContactEmail</c> when unset.</summary>
     public string? ContactEmail { get; set; }
 
-    /// <summary>Gets or sets a value indicating whether the read-only HTML dashboard at <c>/dashboard</c> is served.</summary>
-    /// <remarks>Default <see langword="true"/>. The dashboard carries no application-level authentication of its
-    /// own — it relies on the same network isolation as <see cref="Host"/>; set this to <see langword="false"/>
-    /// to remove it entirely (no Razor Pages services registered, no route mapped) when that surface isn't wanted.</remarks>
-    public bool DashboardEnabled { get; set; } = true;
+    /// <summary>Gets or sets what the admin surface exposes.</summary>
+    /// <remarks>Default <see cref="AdminApiSurface.Disabled"/> — <c>/api/*</c>, <c>/metrics</c>, and
+    /// <c>/dashboard</c> are not mapped at all until this is set. Requires <see cref="Host"/> to be set for any
+    /// value other than <see cref="AdminApiSurface.Disabled"/> — the application fails to start otherwise, since
+    /// <see cref="Host"/> is also the dashboard's only trust boundary (it carries no application-level
+    /// authentication of its own).</remarks>
+    public AdminApiSurface Surface { get; set; }
 }

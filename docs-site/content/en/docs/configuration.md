@@ -157,11 +157,11 @@ or as a **double-underscore environment variable** on the proxy container (for e
 
 | Key | Default | Purpose |
 |-----|---------|---------|
-| `ApiKey` | — (closed) | Key required in the `X-Api-Key` header; empty closes the admin API. |
-| `Host` | — (all hosts) | Dedicated host to scope the admin API (`/api/*`) and `/metrics` to. When set, those paths answer only on this host; on any other host they fall through to proxying (so a backend's `/api/*` is not shadowed). |
+| `Surface` | `Disabled` | What the admin surface exposes: `Disabled` (nothing mapped, the default — a backend's own `/api/*` or `/metrics` is never shadowed), `Api` (JSON admin API + `/metrics`, no dashboard), or `ApiAndDashboard` (both). |
+| `ApiKey` | — (closed) | Key required in the `X-Api-Key` header for the JSON API; empty means every request is rejected with 401. |
+| `Host` | — | Dedicated host to scope the admin API (`/api/*`), `/metrics`, and the dashboard to. **Required whenever `Surface` is not `Disabled`** — the app fails to start otherwise. When set, those paths answer only on this host; on any other host they fall through to proxying (so a backend's `/api/*` is not shadowed). |
 | `LetsEncrypt` | `false` | Opt in to ACME-provision a certificate for `Host` (needs `Host` set). When enabled, the admin host is provisioned and renewed like any vhost; otherwise it keeps the default/operator certificate. |
 | `ContactEmail` | — | ACME contact email for the admin host; falls back to `Tls:ContactEmail` when unset. |
-| `DashboardEnabled` | `true` | Serve the read-only dashboard at `/dashboard`. It has **no application-level auth** of its own (unlike `/api/*`) — set `false` to remove it entirely. |
 
 ### `Compression`
 

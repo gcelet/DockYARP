@@ -9,8 +9,8 @@ using Microsoft.Extensions.DependencyInjection;
 /// <summary>Maps the read-only admin dashboard, scoped to <c>AdminApi:Host</c> when set.</summary>
 public static class DashboardEndpointMapping
 {
-    /// <summary>Maps the dashboard's Razor Pages, unless <see cref="AdminApiOptions.DashboardEnabled"/> is
-    /// <see langword="false"/>, scoping them to the configured admin host when one is set.</summary>
+    /// <summary>Maps the dashboard's Razor Pages, only when <see cref="AdminApiOptions.Surface"/> is
+    /// <see cref="AdminApiSurface.ApiAndDashboard"/>, scoping them to the configured admin host when one is set.</summary>
     /// <param name="app">The web application.</param>
     /// <remarks>
     /// Mirrors <c>AdminEndpointMapping.MapDockYarpAdmin</c>'s host-isolation shape, kept as its own extension
@@ -22,7 +22,7 @@ public static class DashboardEndpointMapping
         ArgumentNullException.ThrowIfNull(app);
 
         AdminApiOptions options = app.Services.GetRequiredService<AdminApiOptions>();
-        if (!options.DashboardEnabled)
+        if (options.Surface != AdminApiSurface.ApiAndDashboard)
         {
             return;
         }

@@ -86,8 +86,13 @@ DockYARP terminates TLS and can obtain certificates automatically.
 
 ## Admin API
 
+The admin surface — the JSON API below, the dashboard, and `/metrics` — is off by default
+(`AdminApi:Surface: Disabled`). Set it to `Api` (JSON endpoints + `/metrics`, no dashboard) or `ApiAndDashboard`
+to turn it on; either value requires `AdminApi:Host` to be set (the app fails to start otherwise), so the
+surface is always scoped to a dedicated host, never shadowing a backend's own paths.
+
 Read-only JSON endpoints for operators, protected by an API key. Set `AdminApi:ApiKey` and send it in the
-`X-Api-Key` header; without a valid key the endpoints return **401** (an empty key closes the admin API).
+`X-Api-Key` header; without a valid key the endpoints return **401**.
 
 | Endpoint | Returns |
 |----------|---------|
@@ -107,9 +112,9 @@ curl -H "X-Api-Key: $KEY" "http://localhost:8080/api/resolve?host=app.local&path
 `GET /dashboard` renders a light, read-only HTML view of the same data (current routes/clusters, certificate
 expiry, overall health) — an at-a-glance macro view, not a replacement for `/metrics` or the JSON API. It
 reads its data server-side and never calls `/api/*` from the browser, so **it carries no application-level
-authentication of its own** — unlike `/api/*`, no API key protects it. Only expose it on a trusted network
-(the same posture already recommended for `AdminApi:Host`), or disable it entirely with
-`AdminApi:DashboardEnabled: false`.
+authentication of its own** — unlike `/api/*`, no API key protects it. It only serves when
+`AdminApi:Surface` is `ApiAndDashboard`; set it to `Api` instead to keep the JSON API without the dashboard, or
+leave `Surface` at its default (`Disabled`) to serve neither.
 
 ## Static configuration
 

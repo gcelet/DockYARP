@@ -57,5 +57,10 @@ public sealed class ResponseCompressionTests
     }
 
     private static WebApplicationFactory<Program> Factory() =>
-        new WebApplicationFactory<Program>().WithWebHostBuilder(builder => builder.UseSetting("AdminApi:ApiKey", ApiKey));
+        new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("AdminApi:ApiKey", ApiKey);
+            builder.UseSetting("AdminApi:Surface", "Api");
+            builder.UseSetting("AdminApi:Host", "localhost");
+        });
 }

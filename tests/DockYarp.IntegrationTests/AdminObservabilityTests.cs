@@ -69,6 +69,8 @@ public sealed class AdminObservabilityTests
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseSetting("AdminApi:ApiKey", ApiKey);
+            builder.UseSetting("AdminApi:Surface", "Api");
+            builder.UseSetting("AdminApi:Host", "localhost");
             builder.ConfigureTestServices(configureServices);
         });
 

@@ -27,7 +27,6 @@ services:
     environment:
       Docker__Enabled: "true"
       Docker__DockerEndpoint: "tcp://dockerproxy:2375"
-      AdminApi__ApiKey: "change-me"
     volumes:
       - certs:/certs
     depends_on: [dockerproxy]
@@ -39,6 +38,9 @@ volumes:
 ```bash
 docker compose up -d
 ```
+
+The admin API and dashboard are off by default (`AdminApi:Surface: Disabled`) — see
+[Examples](/docs/examples/#dedicated-admin-host-with-its-own-https-certificate) to turn them on.
 
 ## Expose a container
 

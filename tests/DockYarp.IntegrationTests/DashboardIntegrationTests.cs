@@ -14,9 +14,9 @@ public sealed class DashboardIntegrationTests
 {
     private const string ApiKey = "test-key";
 
-    /// <summary>Without a dedicated admin host, the dashboard is reachable on any host.</summary>
+    /// <summary>With <c>AdminApi:Host</c> set, the dashboard responds when the request targets it.</summary>
     [Test]
-    public async Task Dashboard_ServesOnAllHostsWhenAdminHostUnset()
+    public async Task Dashboard_ServesOnAdminHostWhenSurfaceIncludesDashboard()
     {
         using WebApplicationFactory<Program> factory = CreateFactory();
         using HttpClient client = factory.CreateClient();
@@ -65,32 +65,43 @@ public sealed class DashboardIntegrationTests
         body.Should().NotContain(ApiKey);
     }
 
-    /// <summary>With <c>AdminApi:DashboardEnabled</c> set to <c>false</c>, the dashboard route is absent.</summary>
+    /// <summary>With <c>AdminApi:Surface</c> set to <c>Api</c> (no dashboard), the dashboard route is absent
+    /// while the JSON API keeps working.</summary>
     [Test]
-    public async Task Dashboard_DisabledViaConfig_IsNotServed()
+    public async Task Dashboard_SurfaceApiOnly_IsNotServed()
     {
         using WebApplicationFactory<Program> factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
                 builder.UseSetting("AdminApi:ApiKey", ApiKey);
-                builder.UseSetting("AdminApi:DashboardEnabled", "false");
+                builder.UseSetting("AdminApi:Surface", "Api");
+                builder.UseSetting("AdminApi:Host", "localhost");
             });
         using HttpClient client = factory.CreateClient();
 
-        using HttpResponseMessage response = await client.GetAsync("/dashboard");
+        using HttpResponseMessage dashboard = await client.GetAsync("/dashboard");
+        client.DefaultRequestHeaders.Add("X-Api-Key", ApiKey);
+        using HttpResponseMessage health = await client.GetAsync("/api/health");
 
-        response.StatusCode.Should().NotBe(HttpStatusCode.OK);
+        dashboard.StatusCode.Should().NotBe(HttpStatusCode.OK);
+        health.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     private static WebApplicationFactory<Program> CreateFactory() =>
         new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(builder => builder.UseSetting("AdminApi:ApiKey", ApiKey));
+            .WithWebHostBuilder(builder =>
+            {
+                builder.UseSetting("AdminApi:ApiKey", ApiKey);
+                builder.UseSetting("AdminApi:Surface", "ApiAndDashboard");
+                builder.UseSetting("AdminApi:Host", "localhost");
+            });
 
     private static WebApplicationFactory<Program> CreateFactoryWithAdminHost(string adminHost) =>
         new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
                 builder.UseSetting("AdminApi:ApiKey", ApiKey);
+                builder.UseSetting("AdminApi:Surface", "ApiAndDashboard");
                 builder.UseSetting("AdminApi:Host", adminHost);
             });
 }

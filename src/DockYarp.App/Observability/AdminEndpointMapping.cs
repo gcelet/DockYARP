@@ -13,6 +13,11 @@ public static class AdminEndpointMapping
         ArgumentNullException.ThrowIfNull(app);
 
         AdminApiOptions options = app.Services.GetRequiredService<AdminApiOptions>();
+        if (options.Surface == AdminApiSurface.Disabled)
+        {
+            return;
+        }
+
         app.MapAdminApi(options.Host);
 
         IEndpointConventionBuilder metrics = app.MapPrometheusScrapingEndpoint();

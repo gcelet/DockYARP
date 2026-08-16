@@ -2,7 +2,8 @@
 
 DockYarp exposes a protected, read-only admin API and Prometheus metrics on the proxy host. Explicit
 endpoints take routing precedence over YARP's catch-all, so `/api/*` and `/metrics` are served by the host
-and everything else is proxied.
+and everything else is proxied — but only when the admin surface is turned on (see Protection below); by
+default it's off, and neither path is intercepted at all.
 
 ## Endpoints
 
@@ -18,13 +19,19 @@ Responses are **sanitized DTOs**: a route exposes `requiresAuth` (bool) but neve
 
 ## Protection
 
-`/api/*` is guarded by an `X-Api-Key` header compared (fixed-time) against `AdminApi:ApiKey`. A missing or
-invalid key yields 401. If no key is configured, the admin API is closed (all 401). `/metrics` is left
-unauthenticated so Prometheus can scrape it.
+The whole admin surface — `/api/*`, `/metrics`, and the dashboard — is off by default
+(`AdminApi:Surface: Disabled`): neither path is mapped, so a backend that happens to expose its own
+`/api/*` or `/metrics` route is never shadowed. Set `AdminApi:Surface` to `Api` (JSON endpoints +
+`/metrics`, no dashboard) or `ApiAndDashboard` to turn it on. Either value **requires `AdminApi:Host`** —
+the app fails to start otherwise — so once enabled, the surface only ever answers on that dedicated host.
+
+Once enabled, `/api/*` is additionally guarded by an `X-Api-Key` header compared (fixed-time) against
+`AdminApi:ApiKey`. A missing or invalid key yields 401. `/metrics` is left unauthenticated so Prometheus
+can scrape it (still host-scoped, just not key-protected).
 
 ```jsonc
 // appsettings.json
-{ "AdminApi": { "ApiKey": "<your-key>" } }
+{ "AdminApi": { "Surface": "Api", "Host": "admin.internal.example", "ApiKey": "<your-key>" } }
 ```
 
 ## Metrics
@@ -56,5 +63,5 @@ follows the configured logging provider: enable JSON with the console logger, e.
 
 ## Note
 
-Admin endpoints are path-based and currently exist on every host; a dedicated admin host or port is a
-future option.
+Admin endpoints are path-based and, when enabled, scoped to `AdminApi:Host`; a dedicated admin **port**
+(as opposed to host) is a possible future option.

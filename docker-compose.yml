@@ -31,6 +31,10 @@ services:
       # Reach the Docker API via the proxy, so DockYarp needs no socket mount and stays non-root.
       Docker__DockerEndpoint: "tcp://dockerproxy:2375"
       AdminApi__ApiKey: "change-me"
+      # Surface off by default (AdminApi:Surface: Disabled); "Api" here + a bare Host (any port) so the
+      # admin API is reachable locally without picking a specific port.
+      AdminApi__Surface: "Api"
+      AdminApi__Host: "localhost"
     volumes:
       # Named volume for persistent state: it inherits the image's app-owned /certs, so the non-root
       # container can write it (a host bind mount would re-impose host ownership and break the write).

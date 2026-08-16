@@ -114,7 +114,8 @@ Full reference: [`docs/labels-reference.md`](docs/labels-reference.md).
 
 ## Admin API & metrics
 
-Protected by an `X-Api-Key` header (`AdminApi:ApiKey`):
+Off by default (`AdminApi:Surface: Disabled`); set it to `Api` or `ApiAndDashboard` (requires `AdminApi:Host`)
+to turn it on. Once enabled, protected by an `X-Api-Key` header (`AdminApi:ApiKey`):
 
 | Endpoint | Description |
 |---|---|

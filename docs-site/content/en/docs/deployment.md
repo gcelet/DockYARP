@@ -27,7 +27,6 @@ services:
     environment:
       Docker__Enabled: "true"
       Docker__DockerEndpoint: "tcp://dockerproxy:2375"
-      AdminApi__ApiKey: "change-me"
     volumes:
       - dockyarp-certs:/certs
     depends_on: [dockerproxy]
@@ -52,6 +51,9 @@ volumes:
 - Publish host ports **80** and **443** onto the container's **8080**/**8443** (its non-root defaults); port 80
   also serves the ACME HTTP-01 challenge and HTTP→HTTPS redirects.
 - Scope discovery on busy hosts with `Docker:ContainerFilters` (e.g. only containers carrying a given label).
+- The admin API and dashboard are off by default (`AdminApi:Surface: Disabled`) — see
+  [Examples](/docs/examples/#dedicated-admin-host-with-its-own-https-certificate) to turn them on behind a
+  dedicated host.
 
 > Reachability, host-network backends, and multi-network setups are covered under
 > [Configuration](/docs/configuration/) (`Docker:ProxyNetworks`, `Docker:HostAddress`).

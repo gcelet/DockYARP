@@ -91,7 +91,6 @@ services:
     environment:
       Docker__Enabled: "true"
       Docker__DockerEndpoint: "tcp://dockerproxy:2375"
-      AdminApi__ApiKey: "change-me"
       Tls__AcmeDirectoryUri: "https://acme-v02.api.letsencrypt.org/directory"
       Tls__AcceptTermsOfService: "true"
       Tls__ContactEmail: "admin@example.com"
@@ -108,6 +107,10 @@ services:
 volumes:
   certs:
 ```
+
+The admin API and dashboard are off by default (`AdminApi:Surface: Disabled`) — see
+[Examples](/docs/examples/#dedicated-admin-host-with-its-own-https-certificate) to turn them on behind a
+dedicated host. Not required for the migration itself.
 
 ## Advanced migration
 

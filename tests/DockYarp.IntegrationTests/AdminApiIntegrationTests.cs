@@ -1,5 +1,6 @@
 namespace DockYarp.IntegrationTests;
 
+using System;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -7,6 +8,7 @@ using System.Threading.Tasks;
 
 using AwesomeAssertions;
 
+using DockYarp.AdminApi;
 using DockYarp.Core.Interfaces;
 using DockYarp.Core.Models;
 using DockYarp.Tls;
@@ -220,15 +222,66 @@ public sealed class AdminApiIntegrationTests
         reserved.Reserved.Should().BeEmpty();
     }
 
+    /// <summary><c>AdminApiOptions.Surface</c> defaults to <c>Disabled</c> when unbound.</summary>
+    [Test]
+    public void Surface_DefaultsToDisabled()
+    {
+        AdminApiOptions options = new();
+
+        options.Surface.Should().Be(AdminApiSurface.Disabled);
+    }
+
+    /// <summary>With <c>AdminApi:Surface</c> left at its default (<c>Disabled</c>), admin paths are not
+    /// intercepted — no admin <c>401</c>, regardless of an API key being configured.</summary>
+    [Test]
+    public async Task SurfaceDisabled_DoesNotInterceptAdminPaths()
+    {
+        using WebApplicationFactory<Program> factory = new WebApplicationFactory<Program>()
+            .WithWebHostBuilder(builder => builder.UseSetting("AdminApi:ApiKey", ApiKey));
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage health = await client.GetAsync("/api/health");
+        using HttpResponseMessage metrics = await client.GetAsync("/metrics");
+
+        health.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
+        metrics.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
+    }
+
+    /// <summary>Opting into the surface (<c>Api</c> or <c>ApiAndDashboard</c>) without <c>AdminApi:Host</c>
+    /// fails the application at startup, rather than mapping the surface on every host.</summary>
+    [TestCase("Api")]
+    [TestCase("ApiAndDashboard")]
+    public void SurfaceEnabled_WithoutHost_FailsFastAtStartup(string surface)
+    {
+        Action act = () =>
+        {
+            using WebApplicationFactory<Program> factory = new WebApplicationFactory<Program>()
+                .WithWebHostBuilder(builder =>
+                {
+                    builder.UseSetting("AdminApi:ApiKey", ApiKey);
+                    builder.UseSetting("AdminApi:Surface", surface);
+                });
+            _ = factory.Server;
+        };
+
+        act.Should().Throw<Exception>().WithMessage("*AdminApi:Host*");
+    }
+
     private static WebApplicationFactory<Program> CreateFactory() =>
         new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(builder => builder.UseSetting("AdminApi:ApiKey", ApiKey));
+            .WithWebHostBuilder(builder =>
+            {
+                builder.UseSetting("AdminApi:ApiKey", ApiKey);
+                builder.UseSetting("AdminApi:Surface", "Api");
+                builder.UseSetting("AdminApi:Host", "localhost");
+            });
 
     private static WebApplicationFactory<Program> CreateFactoryWithAdminHost(string adminHost) =>
         new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
                 builder.UseSetting("AdminApi:ApiKey", ApiKey);
+                builder.UseSetting("AdminApi:Surface", "Api");
                 builder.UseSetting("AdminApi:Host", adminHost);
             });
 }

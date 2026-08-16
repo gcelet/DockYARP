@@ -50,10 +50,17 @@ var dockerproxy = builder.AddContainer("dockerproxy", "tecnativa/docker-socket-p
 
 // DockYarp runs as a non-root container reaching the Docker API via the socket proxy; /metrics gates
 // readiness and Routing__DefaultHost sends unknown hosts to the default backend (exercised by a scenario).
+// AdminApi__Surface must be non-Disabled for /api/* and /metrics to be mapped at all (default changed to
+// Disabled). AdminApi__Host is "localhost" (no port) rather than a fixed port: RequireHost("localhost")
+// matches any port on that host, which is required here since Aspire assigns the published host port
+// dynamically per run, and both the health check and the test harness's Proxy client reach DockYarp via
+// localhost:<that dynamic port>.
 var proxy = builder.AddContainer("dockyarp", "dockyarp", "local")
     .WithEnvironment("Docker__Enabled", "true")
     .WithEnvironment("Docker__DockerEndpoint", "tcp://dockerproxy:2375")
     .WithEnvironment("AdminApi__ApiKey", apiKey)
+    .WithEnvironment("AdminApi__Surface", "Api")
+    .WithEnvironment("AdminApi__Host", "localhost")
     .WithEnvironment("Routing__DefaultHost", BackendCatalog.DefaultHost)
     .WithHttpEndpoint(targetPort: 8080, name: "http")
     .WithHttpHealthCheck("/metrics")

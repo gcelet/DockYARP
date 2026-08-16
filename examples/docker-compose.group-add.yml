@@ -19,6 +19,8 @@ services:
     environment:
       Docker__Enabled: "true"
       AdminApi__ApiKey: "change-me"
+      AdminApi__Surface: "Api"
+      AdminApi__Host: "localhost"
     # Add the container to the group that owns the Docker socket so the non-root user can read it.
     group_add:
       - "${DOCKER_GID}"
