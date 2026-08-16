@@ -7,6 +7,26 @@ description: The spec-driven workflow behind DockYARP.
 DockYARP is developed **spec-first** with [OpenSpec](https://github.com/Fission-AI/OpenSpec). Every change —
 feature, fix, or refinement — follows the same loop.
 
+## Environment setup
+
+Required for any contribution:
+
+- **[.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)** — or skip installing it: `build.ps1` /
+  `build.sh` (Nuke) fetch the SDK pinned by `global.json` automatically if it's missing.
+- **[Node.js](https://nodejs.org/)** — needed to run the **OpenSpec CLI**
+  (`npx @fission-ai/openspec@latest`), the tool every change goes through (propose / apply / archive). This repo
+  has no other Node dependency outside the docs site.
+- **[git](https://git-scm.com/)**.
+- **[Docker](https://www.docker.com/)** — only required for `./build.ps1 E2E`. The unit/integration gate
+  (`./build.ps1 Test`) needs none.
+
+### Using Claude Code
+
+Optional, on top of the above — not a second toolchain. The checked-in `.mcp.json` (git / microsoft-docs /
+docker / aspire MCP servers) auto-enables via `.claude/settings.json`, and `.claude/commands/opsx/*` +
+`.claude/skills/openspec-*` wire the `/opsx:*` slash commands to the OpenSpec CLI above. None of this is
+required to contribute — the OpenSpec CLI works standalone from any editor or agent.
+
 ## Change lifecycle
 
 1. **Backlog** — an item under `openspec/backlog/items/<id>.md` describes the gap (the parity matrix
