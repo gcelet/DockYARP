@@ -2,9 +2,9 @@
 
 ### Requirement: nginx-proxy migration guide
 The documentation site SHALL provide a standalone page guiding an nginx-proxy operator through migrating to
-DockYarp, covering both a basic (public ACME, label-based) setup and an advanced setup using the classic
-`nginx-proxy`/`docker-gen`/`acme-companion` trio with environment-variable-based backend configuration and a
-private ACME certificate authority. The guide SHALL state that migration only requires replacing the
+DockYarp, covering both a basic (single-container `nginx-proxy` + `acme-companion`, public ACME) setup and an
+advanced setup using the classic separate `nginx`/`docker-gen`/`acme-companion` trio with environment-variable
+backend configuration and a private ACME certificate authority. The guide SHALL state that migration only requires replacing the
 nginx-proxy stack itself — no other backend service's configuration needs to change. The guide SHALL instruct
 copying (not moving) existing certificate files into DockYarp's certificate directory, stating that no format
 conversion is required, so the original nginx-proxy installation remains intact and available as a rollback.
