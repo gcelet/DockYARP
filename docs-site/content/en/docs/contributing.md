@@ -36,6 +36,19 @@ required to contribute — the OpenSpec CLI works standalone from any editor or 
 4. **Archive** — commit, then sync the spec library and archive the change.
 5. **Close the loop** — remove the backlog item and flip its parity row to ✅.
 
+## Submitting a contribution
+
+Without direct push access, run the same loop on a fork:
+
+1. Fork the repository, and branch off `develop` (see [Change lifecycle](#change-lifecycle) above for the loop
+   itself — this is the same loop, just on your own branch).
+2. Follow the commit convention documented in [`AGENTS.md`]({{< repo-file "AGENTS.md" >}}) — do not invent your
+   own format.
+3. Open a pull request against `develop`.
+
+`develop` is the trunk pre-1.0; `main` is reserved for releases (created at the first one — see
+[Releasing](#releases)).
+
 ## Build & test
 
 ```bash
