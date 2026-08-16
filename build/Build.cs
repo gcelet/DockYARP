@@ -7,10 +7,12 @@ using System.Threading;
 using Nuke.Common;
 using Nuke.Common.IO;
 using Nuke.Common.Tooling;
+using Nuke.Common.Tools.Docker;
 using Nuke.Common.Tools.DotNet;
 using Nuke.Common.Tools.GitVersion;
 using Nuke.Common.Tools.Npm;
 
+using static Nuke.Common.Tools.Docker.DockerTasks;
 using static Nuke.Common.Tools.DotNet.DotNetTasks;
 using static Nuke.Common.Tools.Npm.NpmTasks;
 
@@ -187,29 +189,34 @@ class Build : NukeBuild
     Target DockerImage => _ => _
         .DependsOn(Test)
         .DependsOn(GenerateVersionDetails)
-        .Executes(() => ProcessTasks
-            .StartProcess(
-                "docker",
-                $"buildx build --platform {Platforms} --build-arg VERSION={VersionDetails.Version} --load -t {FullImage} .",
-                RootDirectory)
-            .AssertZeroExitCode());
+        .Executes(() => DockerBuildxBuild(s => s
+            .SetProcessWorkingDirectory(RootDirectory)
+            .SetPath(".")
+            .SetPlatform(Platforms)
+            .SetBuildArg($"VERSION={VersionDetails.Version}")
+            .AddTag(FullImage)
+            .EnableLoad()));
 
     // Build + push in one buildx step (multi-arch capable). The published tag set depends on the release
     // channel (PublishTags) unless the caller pins one explicit tag via --publish-tag. The caller sets
     // --registry/--image-repository/--platforms and must already be authenticated to the registry
     // (`docker login`); the release CI does that then calls this target. Requires Docker + buildx on PATH.
+    //
+    // Uses the DockerBuildxBuild tool task (typed AddTag(params string[])) rather than a hand-built process
+    // argument string: an earlier version concatenated "-t {value}" pairs into one interpolated string, which
+    // hit ProcessTasks.StartProcess's ArgumentStringHandler auto-quoting a single value containing a space as
+    // ONE argv token — docker received "-t <value>" glued together (with the space baked into the tag), not
+    // two separate arguments, and rejected it as an invalid reference. Caught by a live registry push, not by
+    // this file's own tests. The typed settings API sidesteps the whole class of bug.
     Target DockerPublish => _ => _
         .DependsOn(GenerateVersionDetails)
-        .Executes(() =>
-        {
-            string tagArgs = string.Join(' ', PublishTags().Select(tag => $"-t {ImageRef(tag)}"));
-            ProcessTasks
-                .StartProcess(
-                    "docker",
-                    $"buildx build --platform {Platforms} --build-arg VERSION={VersionDetails.Version} --push {tagArgs} .",
-                    RootDirectory)
-                .AssertZeroExitCode();
-        });
+        .Executes(() => DockerBuildxBuild(s => s
+            .SetProcessWorkingDirectory(RootDirectory)
+            .SetPath(".")
+            .SetPlatform(Platforms)
+            .SetBuildArg($"VERSION={VersionDetails.Version}")
+            .AddTag(PublishTags().Select(ImageRef).ToArray())
+            .EnablePush()));
 
     // Stable (no pre-release suffix): the exact version + rolling Major.Minor + Major + latest.
     // Prerelease: the exact version only (rolling tags/latest are left untouched). --edge additionally tags
@@ -246,7 +253,10 @@ class Build : NukeBuild
         .DependsOn(Compile)
         .Executes(() =>
         {
-            ProcessTasks.StartProcess("docker", $"build -t {LocalProxyImage} .", RootDirectory).AssertZeroExitCode();
+            DockerImageBuild(s => s
+                .SetProcessWorkingDirectory(RootDirectory)
+                .SetPath(".")
+                .AddTag(LocalProxyImage));
             DotNet($"publish \"{BackendProject}\" --configuration {Configuration} -t:PublishContainer");
             DotNet($"publish \"{GrpcBackendProject}\" --configuration {Configuration} -t:PublishContainer");
 

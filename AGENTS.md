@@ -152,8 +152,14 @@ CPM is **enabled**. Versions live **only** in `Directory.Packages.props`.
 - **The Nuke build (`build/Build.cs`) is the single source of truth for build/image/publish/release logic.**
   When a CI workflow needs a build/package/publish step, extend or parameterize the relevant Nuke target and
   call it — the workflow only orchestrates (checkout, login, buildx setup); never duplicate build steps in YAML.
-- In the Nuke build, prefer its built-in tool tasks (`DotNetTasks`, `NpmTasks`, `DockerTasks`, `GitVersion`, …)
-  over raw `ProcessTasks` — a "missing" API is almost always just a missing `using`.
+- **Never reach for `ProcessTasks.StartProcess` in the Nuke build as a first move.** Before writing any Nuke
+  target/step, actively identify whether a typed Nuke tool task already covers it (`DotNetTasks`, `NpmTasks`,
+  `DockerTasks`, `GitVersion`, …) — a "missing" API is almost always just a missing `using`, not a real gap.
+  Manual string-built commands lose the typed settings API (`.AddTag(...)`, `.SetPlatform(...)`, …) and can fail
+  in ways a compiler can't catch — e.g. a hand-built `-t {value}` argument string once broke a live registry
+  push because `ProcessTasks`' `ArgumentStringHandler` auto-quoted a value containing a space as one argv token,
+  merging the flag and its value. **If no existing Nuke API covers the tool/command you need, stop and ask the
+  user before falling back to `ProcessTasks`** — do not guess or silently default to a raw process call.
 
 ## Available MCP servers
 
