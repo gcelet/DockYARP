@@ -56,11 +56,8 @@ For a map of the modules and how a request flows through the proxy, see
 
 ## Releases
 
-Cutting a `vX.Y.Z` tag stays a manual, [GitVersion](https://gitversion.net/)-informed step. Pushing that tag
-triggers `.github/workflows/release.yml`: [git-cliff](https://git-cliff.org/) builds a changelog from the
-commits since the previous release (grouped by type — Features, Fixes, …) and publishes it as the GitHub
-Release notes; the existing tagged-image workflow publishes the image for that version. Pre-1.0, DockYARP
-develops directly on `develop`; `main` is created only at the first release.
+See [Releasing]({{< relref "releasing.md" >}}) for the step-by-step process, including the one-time `main`
+bootstrap at the first release.
 
 ## This documentation site
 
