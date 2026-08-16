@@ -1,0 +1,16 @@
+name: Question
+description: Ask something that isn't a bug report or a feature request.
+title: "[Question]: "
+labels: [question]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check the [documentation site](https://gcelet.github.io/DockYARP/) and
+        `openspec/backlog/parity.md` first — your question may already be answered there.
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+    validations:
+      required: true

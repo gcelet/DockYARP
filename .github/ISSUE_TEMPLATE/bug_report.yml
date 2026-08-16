@@ -1,0 +1,36 @@
+name: Bug report
+description: Something isn't working as expected.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, including what you expected instead.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: DockYarp version
+      description: The value reported by `GET /api/version`, or the image tag you're running.
+      placeholder: "0.1.0-alpha.42"
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant configuration
+      description: Container labels, environment variables, or `appsettings` sections involved (redact secrets).
+      render: yaml
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Output from `docker logs` or the structured access log, if applicable.
+      render: text
+    validations:
+      required: false

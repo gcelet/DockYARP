@@ -1,0 +1,30 @@
+name: Feature request
+description: Propose a new capability or improvement.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What are you trying to do that DockYarp doesn't support today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: What should DockYarp do instead?
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Is this an nginx-proxy parity gap or a DockYarp-specific addition?
+      description: See `openspec/backlog/parity.md` for how existing gaps are classified.
+      options:
+        - nginx-proxy parity gap
+        - DockYarp-specific addition
+        - Not sure
+    validations:
+      required: true
