@@ -19,6 +19,7 @@
     <Project Path="src/DockYarp.AdminApi/DockYarp.AdminApi.csproj" />
     <Project Path="src/DockYarp.App/DockYarp.App.csproj" />
     <Project Path="src/DockYarp.Core/DockYarp.Core.csproj" />
+    <Project Path="src/DockYarp.Dashboard/DockYarp.Dashboard.csproj" />
     <Project Path="src/DockYarp.Docker/DockYarp.Docker.csproj" />
     <Project Path="src/DockYarp.Security/DockYarp.Security.csproj" />
     <Project Path="src/DockYarp.Tls/DockYarp.Tls.csproj" />

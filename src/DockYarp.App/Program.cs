@@ -8,6 +8,7 @@ using DockYarp.App.Routing;
 using DockYarp.App.Security;
 using DockYarp.App.StaticConfig;
 using DockYarp.Core.Configuration;
+using DockYarp.Dashboard;
 using DockYarp.Docker;
 using DockYarp.Docker.Discovery;
 using DockYarp.Security;
@@ -86,7 +87,9 @@ builder.AddDockYarpDataProtection(
     builder.Configuration.GetSection("DataProtection").Get<DataProtectionOptions>() ?? new(),
     tlsOptions.CertificateDirectory);
 
-// Admin API + observability (admin options, certificate inventory, metrics, access logging).
+// Admin API + observability (admin options, certificate inventory, metrics, access logging) — also registers
+// Razor Pages for the read-only admin dashboard (/dashboard), which has no application-level auth (network
+// isolation only, same posture as AdminApi:Host itself; see the add-admin-dashboard-ui change).
 builder.Services.AddDockYarpObservability(builder.Configuration);
 
 // Response compression (gzip/brotli) for compressible responses; on by default (Compression:Enabled).
@@ -118,6 +121,7 @@ app.UseMiddleware<RequestBodySizeMiddleware>();
 // Explicit endpoints take routing precedence over YARP's catch-all. The admin API + /metrics are scoped to
 // AdminApi:Host when set, so a backend's /api/* is not shadowed on other hosts.
 app.MapDockYarpAdmin();
+app.MapDockYarpDashboard();
 app.MapReverseProxy();
 
 // Terminal fallback: requests matching no route (and no default host) get the configured default response.

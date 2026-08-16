@@ -44,13 +44,22 @@ DockYarp is an ASP.NET Core app already (`DockYarp.App`); staying consistent wit
   keeps the "light" budget) — over hand-rolled vanilla `fetch`, since htmx's polling (`hx-trigger="every Ns"`)
   hits **new Razor Page/MVC handler endpoints** (server-rendered HTML fragments), not the JSON `/api/*` group,
   so the same "no key in the browser" property holds for refreshes too.
-- **Open decision (resolve at propose-time, not here): how the dashboard page itself is protected.** It cannot
-  reuse `ApiKeyEndpointFilter` as-is (that's an API-key header check, not something a browser navigating to a
-  page can supply without exposing the key in a URL/cookie/JS anyway). Options to weigh: (a) a login form that
-  accepts the existing API key server-side once and sets an HttpOnly+Secure session cookie (key still never
-  touches JS); (b) piggyback on `AdminApi:Host` isolation + treat the dashboard as trusted-network-only with no
-  extra auth (weaker, only viable if the admin host is never internet-exposed); (c) a separate
-  dashboard-specific credential. Do not default to (b) without the user confirming the threat model.
+- **Auth decision (resolved 2026-08-16 with the user): network isolation only for v1, no application-level
+  auth on the dashboard.** The recommended posture is already "`AdminApi:Host` is never internet-exposed"
+  (same assumption `isolate-admin-api`/`add-admin-host-cert` already document); the dashboard relies on that —
+  same trust model Aspire's own local dashboard uses. Explicitly **not** the API-key-header approach (a browser
+  navigating to a page can't attach a custom header without a login step, which was the fork this was blocking
+  on) and **not** a login-form+cookie for v1 either — the user confirmed host isolation is the intended
+  production posture, so a v1 login flow would be effort spent on a threat the deployment model already rules
+  out.
+  - **Forward-looking (deferred, tracked separately, do NOT build now)**: the user wants **OIDC** pluggable
+    later, for a real identity provider instead of a shared secret. See the new stub
+    `add-admin-dashboard-oidc-auth`. Consequence for **this** item's design: register the dashboard's routes
+    through their own extension method (not folded into `MapAdminApi`), so an auth requirement can be layered
+    on later (e.g. `RequireAuthorization`) without restructuring the endpoint mapping.
+  - **Docs requirement carried into this item**: the dashboard page must ship with a clear warning (mirroring
+    the existing `isolate-admin-api` reserved-paths warning in `examples.md`) that it has **no
+    application-level authentication** and must only ever be reachable on a trusted network.
 - **Explicitly out of scope for v1**: logs / traces / metrics explorer (Aspire has these; DockYarp already
   exports OTEL/Prometheus for that job — the dashboard stays a *macro* view, not a debugger).
 

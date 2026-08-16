@@ -1,0 +1,89 @@
+@page "/dashboard"
+@model DockYarp.Dashboard.Pages.Dashboard.IndexModel
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="10">
+<title>DockYarp — Dashboard</title>
+<style>
+  :root { color-scheme: light dark; --bg: #fff; --fg: #1a1a1a; --muted: #6b7280; --border: #e2e2e2; --ok: #1a7f37; --warn: #b45309; --bad: #b91c1c; }
+  @@media (prefers-color-scheme: dark) { :root { --bg: #14161a; --fg: #e7e7e7; --muted: #9aa0a6; --border: #2c2f36; } }
+  body { background: var(--bg); color: var(--fg); font: 14px/1.5 system-ui, sans-serif; margin: 2rem; }
+  h1 { font-size: 1.25rem; margin-bottom: .25rem; }
+  .muted { color: var(--muted); }
+  section { margin-top: 1.5rem; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--border); }
+  .badge { display: inline-block; padding: .1rem .5rem; border-radius: 1rem; font-size: .8rem; }
+  .badge-ok { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+  .badge-warn { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+  .badge-bad { background: color-mix(in srgb, var(--bad) 18%, transparent); color: var(--bad); }
+</style>
+</head>
+<body>
+<h1>DockYarp Dashboard</h1>
+<p class="muted">Macro view only — see <code>/metrics</code> for real observability. Refreshes every 10s.</p>
+
+<section>
+  <span class="badge @(Model.Status == "Healthy" ? "badge-ok" : "badge-bad")">@Model.Status</span>
+  <span class="badge @Model.DiscoveryBadgeClass">discovery: @Model.DiscoveryStatus</span>
+  <span class="muted">@Model.Routes.Count route(s) · @Model.ClustersById.Count cluster(s) · @Model.Certificates.Count certificate(s)</span>
+</section>
+
+<section>
+  <h2>Resources</h2>
+  @if (Model.Routes.Count == 0)
+  {
+    <p class="muted">No routes configured.</p>
+  }
+  else
+  {
+    <table>
+      <thead><tr><th>Host</th><th>Path</th><th>Cluster</th><th>Destinations</th></tr></thead>
+      <tbody>
+      @foreach (var route in Model.Routes)
+      {
+        Model.ClustersById.TryGetValue(route.ClusterId, out var cluster);
+        <tr>
+          <td>@route.Host</td>
+          <td>@(route.PathPrefix ?? "/")</td>
+          <td>@route.ClusterId</td>
+          <td>@(cluster is null ? "—" : string.Join(", ", cluster.Endpoints.Select(e => e.Address)))</td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  }
+</section>
+
+<section>
+  <h2>Certificates</h2>
+  @if (Model.Certificates.Count == 0)
+  {
+    <p class="muted">No certificates stored.</p>
+  }
+  else
+  {
+    <table>
+      <thead><tr><th>Host</th><th>Expires</th></tr></thead>
+      <tbody>
+      @foreach (var cert in Model.Certificates)
+      {
+        <tr>
+          <td>@cert.Host</td>
+          <td>
+            @cert.NotAfter.ToString("u", System.Globalization.CultureInfo.InvariantCulture)
+            @if (cert.NearExpiry)
+            {
+              <span class="badge badge-warn">near expiry</span>
+            }
+          </td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  }
+</section>
+</body>
+</html>

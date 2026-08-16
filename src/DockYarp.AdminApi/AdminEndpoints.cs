@@ -60,13 +60,7 @@ public static class AdminEndpoints
         group.MapGet("/health", static (IRouteConfigStore store, ICertificateInventory inventory, IDiscoveryHealth discovery) =>
         {
             RouteConfigSnapshot snapshot = store.Current;
-            string discoveryStatus = (discovery.Enabled, discovery.Connected) switch
-            {
-                (false, _) => "disabled",
-                (true, true) => "connected",
-                (true, false) => "disconnected",
-            };
-            string status = discovery.Enabled && !discovery.Connected ? "Degraded" : "Healthy";
+            (string status, string discoveryStatus) = AdminMapper.ResolveHealth(discovery);
             return Results.Json(new AdminApiModels.HealthView(
                 status,
                 snapshot.Routes.Length,

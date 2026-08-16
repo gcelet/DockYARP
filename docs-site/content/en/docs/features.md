@@ -102,6 +102,15 @@ Read-only JSON endpoints for operators, protected by an API key. Set `AdminApi:A
 curl -H "X-Api-Key: $KEY" "http://localhost:8080/api/resolve?host=app.local&path=/api"
 ```
 
+### Admin dashboard
+
+`GET /dashboard` renders a light, read-only HTML view of the same data (current routes/clusters, certificate
+expiry, overall health) — an at-a-glance macro view, not a replacement for `/metrics` or the JSON API. It
+reads its data server-side and never calls `/api/*` from the browser, so **it carries no application-level
+authentication of its own** — unlike `/api/*`, no API key protects it. Only expose it on a trusted network
+(the same posture already recommended for `AdminApi:Host`), or disable it entirely with
+`AdminApi:DashboardEnabled: false`.
+
 ## Static configuration
 
 Point `StaticConfig:Path` at a JSON file with `Routes`, `Clusters`, and per-host `Overrides` to configure

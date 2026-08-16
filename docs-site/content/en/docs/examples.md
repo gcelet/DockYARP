@@ -66,12 +66,15 @@ container under several names.
 
 `http://app.local/api/orders` is forwarded to `api` as `/orders` (the `/api` prefix is stripped).
 
-{{% alert title="Heads-up: /api and the Admin API" color="warning" %}}
-By default the Admin API and `/metrics` serve a few **exact** paths on **all** hosts, taking precedence over
-proxying: `/api/version`, `/api/routes`, `/api/clusters`, `/api/certs`, `/api/resolve`, `/api/health`, and `/metrics`.
-So a backend that exposes one of these **exact** paths (notably the very common `/api/health`) would be **shadowed**.
-Set **`AdminApi:Host`** to scope the admin API and `/metrics` to a dedicated host — then those paths answer only on
-that host and are proxied normally on your application hosts. (Other paths such as `/api/orders` always proxy.)
+{{% alert title="Heads-up: /api, /dashboard, and the Admin API" color="warning" %}}
+By default the Admin API, the read-only dashboard, and `/metrics` serve a few **exact** paths on **all** hosts,
+taking precedence over proxying: `/api/version`, `/api/routes`, `/api/clusters`, `/api/certs`, `/api/resolve`,
+`/api/health`, `/dashboard`, and `/metrics`. So a backend that exposes one of these **exact** paths (notably the
+very common `/api/health`) would be **shadowed**. Set **`AdminApi:Host`** to scope the admin API, the dashboard,
+and `/metrics` to a dedicated host — then those paths answer only on that host and are proxied normally on your
+application hosts. (Other paths such as `/api/orders` always proxy.) The dashboard has **no application-level
+authentication** of its own — unlike `/api/*`, which requires the `X-Api-Key` header — so only expose
+`AdminApi:Host` on a trusted network, or set **`AdminApi:DashboardEnabled: false`** to remove it entirely.
 {{% /alert %}}
 
 ## Dedicated admin host (with its own HTTPS certificate)

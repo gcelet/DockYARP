@@ -161,6 +161,7 @@ or as a **double-underscore environment variable** on the proxy container (for e
 | `Host` | — (all hosts) | Dedicated host to scope the admin API (`/api/*`) and `/metrics` to. When set, those paths answer only on this host; on any other host they fall through to proxying (so a backend's `/api/*` is not shadowed). |
 | `LetsEncrypt` | `false` | Opt in to ACME-provision a certificate for `Host` (needs `Host` set). When enabled, the admin host is provisioned and renewed like any vhost; otherwise it keeps the default/operator certificate. |
 | `ContactEmail` | — | ACME contact email for the admin host; falls back to `Tls:ContactEmail` when unset. |
+| `DashboardEnabled` | `true` | Serve the read-only dashboard at `/dashboard`. It has **no application-level auth** of its own (unlike `/api/*`) — set `false` to remove it entirely. |
 
 ### `Compression`
 
