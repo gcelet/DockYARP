@@ -1,0 +1,38 @@
+name: CodeQL
+
+on:
+  pull_request:
+  schedule:
+    # Weekly, independent of PR activity — catches newly-published query/advisory coverage.
+    - cron: '0 5 * * 1'
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze (csharp)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: csharp
+          build-mode: manual
+
+      # Manual build mode: use the same Nuke path every other workflow uses (no duplicated build logic).
+      # The commonly-cited /p:UseSharedCompilation=false workaround is not needed on .NET Core 3.0+.
+      - name: Build (Nuke Compile)
+        run: ./build.sh Compile
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v4

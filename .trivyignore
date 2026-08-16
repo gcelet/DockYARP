@@ -1,0 +1,5 @@
+# Trivy vulnerability allowlist — used by .github/workflows/image.yml's image scan step.
+#
+# One CVE (or GHSA) id per line, with a comment explaining why it's accepted (no fix available, not
+# exploitable in DockYarp's usage, etc.). Do not add an entry just to make a scan pass — a deliberate,
+# reviewed acceptance only. See https://aquasecurity.github.io/trivy/latest/docs/configuration/filtering/

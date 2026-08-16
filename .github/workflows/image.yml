@@ -82,6 +82,22 @@ jobs:
           VERSION: ${{ steps.cfg.outputs.version }}
         run: ./build.sh DockerPublish --registry "$REGISTRY" --image-repository "$REPOSITORY" --version "$VERSION" --platforms linux/amd64,linux/arm64
 
+      # Both steps inspect the image just pushed above by registry reference — no separate rebuild.
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ steps.cfg.outputs.registry }}/${{ steps.cfg.outputs.repository }}:${{ steps.cfg.outputs.version }}
+          format: spdx-json
+          upload-artifact: true
+
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ steps.cfg.outputs.registry }}/${{ steps.cfg.outputs.repository }}:${{ steps.cfg.outputs.version }}
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          trivyignores: .trivyignore
+
   # Edge path: a push to the trunk branch, no tag. No --version override — GitVersion resolves the
   # in-development prerelease version the same way it already does for build-time stamping.
   publish-edge:
@@ -132,3 +148,13 @@ jobs:
           REGISTRY: ${{ steps.cfg.outputs.registry }}
           REPOSITORY: ${{ steps.cfg.outputs.repository }}
         run: ./build.sh DockerPublish --registry "$REGISTRY" --image-repository "$REPOSITORY" --edge --platforms linux/amd64,linux/arm64
+
+      # No SBOM step here (release-only, see design.md) — the edge channel still gets scanned so
+      # vulnerabilities surface as early as the in-development image, not only at release time.
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ steps.cfg.outputs.registry }}/${{ steps.cfg.outputs.repository }}:edge
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          trivyignores: .trivyignore
