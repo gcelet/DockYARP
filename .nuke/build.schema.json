@@ -122,17 +122,25 @@
           "type": "string",
           "description": "Base URL for the documentation build (the GitHub Pages project URL by default)"
         },
+        "Edge": {
+          "type": "boolean",
+          "description": "DockerPublish: also tag the image 'edge' (in-development builds off the trunk branch)"
+        },
         "ImageRepository": {
           "type": "string",
           "description": "Image repository name"
         },
         "ImageTag": {
           "type": "string",
-          "description": "Image tag"
+          "description": "Image tag (local DockerImage builds only)"
         },
         "Platforms": {
           "type": "string",
           "description": "Target platform(s) for the image, comma-separated (multi-arch requires DockerPublish/--push, not a local --load)"
+        },
+        "PublishTag": {
+          "type": "string",
+          "description": "DockerPublish: publish exactly this one tag, bypassing the computed release/prerelease/edge scheme (e.g. base-image-refresh.yml's ':latest'-only republish)"
         },
         "Registry": {
           "type": "string",

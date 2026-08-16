@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
@@ -26,8 +27,14 @@ class Build : NukeBuild
     [Parameter("Image repository name")]
     readonly string ImageRepository = "dockyarp";
 
-    [Parameter("Image tag")]
+    [Parameter("Image tag (local DockerImage builds only)")]
     readonly string ImageTag = "latest";
+
+    [Parameter("DockerPublish: publish exactly this one tag, bypassing the computed release/prerelease/edge scheme (e.g. base-image-refresh.yml's ':latest'-only republish)")]
+    readonly string PublishTag = "";
+
+    [Parameter("DockerPublish: also tag the image 'edge' (in-development builds off the trunk branch)")]
+    readonly bool Edge;
 
     [Parameter("Target platform(s) for the image, comma-separated (multi-arch requires DockerPublish/--push, not a local --load)")]
     readonly string Platforms = "linux/amd64";
@@ -53,13 +60,11 @@ class Build : NukeBuild
     // The AppHost consumes these fixed image names; E2E builds them before booting the distributed system.
     const string LocalProxyImage = "dockyarp:local";
 
-    string FullImage => string.IsNullOrEmpty(Registry)
-        ? $"{ImageRepository}:{ImageTag}"
-        : $"{Registry}/{ImageRepository}:{ImageTag}";
+    string ImageRef(string tag) => string.IsNullOrEmpty(Registry)
+        ? $"{ImageRepository}:{tag}"
+        : $"{Registry}/{ImageRepository}:{tag}";
 
-    string LatestImage => string.IsNullOrEmpty(Registry)
-        ? $"{ImageRepository}:latest"
-        : $"{Registry}/{ImageRepository}:latest";
+    string FullImage => ImageRef(ImageTag);
 
     AbsolutePath SolutionFile => RootDirectory / "DockYarp.slnx";
     AbsolutePath AppProject => RootDirectory / "src" / "DockYarp.App" / "DockYarp.App.csproj";
@@ -189,17 +194,50 @@ class Build : NukeBuild
                 RootDirectory)
             .AssertZeroExitCode());
 
-    // Build + push in one buildx step (multi-arch capable), also tagging :latest. The caller sets
-    // --registry/--image-repository/--image-tag/--platforms and must already be authenticated to the registry
+    // Build + push in one buildx step (multi-arch capable). The published tag set depends on the release
+    // channel (PublishTags) unless the caller pins one explicit tag via --publish-tag. The caller sets
+    // --registry/--image-repository/--platforms and must already be authenticated to the registry
     // (`docker login`); the release CI does that then calls this target. Requires Docker + buildx on PATH.
     Target DockerPublish => _ => _
         .DependsOn(GenerateVersionDetails)
-        .Executes(() => ProcessTasks
-            .StartProcess(
-                "docker",
-                $"buildx build --platform {Platforms} --build-arg VERSION={VersionDetails.Version} --push -t {FullImage} -t {LatestImage} .",
-                RootDirectory)
-            .AssertZeroExitCode());
+        .Executes(() =>
+        {
+            string tagArgs = string.Join(' ', PublishTags().Select(tag => $"-t {ImageRef(tag)}"));
+            ProcessTasks
+                .StartProcess(
+                    "docker",
+                    $"buildx build --platform {Platforms} --build-arg VERSION={VersionDetails.Version} --push {tagArgs} .",
+                    RootDirectory)
+                .AssertZeroExitCode();
+        });
+
+    // Stable (no pre-release suffix): the exact version + rolling Major.Minor + Major + latest.
+    // Prerelease: the exact version only (rolling tags/latest are left untouched). --edge additionally tags
+    // "edge" (the in-development channel, set by the develop-triggered publish job). --publish-tag bypasses
+    // this scheme entirely — used by base-image-refresh.yml to republish exactly ":latest".
+    IReadOnlyList<string> PublishTags()
+    {
+        if (!string.IsNullOrEmpty(PublishTag))
+        {
+            return [PublishTag];
+        }
+
+        List<string> tags = [VersionDetails.Version];
+        if (string.IsNullOrEmpty(VersionDetails.PackageVersionSuffix))
+        {
+            string[] parts = VersionDetails.PackageVersionPrefix.Split('.');
+            tags.Add($"{parts[0]}.{parts[1]}");
+            tags.Add(parts[0]);
+            tags.Add("latest");
+        }
+
+        if (Edge)
+        {
+            tags.Add("edge");
+        }
+
+        return tags;
+    }
 
     // Opt-in end-to-end suite: builds the images the Aspire AppHost consumes (the proxy image and the echo
     // backend image), then runs the EndToEnd-categorized tests, which boot the distributed system on a real

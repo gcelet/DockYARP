@@ -3,10 +3,11 @@ name: Publish image
 on:
   push:
     tags: ['v*']
+    branches: [develop]
   workflow_dispatch:
     inputs:
       tag:
-        description: Image tag to publish (defaults to the pushed git tag)
+        description: Version to publish (defaults to the pushed git tag)
         required: false
 
 # `packages: write` is needed for the GHCR default; a custom registry uses the credential secrets below.
@@ -19,8 +20,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
-    name: Build & push image
+  # Release path: a v* tag push (or a manual re-run) — computed tag set (stable: X.Y.Z+X.Y+X+latest;
+  # prerelease: X.Y.Z-<pre> only), decided by the Nuke DockerPublish target from the resolved version.
+  publish-release:
+    name: Build & push image (release)
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -69,11 +73,62 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME || github.actor }}
           password: ${{ secrets.REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}
 
-      # Delegate the actual build+push to the single Nuke image path (no duplicated build logic here); it
-      # buildx-builds the multi-arch manifest and pushes :{version} + :latest to the resolved registry.
+      # Delegate the actual build+push to the single Nuke image path (no duplicated build logic here); the
+      # target computes the stable/prerelease tag set from the resolved version.
       - name: Build & push (Nuke DockerPublish)
         env:
           REGISTRY: ${{ steps.cfg.outputs.registry }}
           REPOSITORY: ${{ steps.cfg.outputs.repository }}
           VERSION: ${{ steps.cfg.outputs.version }}
-        run: ./build.sh DockerPublish --registry "$REGISTRY" --image-repository "$REPOSITORY" --image-tag "$VERSION" --platforms linux/amd64,linux/arm64
+        run: ./build.sh DockerPublish --registry "$REGISTRY" --image-repository "$REPOSITORY" --version "$VERSION" --platforms linux/amd64,linux/arm64
+
+  # Edge path: a push to the trunk branch, no tag. No --version override — GitVersion resolves the
+  # in-development prerelease version the same way it already does for build-time stamping.
+  publish-edge:
+    name: Build & push image (edge)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # GitVersion (run by the Nuke build during DockerPublish) needs the full history + tags.
+          fetch-depth: 0
+
+      - name: Resolve target
+        id: cfg
+        env:
+          IN_REGISTRY: ${{ vars.IMAGE_REGISTRY }}
+          IN_REPOSITORY: ${{ vars.IMAGE_REPOSITORY }}
+          DEFAULT_REPOSITORY: ${{ github.repository }}
+        run: |
+          registry="${IN_REGISTRY:-ghcr.io}"
+          repository="${IN_REPOSITORY:-$DEFAULT_REPOSITORY}"
+          {
+            echo "registry=$registry"
+            echo "repository=${repository,,}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up .NET (for the Nuke build)
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to the registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ steps.cfg.outputs.registry }}
+          username: ${{ secrets.REGISTRY_USERNAME || github.actor }}
+          password: ${{ secrets.REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}
+
+      - name: Build & push (Nuke DockerPublish --edge)
+        env:
+          REGISTRY: ${{ steps.cfg.outputs.registry }}
+          REPOSITORY: ${{ steps.cfg.outputs.repository }}
+        run: ./build.sh DockerPublish --registry "$REGISTRY" --image-repository "$REPOSITORY" --edge --platforms linux/amd64,linux/arm64

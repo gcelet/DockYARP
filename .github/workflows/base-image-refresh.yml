@@ -65,9 +65,10 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}
 
       # Delegate to the single Nuke image path (no duplicated build logic); rebuild the multi-arch manifest with
-      # the patched base and republish :latest only. Released v* tags are left untouched.
+      # the patched base and republish :latest only. --publish-tag bypasses the computed release/prerelease/edge
+      # scheme entirely, so this never touches the immutable X.Y.Z or rolling X.Y/X tags.
       - name: Rebuild & push :latest (Nuke DockerPublish)
         env:
           REGISTRY: ${{ steps.cfg.outputs.registry }}
           REPOSITORY: ${{ steps.cfg.outputs.repository }}
-        run: ./build.sh DockerPublish --registry "$REGISTRY" --image-repository "$REPOSITORY" --image-tag latest --platforms linux/amd64,linux/arm64
+        run: ./build.sh DockerPublish --registry "$REGISTRY" --image-repository "$REPOSITORY" --publish-tag latest --platforms linux/amd64,linux/arm64
