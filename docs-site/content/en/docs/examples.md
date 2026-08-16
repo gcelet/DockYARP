@@ -103,6 +103,35 @@ certificate; on every application host the same paths are proxied to the backend
 and a reachable port 80 for the HTTP-01 challenge, like any other certified host. Leave `AdminApi__LetsEncrypt`
 unset (or `false`) to keep the self-signed/operator certificate on the admin host.
 
+## No host port-remap (macvlan, host networking)
+
+ACME HTTP-01 needs port 80 reachable from the certificate authority, and clients need port 443 reachable,
+regardless of topology. The base stack above works because Docker's own host port-remap silently maps published
+host ports 80/443 onto the container's non-root listen ports 8080/8443. A topology with **no such remap** —
+macvlan (the container gets its own LAN-routable interface) or host networking — has no port-remap layer at
+all, so the container must listen on 80/443 itself:
+
+```yaml
+  dockyarp:
+    image: gcelet/dockyarp   # or dockyarp:local for a local build
+    cap_add:
+      - NET_BIND_SERVICE   # lets the non-root process bind ports 80/443 directly
+    environment:
+      Docker__Enabled: "true"
+      Docker__DockerEndpoint: "tcp://dockerproxy:2375"
+      Server__HttpPort: "80"
+      Server__HttpsPort: "443"
+    volumes:
+      - certs:/certs
+      - ./config:/config
+    depends_on: [dockerproxy]
+    network_mode: "host"   # or your macvlan network, with no `ports:` block either way
+```
+
+`NET_BIND_SERVICE` is the standard Linux capability for "a non-root process needs a privileged port" — the same
+pattern nginx's own official image uses via `setcap`, not a reason to run as root. No `ports:` mapping is used
+or needed: the container is directly reachable on 80/443 through its own network interface.
+
 ## Multiple ports on one container
 
 ```yaml

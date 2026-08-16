@@ -76,6 +76,11 @@ or as a **double-underscore environment variable** on the proxy container (for e
 
 ### `Server` — data-plane ports
 
+ACME HTTP-01 needs port 80 reachable from the certificate authority, and clients need port 443 reachable —
+regardless of deployment topology. With a host port-remap (Docker's default bridge networking + `ports:`), the
+non-root defaults below are published as 80/443 by Docker itself; with no such remap (macvlan, host networking)
+the container must listen on 80/443 directly — see [Examples](/docs/examples/#no-host-port-remap-macvlan-host-networking).
+
 | Key | Default | Purpose |
 |-----|---------|---------|
 | `HttpPort` | `8080` | Plaintext HTTP port (ACME challenge + HTTP→HTTPS redirects). |
