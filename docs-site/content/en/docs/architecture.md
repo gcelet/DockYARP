@@ -1,6 +1,6 @@
 ---
 title: Architecture
-weight: 5
+weight: 6
 description: How discovery, routing, and TLS fit together.
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Releasing
-weight: 8
+weight: 9
 description: How to cut a DockYARP release, from the first-release bootstrap to the tag push.
 ---
 
