@@ -91,6 +91,91 @@ public sealed class CertificateStoreTests
         store.Find("app.local").Should().BeNull();
     }
 
+    /// <summary>A full-chain PEM file (leaf then intermediate) preserves the intermediate, not just the leaf.</summary>
+    [Test]
+    public void FullChainPemPreservesIntermediate()
+    {
+        (X509Certificate2 leaf, X509Certificate2 intermediate) = TestChainFactory.CreateChain("chain.local");
+        using X509Certificate2 disposableLeaf = leaf;
+        using X509Certificate2 disposableIntermediate = intermediate;
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        string fullChainPem = leaf.ExportCertificatePem() + "\n" + intermediate.ExportCertificatePem();
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "chain.local.crt"),
+            new MockFileData(fullChainPem));
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "chain.local.key"),
+            new MockFileData(leaf.GetRSAPrivateKey()!.ExportPkcs8PrivateKeyPem()));
+
+        using FileCertificateStore store = new(new TlsOptions { CertificateDirectory = directory }, fileSystem);
+
+        X509Certificate2? loaded = store.Find("chain.local");
+        loaded.Should().NotBeNull();
+        loaded!.HasPrivateKey.Should().BeTrue();
+        ChainBuildsAgainst(loaded, intermediate).Should().BeTrue("the intermediate must travel with the loaded certificate");
+    }
+
+    /// <summary>The intermediate is found regardless of its position in the file (not assumed to be second).</summary>
+    [Test]
+    public void FullChainPemPreservesIntermediate_ReversedOrder()
+    {
+        (X509Certificate2 leaf, X509Certificate2 intermediate) = TestChainFactory.CreateChain("chain-reversed.local");
+        using X509Certificate2 disposableLeaf = leaf;
+        using X509Certificate2 disposableIntermediate = intermediate;
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        string reversedChainPem = intermediate.ExportCertificatePem() + "\n" + leaf.ExportCertificatePem();
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "chain-reversed.local.crt"),
+            new MockFileData(reversedChainPem));
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "chain-reversed.local.key"),
+            new MockFileData(leaf.GetRSAPrivateKey()!.ExportPkcs8PrivateKeyPem()));
+
+        using FileCertificateStore store = new(new TlsOptions { CertificateDirectory = directory }, fileSystem);
+
+        X509Certificate2? loaded = store.Find("chain-reversed.local");
+        loaded.Should().NotBeNull();
+        loaded!.HasPrivateKey.Should().BeTrue();
+        ChainBuildsAgainst(loaded, intermediate).Should().BeTrue("order in the file must not matter");
+    }
+
+    /// <summary>A key that matches none of the certificates in the file is skipped, not a crash.</summary>
+    [Test]
+    public void KeyMatchingNoCertificateIsSkipped()
+    {
+        (X509Certificate2 leaf, X509Certificate2 intermediate) = TestChainFactory.CreateChain("mismatched.local");
+        using X509Certificate2 disposableLeaf = leaf;
+        using X509Certificate2 disposableIntermediate = intermediate;
+        using X509Certificate2 unrelated = DefaultCertificateFactory.CreateSelfSigned("unrelated.local");
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "mismatched.local.crt"),
+            new MockFileData(leaf.ExportCertificatePem() + "\n" + intermediate.ExportCertificatePem()));
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "mismatched.local.key"),
+            new MockFileData(unrelated.GetRSAPrivateKey()!.ExportPkcs8PrivateKeyPem()));
+
+        using FileCertificateStore store = new(new TlsOptions { CertificateDirectory = directory }, fileSystem);
+
+        store.Find("mismatched.local").Should().BeNull();
+    }
+
+    // Proves the intermediate travels with the loaded leaf (not just that loading didn't throw): builds a chain
+    // trusting only `intermediate` (CustomRootTrust, empty ExtraStore) — this can only succeed if `loaded`
+    // itself carries the intermediate, since nothing else supplies it.
+    private static bool ChainBuildsAgainst(X509Certificate2 loaded, X509Certificate2 intermediate)
+    {
+        using X509Chain chain = new();
+        chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
+        chain.ChainPolicy.CustomTrustStore.Add(intermediate);
+        chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+        chain.ChainPolicy.VerificationFlags = X509VerificationFlags.NoFlag;
+        return chain.Build(loaded);
+    }
+
     private static string CertificateDirectory(MockFileSystem fileSystem) =>
         fileSystem.Path.Combine(fileSystem.Directory.GetCurrentDirectory(), "certs");
 
