@@ -172,8 +172,16 @@ class Build : NukeBuild
                 RootDirectory.GlobFiles("tests/**/*Tests.csproj").Where(project => project != E2EProject),
                 (settings, project) => settings.SetProjectFile(project))));
 
+    // Depends on GenerateVersionDetails only, not Compile: this target's sole caller is the Dockerfile's build
+    // stage, and DotNetPublish restores + builds AppProject's own graph on its own. A prior version depended on
+    // Compile (a full-solution `dotnet build`), which meant every image build also built the E2E/test projects
+    // for no reason — including DockYarp.E2E.GrpcBackend/E2E.Tests, whose Grpc.Tools native protoc/plugin
+    // binaries segfault under QEMU emulation on a multi-arch (edge) build. Confirmed via a real CI failure
+    // (`qemu : error : uncaught target signal 11 (Segmentation fault)`), not assumed. Narrowing this to just
+    // AppProject's own graph removes both the wasted work and the crash; test/E2E gating already happens
+    // elsewhere (the outer Test/Release targets), which this inner, Dockerfile-only invocation never reaches.
     Target Publish => _ => _
-        .DependsOn(Compile)
+        .DependsOn(GenerateVersionDetails)
         .Executes(() => DotNetPublish(s => s
             .SetProject(AppProject)
             .SetConfiguration(Configuration)
