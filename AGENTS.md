@@ -46,6 +46,13 @@ between work sessions. The entry point is the parity backlog `openspec/backlog/`
    docs site in the same change** — `docs-site/content/en/docs/` (`configuration.md` / `features.md` /
    `examples.md` as relevant) — and keep `docs/labels-reference.md` in sync, so the site never lags. Verify names
    and defaults against the code. Pure internal refactors and `e2e-*`/verification items are exempt.
+   **Periodic doc audit habit**: same-change updates can still miss cross-references in prose (a warning callout,
+   an intro paragraph) that mention a key/behavior without it being the literal row being edited — after a
+   config-shape change (a renamed/removed/restructured key, not just a new one), grep the whole `docs-site/`
+   tree (and `README.md`/`docs/*.md` outside it) for the old name before considering the change fully documented.
+   Any drift found this way is its own fresh backlog item with its own spec delta if warranted — this audit habit
+   itself is not a backlog item (it never "closes"), it's a standing check to run whenever a change of that shape
+   lands.
 4. **Commit** — [gitmoji](https://gitmoji.dev/) + Conventional Commits, e.g. `:sparkles: feat: <description>`,
    `:bug: fix: <description>`. A change that carries a `specs/<capability>/spec.md` delta needs **two** commits:
    the implementation first, then `/opsx:archive <id>` (syncs `openspec/specs/`) as its own commit,
