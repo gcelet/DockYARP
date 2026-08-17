@@ -21,7 +21,7 @@ public sealed class DefaultCertificateProviderTests
 
         using DefaultCertificateProvider provider = new(new TlsOptions { CertificateDirectory = "certs" }, fileSystem);
 
-        provider.Certificate.Thumbprint.Should().Be(operatorCert.Thumbprint);
+        provider.Certificate.Leaf.Thumbprint.Should().Be(operatorCert.Thumbprint);
     }
 
     /// <summary>Without an operator default certificate, a self-signed certificate is generated.</summary>
@@ -30,6 +30,6 @@ public sealed class DefaultCertificateProviderTests
     {
         using DefaultCertificateProvider provider = new(new TlsOptions { CertificateDirectory = "certs" }, new MockFileSystem());
 
-        provider.Certificate.Subject.Should().Contain("dockyarp.local");
+        provider.Certificate.Leaf.Subject.Should().Contain("dockyarp.local");
     }
 }

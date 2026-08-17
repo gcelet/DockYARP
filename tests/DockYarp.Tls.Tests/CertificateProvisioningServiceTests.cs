@@ -3,7 +3,6 @@ namespace DockYarp.Tls.Tests;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -40,7 +39,7 @@ public sealed class CertificateProvisioningServiceTests
     {
         RouteConfigStore routes = StoreWithTlsHost();
         FakeCertificateStore certificates = new();
-        certificates.Save("app.local", DefaultCertificateFactory.CreateSelfSigned("app.local"));
+        certificates.Save("app.local", new LoadedCertificate(DefaultCertificateFactory.CreateSelfSigned("app.local"), []));
         FakeAcmeClient acme = new();
 
         // A very large margin forces the existing (1-year) certificate to be treated as near expiry.
@@ -211,20 +210,20 @@ public sealed class CertificateProvisioningServiceTests
         private readonly HashSet<int> failing = [.. failingAttempts];
         private int attempts;
 
-        public Task<X509Certificate2> RequestCertificateAsync(string host, string? email, CancellationToken cancellationToken)
+        public Task<LoadedCertificate> RequestCertificateAsync(string host, string? email, CancellationToken cancellationToken)
         {
             int attempt = Interlocked.Increment(ref attempts);
             return failing.Contains(attempt)
-                ? Task.FromException<X509Certificate2>(new TimeoutException("Timed out waiting for ACME authorization."))
-                : Task.FromResult(DefaultCertificateFactory.CreateSelfSigned(host));
+                ? Task.FromException<LoadedCertificate>(new TimeoutException("Timed out waiting for ACME authorization."))
+                : Task.FromResult(new LoadedCertificate(DefaultCertificateFactory.CreateSelfSigned(host), []));
         }
     }
 
     /// <summary>An ACME client that always fails with a transient-looking timeout.</summary>
     private sealed class FailingAcmeClient : IAcmeClient
     {
-        public Task<X509Certificate2> RequestCertificateAsync(string host, string? email, CancellationToken cancellationToken) =>
-            Task.FromException<X509Certificate2>(new TimeoutException("Timed out waiting for ACME authorization."));
+        public Task<LoadedCertificate> RequestCertificateAsync(string host, string? email, CancellationToken cancellationToken) =>
+            Task.FromException<LoadedCertificate>(new TimeoutException("Timed out waiting for ACME authorization."));
     }
 
     /// <summary>A fake ACME client where each of two hosts waits for the other to start, so both requests
@@ -234,7 +233,7 @@ public sealed class CertificateProvisioningServiceTests
         private readonly TaskCompletionSource firstStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly TaskCompletionSource secondStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        public async Task<X509Certificate2> RequestCertificateAsync(string host, string? email, CancellationToken cancellationToken)
+        public async Task<LoadedCertificate> RequestCertificateAsync(string host, string? email, CancellationToken cancellationToken)
         {
             // Each host signals its arrival and waits for the other's; a generous timeout keeps a sequential
             // regression from hanging the test (the blocked host times out and fails instead of both passing).
@@ -249,7 +248,7 @@ public sealed class CertificateProvisioningServiceTests
                 await firstStarted.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
             }
 
-            return DefaultCertificateFactory.CreateSelfSigned(host);
+            return new LoadedCertificate(DefaultCertificateFactory.CreateSelfSigned(host), []);
         }
     }
 }

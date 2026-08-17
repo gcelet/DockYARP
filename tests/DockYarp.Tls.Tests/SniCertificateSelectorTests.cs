@@ -20,13 +20,13 @@ public sealed class SniCertificateSelectorTests
     {
         FakeCertificateStore store = new();
         using X509Certificate2 appCertificate = DefaultCertificateFactory.CreateSelfSigned("app.local");
-        store.Save("app.local", appCertificate);
+        store.Save("app.local", new LoadedCertificate(appCertificate, []));
         using DefaultCertificateProvider fallback = new(new TlsOptions(), new MockFileSystem());
         SniCertificateSelector selector = Selector(store, fallback);
 
-        X509Certificate2 selected = selector.Select("app.local");
+        LoadedCertificate selected = selector.Select("app.local");
 
-        selected.Thumbprint.Should().Be(appCertificate.Thumbprint);
+        selected.Leaf.Thumbprint.Should().Be(appCertificate.Thumbprint);
     }
 
     /// <summary>A subdomain with no exact certificate selects the parent-domain (wildcard) certificate.</summary>
@@ -35,11 +35,11 @@ public sealed class SniCertificateSelectorTests
     {
         FakeCertificateStore store = new();
         using X509Certificate2 wildcard = DefaultCertificateFactory.CreateSelfSigned("*.example.com");
-        store.Save("example.com", wildcard);
+        store.Save("example.com", new LoadedCertificate(wildcard, []));
         using DefaultCertificateProvider fallback = new(new TlsOptions(), new MockFileSystem());
         SniCertificateSelector selector = Selector(store, fallback);
 
-        selector.Select("foo.example.com").Thumbprint.Should().Be(wildcard.Thumbprint);
+        selector.Select("foo.example.com").Leaf.Thumbprint.Should().Be(wildcard.Thumbprint);
     }
 
     /// <summary>The fallback certificate is returned for an unknown host or missing SNI.</summary>
@@ -50,9 +50,9 @@ public sealed class SniCertificateSelectorTests
         using DefaultCertificateProvider fallback = new(new TlsOptions(), new MockFileSystem());
         SniCertificateSelector selector = Selector(store, fallback);
 
-        selector.Select("unknown.local").Thumbprint.Should().Be(fallback.Certificate.Thumbprint);
-        selector.Select("bar.other.test").Thumbprint.Should().Be(fallback.Certificate.Thumbprint);
-        selector.Select(null).Thumbprint.Should().Be(fallback.Certificate.Thumbprint);
+        selector.Select("unknown.local").Leaf.Thumbprint.Should().Be(fallback.Certificate.Leaf.Thumbprint);
+        selector.Select("bar.other.test").Leaf.Thumbprint.Should().Be(fallback.Certificate.Leaf.Thumbprint);
+        selector.Select(null).Leaf.Thumbprint.Should().Be(fallback.Certificate.Leaf.Thumbprint);
     }
 
     /// <summary>A CERT_NAME pin overrides the per-host certificate with the shared one.</summary>
@@ -62,12 +62,12 @@ public sealed class SniCertificateSelectorTests
         FakeCertificateStore store = new();
         using X509Certificate2 hostCertificate = DefaultCertificateFactory.CreateSelfSigned("app.local");
         using X509Certificate2 sharedCertificate = DefaultCertificateFactory.CreateSelfSigned("shared");
-        store.Save("app.local", hostCertificate);
-        store.Save("shared", sharedCertificate);
+        store.Save("app.local", new LoadedCertificate(hostCertificate, []));
+        store.Save("shared", new LoadedCertificate(sharedCertificate, []));
         using DefaultCertificateProvider fallback = new(new TlsOptions(), new MockFileSystem());
         SniCertificateSelector selector = Selector(store, fallback, RouteWithCertName("app.local", "shared"));
 
-        selector.Select("app.local").Thumbprint.Should().Be(sharedCertificate.Thumbprint);
+        selector.Select("app.local").Leaf.Thumbprint.Should().Be(sharedCertificate.Thumbprint);
     }
 
     /// <summary>A CERT_NAME pin whose certificate is missing falls back to per-host selection.</summary>
@@ -76,11 +76,11 @@ public sealed class SniCertificateSelectorTests
     {
         FakeCertificateStore store = new();
         using X509Certificate2 hostCertificate = DefaultCertificateFactory.CreateSelfSigned("app.local");
-        store.Save("app.local", hostCertificate);
+        store.Save("app.local", new LoadedCertificate(hostCertificate, []));
         using DefaultCertificateProvider fallback = new(new TlsOptions(), new MockFileSystem());
         SniCertificateSelector selector = Selector(store, fallback, RouteWithCertName("app.local", "shared"));
 
-        selector.Select("app.local").Thumbprint.Should().Be(hostCertificate.Thumbprint);
+        selector.Select("app.local").Leaf.Thumbprint.Should().Be(hostCertificate.Thumbprint);
     }
 
     private static RouteRule RouteWithCertName(string host, string certName) =>

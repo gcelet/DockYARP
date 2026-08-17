@@ -28,13 +28,13 @@ public sealed class SniTlsHandshakeCallbackTests
     {
         FakeCertificateStore store = new();
         using X509Certificate2 appCertificate = DefaultCertificateFactory.CreateSelfSigned("app.local");
-        store.Save("app.local", appCertificate);
+        store.Save("app.local", new LoadedCertificate(appCertificate, []));
         using DefaultCertificateProvider fallback = new(new TlsOptions(), new MockFileSystem());
         SniTlsHandshakeCallback callback = Callback(store, fallback, new TlsOptions());
 
         SslServerAuthenticationOptions options = callback.BuildOptions("app.local");
 
-        options.ServerCertificate.Should().BeSameAs(appCertificate);
+        options.ServerCertificateContext!.TargetCertificate.Should().BeSameAs(appCertificate);
         options.EnabledSslProtocols.Should().Be(SslProtocols.Tls12 | SslProtocols.Tls13);
         options.ApplicationProtocols.Should().Equal(SslApplicationProtocol.Http2, SslApplicationProtocol.Http11);
         options.ClientCertificateRequired.Should().BeFalse();
@@ -51,7 +51,7 @@ public sealed class SniTlsHandshakeCallbackTests
 
         SslServerAuthenticationOptions options = callback.BuildOptions("unknown.local");
 
-        ((X509Certificate2)options.ServerCertificate!).Thumbprint.Should().Be(fallback.Certificate.Thumbprint);
+        options.ServerCertificateContext!.TargetCertificate.Thumbprint.Should().Be(fallback.Certificate.Leaf.Thumbprint);
     }
 
     /// <summary>A minimum of TLS 1.3 narrows the enabled protocols to TLS 1.3 only.</summary>

@@ -24,7 +24,7 @@ public sealed class CertificateStoreTests
 
             using (FileCertificateStore store = new(options, new FileSystem()))
             {
-                store.Save("app.local", certificate);
+                store.Save("app.local", new LoadedCertificate(certificate, []));
                 store.Find("app.local").Should().NotBeNull();
                 store.List().Should().ContainSingle(info => info.Host == "app.local");
             }
@@ -54,9 +54,9 @@ public sealed class CertificateStoreTests
 
         using FileCertificateStore store = new(new TlsOptions { CertificateDirectory = directory }, fileSystem);
 
-        X509Certificate2? loaded = store.Find("app.local");
+        LoadedCertificate? loaded = store.Find("app.local");
         loaded.Should().NotBeNull();
-        loaded!.HasPrivateKey.Should().BeTrue();
+        loaded!.Leaf.HasPrivateKey.Should().BeTrue();
     }
 
     /// <summary>A mounted PFX file is loaded.</summary>
@@ -110,9 +110,10 @@ public sealed class CertificateStoreTests
 
         using FileCertificateStore store = new(new TlsOptions { CertificateDirectory = directory }, fileSystem);
 
-        X509Certificate2? loaded = store.Find("chain.local");
+        LoadedCertificate? loaded = store.Find("chain.local");
         loaded.Should().NotBeNull();
-        loaded!.HasPrivateKey.Should().BeTrue();
+        loaded!.Leaf.HasPrivateKey.Should().BeTrue();
+        loaded.Additional.Should().HaveCount(1, "the intermediate must be exposed explicitly, not just loadable");
         ChainBuildsAgainst(loaded, intermediate).Should().BeTrue("the intermediate must travel with the loaded certificate");
     }
 
@@ -135,9 +136,9 @@ public sealed class CertificateStoreTests
 
         using FileCertificateStore store = new(new TlsOptions { CertificateDirectory = directory }, fileSystem);
 
-        X509Certificate2? loaded = store.Find("chain-reversed.local");
+        LoadedCertificate? loaded = store.Find("chain-reversed.local");
         loaded.Should().NotBeNull();
-        loaded!.HasPrivateKey.Should().BeTrue();
+        loaded!.Leaf.HasPrivateKey.Should().BeTrue();
         ChainBuildsAgainst(loaded, intermediate).Should().BeTrue("order in the file must not matter");
     }
 
@@ -163,17 +164,23 @@ public sealed class CertificateStoreTests
         store.Find("mismatched.local").Should().BeNull();
     }
 
-    // Proves the intermediate travels with the loaded leaf (not just that loading didn't throw): builds a chain
-    // trusting only `intermediate` (CustomRootTrust, empty ExtraStore) — this can only succeed if `loaded`
-    // itself carries the intermediate, since nothing else supplies it.
-    private static bool ChainBuildsAgainst(X509Certificate2 loaded, X509Certificate2 intermediate)
+    // Proves the intermediate travels with the loaded certificate as an explicit LoadedCertificate.Additional
+    // entry (not merely that loading didn't throw, and not relying on any OS-side-channel awareness of sibling
+    // certificates): only `loaded.Additional` — not the test's own `intermediate` object — is placed in
+    // ExtraStore, so building can only succeed if the store actually preserved a usable copy of it.
+    private static bool ChainBuildsAgainst(LoadedCertificate loaded, X509Certificate2 intermediate)
     {
         using X509Chain chain = new();
         chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
         chain.ChainPolicy.CustomTrustStore.Add(intermediate);
+        foreach (X509Certificate2 additional in loaded.Additional)
+        {
+            chain.ChainPolicy.ExtraStore.Add(additional);
+        }
+
         chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
         chain.ChainPolicy.VerificationFlags = X509VerificationFlags.NoFlag;
-        return chain.Build(loaded);
+        return chain.Build(loaded.Leaf);
     }
 
     private static string CertificateDirectory(MockFileSystem fileSystem) =>

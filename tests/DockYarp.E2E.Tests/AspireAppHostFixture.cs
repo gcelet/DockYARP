@@ -50,8 +50,11 @@ public static class AspireAppHostFixture
     [OneTimeSetUp]
     public static async Task StartAsync()
     {
-        // The client CA must exist before DockYarp starts (it is mounted as Tls__ClientCaCertificatePath).
+        // The client CA and the operator-provided pem.local chain must exist before DockYarp starts: the former
+        // is mounted as Tls__ClientCaCertificatePath, the latter is loaded once from the certs directory at
+        // startup (FileCertificateStore has no live reload).
         TlsHarness.PrepareClientCa();
+        TlsHarness.PrepareMountedChain();
 
         using CancellationTokenSource cts = new(TimeSpan.FromSeconds(StartupTimeoutSeconds));
         CancellationToken token = cts.Token;

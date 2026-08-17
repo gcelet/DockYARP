@@ -11,7 +11,7 @@ using System.Threading;
 public sealed class FileCertificateStore : ICertificateStore, IDisposable
 {
     private readonly Lock gate = new();
-    private readonly Dictionary<string, X509Certificate2> certificates = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, LoadedCertificate> certificates = new(StringComparer.OrdinalIgnoreCase);
     private readonly IFileSystem fileSystem;
     private readonly string directory;
 
@@ -27,26 +27,26 @@ public sealed class FileCertificateStore : ICertificateStore, IDisposable
     }
 
     /// <inheritdoc />
-    public X509Certificate2? Find(string host)
+    public LoadedCertificate? Find(string host)
     {
         lock (gate)
         {
-            return certificates.TryGetValue(host, out X509Certificate2? certificate) ? certificate : null;
+            return certificates.TryGetValue(host, out LoadedCertificate? certificate) ? certificate : null;
         }
     }
 
     /// <inheritdoc />
-    public void Save(string host, X509Certificate2 certificate)
+    public void Save(string host, LoadedCertificate certificate)
     {
         ArgumentNullException.ThrowIfNull(certificate);
         fileSystem.Directory.CreateDirectory(directory);
-        fileSystem.File.WriteAllBytes(PathFor(host, ".pfx"), certificate.Export(X509ContentType.Pfx));
+        fileSystem.File.WriteAllBytes(PathFor(host, ".pfx"), ExportChain(certificate));
 
         lock (gate)
         {
-            if (certificates.Remove(host, out X509Certificate2? previous))
+            if (certificates.Remove(host, out LoadedCertificate? previous))
             {
-                previous.Dispose();
+                DisposeCertificate(previous);
             }
 
             certificates[host] = certificate;
@@ -58,7 +58,7 @@ public sealed class FileCertificateStore : ICertificateStore, IDisposable
     {
         lock (gate)
         {
-            return [.. certificates.Select(entry => new CertificateInfo(entry.Key, new DateTimeOffset(entry.Value.NotAfter)))];
+            return [.. certificates.Select(entry => new CertificateInfo(entry.Key, new DateTimeOffset(entry.Value.Leaf.NotAfter)))];
         }
     }
 
@@ -67,9 +67,9 @@ public sealed class FileCertificateStore : ICertificateStore, IDisposable
     {
         lock (gate)
         {
-            foreach (X509Certificate2 certificate in certificates.Values)
+            foreach (LoadedCertificate certificate in certificates.Values)
             {
-                certificate.Dispose();
+                DisposeCertificate(certificate);
             }
 
             certificates.Clear();
@@ -92,7 +92,7 @@ public sealed class FileCertificateStore : ICertificateStore, IDisposable
                 continue;
             }
 
-            certificates[host] = X509CertificateLoader.LoadPkcs12(fileSystem.File.ReadAllBytes(file), null);
+            certificates[host] = CertificateCollectionLoader.LoadKeyed(fileSystem.File.ReadAllBytes(file), null);
         }
 
         foreach (string file in fileSystem.Directory.EnumerateFiles(directory, "*.crt"))
@@ -104,10 +104,26 @@ public sealed class FileCertificateStore : ICertificateStore, IDisposable
             }
 
             string keyPath = fileSystem.Path.ChangeExtension(file, ".key");
-            if (PemCertificateLoader.TryLoad(fileSystem, file, keyPath, out X509Certificate2 certificate))
+            if (PemCertificateLoader.TryLoad(fileSystem, file, keyPath, out LoadedCertificate certificate))
             {
                 certificates[host] = certificate;
             }
+        }
+    }
+
+    // Never null: exporting a collection that always contains at least the leaf produces bytes.
+    private static byte[] ExportChain(LoadedCertificate certificate)
+    {
+        X509Certificate2Collection bag = [certificate.Leaf, .. certificate.Additional];
+        return bag.Export(X509ContentType.Pfx)!;
+    }
+
+    private static void DisposeCertificate(LoadedCertificate certificate)
+    {
+        certificate.Leaf.Dispose();
+        foreach (X509Certificate2 additional in certificate.Additional)
+        {
+            additional.Dispose();
         }
     }
 

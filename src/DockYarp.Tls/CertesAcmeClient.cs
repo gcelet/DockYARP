@@ -2,7 +2,6 @@ namespace DockYarp.Tls;
 
 using System;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -18,7 +17,7 @@ using Certes.Pkcs;
 public sealed class CertesAcmeClient(TlsOptions options, IHttp01ChallengeStore challenges) : IAcmeClient
 {
     /// <inheritdoc />
-    public async Task<X509Certificate2> RequestCertificateAsync(string host, string? email, CancellationToken cancellationToken)
+    public async Task<LoadedCertificate> RequestCertificateAsync(string host, string? email, CancellationToken cancellationToken)
     {
         string contact = email ?? options.ContactEmail
             ?? throw new InvalidOperationException("An ACME contact email is required.");
@@ -39,7 +38,7 @@ public sealed class CertesAcmeClient(TlsOptions options, IHttp01ChallengeStore c
             IKey privateKey = KeyFactory.NewKey(KeyAlgorithm.ES256);
             CertificateChain chain = await order.Generate(new CsrInfo { CommonName = host }, privateKey).ConfigureAwait(false);
             byte[] pfx = BuildPfx(chain, privateKey, host);
-            return X509CertificateLoader.LoadPkcs12(pfx, string.Empty);
+            return CertificateCollectionLoader.LoadKeyed(pfx, string.Empty);
         }
         finally
         {

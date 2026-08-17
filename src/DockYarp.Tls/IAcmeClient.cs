@@ -1,6 +1,5 @@
 namespace DockYarp.Tls;
 
-using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,6 +11,6 @@ public interface IAcmeClient
     /// <param name="host">The host to certify.</param>
     /// <param name="email">Contact email, or <see langword="null"/> to use the configured default.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
-    /// <returns>The issued certificate.</returns>
-    Task<X509Certificate2> RequestCertificateAsync(string host, string? email, CancellationToken cancellationToken);
+    /// <returns>The issued certificate, with any intermediate certificates it was issued alongside.</returns>
+    Task<LoadedCertificate> RequestCertificateAsync(string host, string? email, CancellationToken cancellationToken);
 }

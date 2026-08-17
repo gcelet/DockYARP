@@ -21,18 +21,23 @@ public sealed class DefaultCertificateProvider : IDisposable
 
         string certPath = fileSystem.Path.Combine(options.CertificateDirectory, "default.crt");
         string keyPath = fileSystem.Path.Combine(options.CertificateDirectory, "default.key");
-        Certificate = PemCertificateLoader.TryLoad(fileSystem, certPath, keyPath, out X509Certificate2 provided)
+        Certificate = PemCertificateLoader.TryLoad(fileSystem, certPath, keyPath, out LoadedCertificate provided)
             ? provided
-            : DefaultCertificateFactory.CreateSelfSigned("dockyarp.local");
+            : new LoadedCertificate(DefaultCertificateFactory.CreateSelfSigned("dockyarp.local"), []);
     }
 
     /// <summary>Gets the fallback certificate.</summary>
-    public X509Certificate2 Certificate { get; }
+    public LoadedCertificate Certificate { get; }
 
     /// <inheritdoc />
     public void Dispose()
     {
-        Certificate.Dispose();
+        Certificate.Leaf.Dispose();
+        foreach (X509Certificate2 additional in Certificate.Additional)
+        {
+            additional.Dispose();
+        }
+
         GC.SuppressFinalize(this);
     }
 }

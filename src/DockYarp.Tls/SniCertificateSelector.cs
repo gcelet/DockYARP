@@ -2,7 +2,6 @@ namespace DockYarp.Tls;
 
 using System;
 using System.Collections.Concurrent;
-using System.Security.Cryptography.X509Certificates;
 
 using DockYarp.Core.Interfaces;
 
@@ -28,7 +27,7 @@ public sealed class SniCertificateSelector(
     /// The <c>CERT_NAME</c> shared certificate when pinned and present; otherwise the exact host certificate;
     /// otherwise the parent-domain (wildcard) certificate; otherwise the fallback.
     /// </returns>
-    public X509Certificate2 Select(string? host)
+    public LoadedCertificate Select(string? host)
     {
         if (host is { Length: > 0 } name)
         {
@@ -45,7 +44,7 @@ public sealed class SniCertificateSelector(
                 }
             }
 
-            X509Certificate2? exact = store.Find(name);
+            LoadedCertificate? exact = store.Find(name);
             if (exact is not null)
             {
                 return exact;

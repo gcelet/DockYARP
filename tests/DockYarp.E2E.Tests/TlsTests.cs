@@ -1,13 +1,18 @@
 namespace DockYarp.E2E.Tests;
 
 using System;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Threading.Tasks;
 
 using AwesomeAssertions;
+
+using DockYarp.E2E.AppHost;
 
 /// <summary>TLS scenarios: ACME provisioning, self-signed fallback, HTTPS redirect, HSTS, and mutual TLS.</summary>
 [Category("EndToEnd")]
@@ -36,6 +41,53 @@ public sealed class TlsTests : E2ETestBase
 
         capture.ServerCertificate.Should().NotBeNull();
         capture.ServerCertificate!.Issuer.Should().Contain(CaIssuerMarker);
+    }
+
+    /// <summary>The intermediate is actually sent during the handshake for an ACME-issued certificate: a client
+    /// trusting only the step-ca root — no intermediate, no system/OS trust store — still builds a complete
+    /// chain. This is the regression test for the bare-ServerCertificate bug: pre-fix, SslStream built its own
+    /// chain via system-store-dependent logic and never sent the intermediate, so this would fail with a
+    /// PartialChain status.</summary>
+    [Test]
+    public async Task AcmeCertificate_ChainIncludesIntermediate()
+    {
+        using X509Certificate2 stepCaRoot = X509CertificateLoader.LoadCertificateFromFile(
+            Path.Combine(E2EPaths.StepCaDirectory, "certs", "root_ca.crt"));
+        TlsHarness.ServerCertificateHolder capture = new();
+        using HttpClient client = TlsHarness.CreateClientWithChainValidation(capture, stepCaRoot);
+
+        using HttpResponseMessage response = await PollAsync(
+            client,
+            static () => new HttpRequestMessage(HttpMethod.Get, "https://tls.local/"),
+            _ => capture.ServerCertificate?.Issuer.Contains(CaIssuerMarker, StringComparison.Ordinal) == true,
+            TlsPollSeconds);
+
+        capture.ServerCertificate.Should().NotBeNull();
+        capture.PolicyErrors.Should().Be(
+            SslPolicyErrors.None,
+            "the intermediate must be sent in the handshake so a client trusting only the root can build the chain");
+    }
+
+    /// <summary>The intermediate is actually sent during the handshake for an operator-provided (mounted PEM,
+    /// non-ACME) certificate: a client trusting only the throwaway chain's own CA still builds a complete
+    /// chain. Covers the PEM-loading path independently of ACME/CertesAcmeClient.</summary>
+    [Test]
+    public async Task MountedPemCertificate_ChainIncludesIntermediate()
+    {
+        TlsHarness.ServerCertificateHolder capture = new();
+        using HttpClient client = TlsHarness.CreateClientWithChainValidation(capture, TlsHarness.MountedChainRoot);
+
+        using HttpResponseMessage response = await PollAsync(
+            client,
+            static () => new HttpRequestMessage(HttpMethod.Get, "https://pem.local/"),
+            static message => message.IsSuccessStatusCode,
+            TlsPollSeconds);
+
+        response.IsSuccessStatusCode.Should().BeTrue();
+        capture.ServerCertificate.Should().NotBeNull();
+        capture.PolicyErrors.Should().Be(
+            SslPolicyErrors.None,
+            "the intermediate must be sent in the handshake so a client trusting only the chain's own CA can build it");
     }
 
     /// <summary>An unknown host is served the self-signed fallback certificate (not an ACME one).</summary>

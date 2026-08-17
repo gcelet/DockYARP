@@ -105,9 +105,17 @@ public sealed class SniTlsHandshakeCallback
     public SslServerAuthenticationOptions BuildOptions(string? host)
     {
         PreparedPolicy policy = ResolvePolicy(host);
+        LoadedCertificate selected = selector.Select(host);
         SslServerAuthenticationOptions authentication = new()
         {
-            ServerCertificate = selector.Select(host),
+            // A bare ServerCertificate makes SslStream build its own chain via system-store-dependent logic,
+            // ignoring any intermediates bagged alongside the leaf (see the TLS/SSL best-practices doc). An
+            // explicit context with `offline: true` sends exactly the chain this proxy was given, with no
+            // network/AIA fetch attempt during the handshake.
+            ServerCertificateContext = SslStreamCertificateContext.Create(
+                selected.Leaf,
+                [.. selected.Additional],
+                offline: true),
             EnabledSslProtocols = policy.Protocols,
             ApplicationProtocols = ResolveApplicationProtocols(host),
         };

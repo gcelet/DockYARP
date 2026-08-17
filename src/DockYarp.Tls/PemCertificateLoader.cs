@@ -16,7 +16,7 @@ internal static class PemCertificateLoader
     /// exist and the key matches one of the certificates.</param>
     /// <returns><see langword="true"/> when both files exist, the key matches a certificate in
     /// <paramref name="certPath"/>, and the certificate was loaded.</returns>
-    public static bool TryLoad(IFileSystem fileSystem, string certPath, string keyPath, out X509Certificate2 certificate)
+    public static bool TryLoad(IFileSystem fileSystem, string certPath, string keyPath, out LoadedCertificate certificate)
     {
         certificate = null!;
         if (!fileSystem.File.Exists(certPath) || !fileSystem.File.Exists(keyPath))
@@ -47,7 +47,7 @@ internal static class PemCertificateLoader
     // The private key does not always belong to the first certificate in the file — most real ACME tooling
     // writes the leaf first, but this does not assume that; it tries every certificate in the chain and keeps
     // whichever one the key actually matches.
-    private static bool TryBuildKeyedChain(X509Certificate2Collection parsed, string keyPem, out X509Certificate2 certificate)
+    private static bool TryBuildKeyedChain(X509Certificate2Collection parsed, string keyPem, out LoadedCertificate certificate)
     {
         certificate = null!;
         for (int index = 0; index < parsed.Count; index++)
@@ -66,12 +66,13 @@ internal static class PemCertificateLoader
                     full.Add(i == index ? keyed : parsed[i]);
                 }
 
-                // Round-trip through PKCS12 so the private key is usable for TLS across platforms, and so the
-                // full chain (not just the leaf) travels with the resulting certificate — mirroring how an
-                // ACME-issued certificate is already persisted (see CertesAcmeClient.BuildPfx).
+                // Round-trip through PKCS12 so the private key is usable for TLS across platforms, and reload
+                // as a collection (not a single certificate) so the additional/intermediate certificates
+                // travel with the leaf instead of being silently dropped — the same shape an ACME-issued
+                // certificate uses (see CertesAcmeClient).
                 // Never null: exporting a non-empty X509Certificate2Collection as PKCS12 always produces bytes.
                 byte[] pkcs12 = full.Export(X509ContentType.Pkcs12)!;
-                certificate = X509CertificateLoader.LoadPkcs12(pkcs12, null);
+                certificate = CertificateCollectionLoader.LoadKeyed(pkcs12, null);
                 return true;
             }
         }

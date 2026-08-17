@@ -22,10 +22,17 @@ using global::Grpc.Net.Client;
 internal static class TlsHarness
 {
     private static X509Certificate2? clientCertificate;
+    private static X509Certificate2? mountedChainRoot;
 
     /// <summary>Gets the client certificate (with private key) presented in the mutual-TLS scenario.</summary>
     internal static X509Certificate2 ClientCertificate =>
         clientCertificate ?? throw new InvalidOperationException("The client CA has not been prepared.");
+
+    /// <summary>Gets the CA that signed the operator-provided <c>pem.local</c> chain mounted by
+    /// <see cref="PrepareMountedChain"/> — the sole root a scenario should trust to prove the intermediate was
+    /// actually sent, not merely loadable.</summary>
+    internal static X509Certificate2 MountedChainRoot =>
+        mountedChainRoot ?? throw new InvalidOperationException("The mounted PEM chain has not been prepared.");
 
     /// <summary>Generates the ephemeral client CA and leaf, writing the CA certificate to the mounted path.</summary>
     internal static void PrepareClientCa()
@@ -65,6 +72,44 @@ internal static class TlsHarness
             leafWithKey.Export(X509ContentType.Pkcs12), password: null);
     }
 
+    /// <summary>Generates a throwaway leaf + intermediate chain for <c>pem.local</c> and writes the full-chain
+    /// PEM certificate and key into the mounted certs directory, proving DockYarp serves an operator-provided
+    /// chain (not just an ACME-issued one) with its intermediate intact.</summary>
+    /// <remarks>Must run after <see cref="PrepareClientCa"/>, which (re)creates the certs directory.</remarks>
+    internal static void PrepareMountedChain()
+    {
+        DateTimeOffset from = DateTimeOffset.UtcNow.AddDays(-1);
+        DateTimeOffset to = DateTimeOffset.UtcNow.AddYears(1);
+
+        using RSA intermediateKey = RSA.Create(2048);
+        CertificateRequest intermediateRequest = new(
+            "CN=DockYarp E2E Mounted-Chain CA", intermediateKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        intermediateRequest.CertificateExtensions.Add(
+            new X509BasicConstraintsExtension(true, hasPathLengthConstraint: true, pathLengthConstraint: 0, true));
+        intermediateRequest.CertificateExtensions.Add(
+            new X509KeyUsageExtension(X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
+        X509Certificate2 intermediate = intermediateRequest.CreateSelfSigned(from, to);
+        mountedChainRoot = intermediate;
+
+        using RSA leafKey = RSA.Create(2048);
+        CertificateRequest leafRequest = new(
+            "CN=pem.local", leafKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        leafRequest.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, false));
+        SubjectAlternativeNameBuilder subjectAlternativeName = new();
+        subjectAlternativeName.AddDnsName("pem.local");
+        leafRequest.CertificateExtensions.Add(subjectAlternativeName.Build());
+
+        byte[] serial = [9, 8, 7, 6, 5, 4, 3, 2];
+        using X509Certificate2 leaf = leafRequest.Create(intermediate, from, to, serial);
+
+        File.WriteAllText(
+            Path.Combine(E2EPaths.CertsDirectory, "pem.local.crt"),
+            leaf.ExportCertificatePem() + "\n" + intermediate.ExportCertificatePem());
+        File.WriteAllText(
+            Path.Combine(E2EPaths.CertsDirectory, "pem.local.key"),
+            leafKey.ExportPkcs8PrivateKeyPem());
+    }
+
     private static void PrepareCertsDirectory()
     {
         // A world-writable directory DockYarp persists certs + DP keys into (bind-mounted at /certs). World-writable
@@ -102,11 +147,13 @@ internal static class TlsHarness
         }
     }
 
-    /// <summary>Disposes the generated client certificate.</summary>
+    /// <summary>Disposes the generated client certificate and the mounted-chain root.</summary>
     internal static void Cleanup()
     {
         clientCertificate?.Dispose();
         clientCertificate = null;
+        mountedChainRoot?.Dispose();
+        mountedChainRoot = null;
     }
 
     /// <summary>Creates an HTTPS client (no client certificate) that reaches DockYarp keeping the vhost as SNI.</summary>
@@ -127,6 +174,24 @@ internal static class TlsHarness
     /// <returns>An HTTP client for absolute <c>https://&lt;vhost&gt;/</c> requests, carrying the client certificate.</returns>
     internal static HttpClient CreateMutualTlsClient(ServerCertificateHolder capture) =>
         Build(capture, ClientCertificate, SslProtocols.None);
+
+    /// <summary>Creates an HTTPS client that trusts only <paramref name="trustedRoot"/> — no intermediate, no
+    /// system/OS trust store — so the chain can only build if the server actually sends its intermediate
+    /// certificate(s) during the handshake.</summary>
+    /// <param name="capture">Holder the presented server certificate and chain-build outcome are stored into.</param>
+    /// <param name="trustedRoot">The sole certificate trusted as a root for this client.</param>
+    /// <returns>An HTTP client for absolute <c>https://&lt;vhost&gt;/</c> requests with a locked-down trust policy.</returns>
+    internal static HttpClient CreateClientWithChainValidation(ServerCertificateHolder capture, X509Certificate2 trustedRoot)
+    {
+        SocketsHttpHandler handler = BuildHandler(capture, presentedCertificate: null, SslProtocols.None);
+        handler.SslOptions.CertificateChainPolicy = new X509ChainPolicy
+        {
+            TrustMode = X509ChainTrustMode.CustomRootTrust,
+            CustomTrustStore = { trustedRoot },
+            RevocationMode = X509RevocationMode.NoCheck,
+        };
+        return new HttpClient(handler);
+    }
 
     /// <summary>Creates a plain HTTP client for DockYarp that does not follow redirects.</summary>
     /// <returns>An HTTP client bound to DockYarp's HTTP endpoint with automatic redirects disabled.</returns>
@@ -164,11 +229,17 @@ internal static class TlsHarness
             PooledConnectionLifetime = TimeSpan.Zero,
             SslOptions = new SslClientAuthenticationOptions
             {
-                RemoteCertificateValidationCallback = (_, certificate, _, _) =>
+                // The chain and sslPolicyErrors reflect CertificateChainPolicy when one is set below, letting a
+                // scenario prove the server actually sent its intermediate rather than merely observing that a
+                // certificate arrived. Connections still always succeed (return true) — assertions on the
+                // captured chain outcome give a clearer failure than an opaque handshake exception.
+                RemoteCertificateValidationCallback = (_, certificate, chain, sslPolicyErrors) =>
                 {
                     capture.ServerCertificate = certificate is null
                         ? null
                         : X509CertificateLoader.LoadCertificate(certificate.GetRawCertData());
+                    capture.PolicyErrors = sslPolicyErrors;
+                    capture.ChainStatus = chain?.ChainStatus;
                     return true;
                 },
             },
@@ -194,10 +265,17 @@ internal static class TlsHarness
         return handler;
     }
 
-    /// <summary>Captures the server certificate presented during a TLS handshake.</summary>
+    /// <summary>Captures the server certificate presented during a TLS handshake, plus the client-side chain
+    /// build outcome (populated per <see cref="SslClientAuthenticationOptions.CertificateChainPolicy"/>).</summary>
     internal sealed class ServerCertificateHolder
     {
         /// <summary>Gets or sets the last server certificate presented to the client.</summary>
         public X509Certificate2? ServerCertificate { get; set; }
+
+        /// <summary>Gets or sets the policy errors from the last handshake's chain evaluation.</summary>
+        public SslPolicyErrors? PolicyErrors { get; set; }
+
+        /// <summary>Gets or sets the chain status entries from the last handshake's chain evaluation.</summary>
+        public X509ChainStatus[]? ChainStatus { get; set; }
     }
 }

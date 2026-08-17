@@ -211,6 +211,17 @@ internal static class BackendCatalog
         },
         new BackendSpec
         {
+            // Operator-provided (non-ACME) full-chain PEM: TlsHarness mounts pem.local.crt/.key (leaf +
+            // intermediate) into the certs directory before DockYarp starts. No LETSENCRYPT_HOST — this host
+            // must never be provisioned by ACME, only served from the mounted chain.
+            Name = "echo-pem",
+            Image = EchoImage,
+            Tag = EchoTag,
+            Labels = [Kv(VirtualHost, "pem.local"), Kv(VirtualPort, EchoPort)],
+            Environment = EchoEnv(EchoPort, id: "pem"),
+        },
+        new BackendSpec
+        {
             // gRPC passthrough: VIRTUAL_PROTO=grpc → an HTTP/2-exact cluster. Served over the HTTPS listener
             // (gRPC needs h2, and DockYarp's HTTP listener is HTTP/1 only) with the default certificate — no
             // LETSENCRYPT_HOST, so the scenario does not depend on ACME timing. The backend speaks h2c.

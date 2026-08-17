@@ -3,7 +3,6 @@ namespace DockYarp.Tls;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
-using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -68,7 +67,7 @@ public sealed class CertificateProvisioningService(
 
             try
             {
-                X509Certificate2 certificate =
+                LoadedCertificate certificate =
                     await acme.RequestCertificateAsync(desired.Host, desired.Email, token).ConfigureAwait(false);
                 certificates.Save(desired.Host, certificate);
                 consecutiveFailures.TryRemove(desired.Host, out _);
@@ -121,12 +120,12 @@ public sealed class CertificateProvisioningService(
 
     private bool NeedsCertificate(string host)
     {
-        X509Certificate2? existing = certificates.Find(host);
+        LoadedCertificate? existing = certificates.Find(host);
         if (existing is null)
         {
             return true;
         }
 
-        return existing.NotAfter.ToUniversalTime() - DateTime.UtcNow <= options.RenewBeforeExpiry;
+        return existing.Leaf.NotAfter.ToUniversalTime() - DateTime.UtcNow <= options.RenewBeforeExpiry;
     }
 }
