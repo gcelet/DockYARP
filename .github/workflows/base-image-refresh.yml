@@ -67,6 +67,8 @@ jobs:
       # Delegate to the single Nuke image path (no duplicated build logic); rebuild the multi-arch manifest with
       # the patched base and republish :latest only. --publish-tag bypasses the computed release/prerelease/edge
       # scheme entirely, so this never touches the immutable X.Y.Z or rolling X.Y/X tags.
+      # DockerPublish gates on Test + E2E by default (no --skip-publish-gate here) — a base-image refresh still
+      # gets the same safety net before :latest is republished.
       - name: Rebuild & push :latest (Nuke DockerPublish)
         env:
           REGISTRY: ${{ steps.cfg.outputs.registry }}

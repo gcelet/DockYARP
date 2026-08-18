@@ -73,9 +73,9 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME || github.actor }}
           password: ${{ secrets.REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}
 
-      # Delegate the actual build+push to the single Nuke image path (no duplicated build logic here); the
-      # target computes the stable/prerelease tag set from the resolved version.
-      - name: Build & push (Nuke DockerPublish)
+      # DockerPublish itself now depends on Test + E2E (build/Build.cs) and never sets --skip-publish-gate here,
+      # so this single call gates the release on both before pushing — no orchestration logic in this workflow.
+      - name: Test, E2E, and push (Nuke)
         env:
           REGISTRY: ${{ steps.cfg.outputs.registry }}
           REPOSITORY: ${{ steps.cfg.outputs.repository }}
@@ -143,11 +143,14 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME || github.actor }}
           password: ${{ secrets.REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}
 
+      # --skip-publish-gate: edge exists for fast in-development signal on every trunk push; DockerPublish now
+      # gates on Test/E2E by default (see the release job below), which would slow every trunk commit for a
+      # channel whose whole purpose is speed. Ordinary unit/integration coverage still runs via ci.yml.
       - name: Build & push (Nuke DockerPublish --edge)
         env:
           REGISTRY: ${{ steps.cfg.outputs.registry }}
           REPOSITORY: ${{ steps.cfg.outputs.repository }}
-        run: ./build.sh DockerPublish --registry "$REGISTRY" --image-repository "$REPOSITORY" --edge --platforms linux/amd64,linux/arm64
+        run: ./build.sh DockerPublish --registry "$REGISTRY" --image-repository "$REPOSITORY" --edge --skip-publish-gate --platforms linux/amd64,linux/arm64
 
       # No SBOM step here (release-only, see design.md) — the edge channel still gets scanned so
       # vulnerabilities surface as early as the in-development image, not only at release time.

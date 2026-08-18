@@ -38,6 +38,9 @@ class Build : NukeBuild
     [Parameter("DockerPublish: also tag the image 'edge' (in-development builds off the trunk branch)")]
     readonly bool Edge;
 
+    [Parameter("DockerPublish: skip the Test/E2E gate before pushing — for a quick manual/local push only; CI never sets this")]
+    readonly bool SkipPublishGate;
+
     [Parameter("Target platform(s) for the image, comma-separated (multi-arch requires DockerPublish/--push, not a local --load)")]
     readonly string Platforms = "linux/amd64";
 
@@ -216,8 +219,15 @@ class Build : NukeBuild
     // ONE argv token — docker received "-t <value>" glued together (with the space baked into the tag), not
     // two separate arguments, and rejected it as an invalid reference. Caught by a live registry push, not by
     // this file's own tests. The typed settings API sidesteps the whole class of bug.
+    // Gated on Test + E2E directly on this target (not just co-listed under a wrapper) — Nuke's DependsOn
+    // guarantees a target's own dependencies run, and must succeed, before its own Executes body starts;
+    // listing unrelated targets side by side (e.g. on a CI command line) does NOT give that guarantee, since
+    // nothing then constrains their relative order or blocks this target's push on their failure. Matches the
+    // precedent already set by DockerImage.DependsOn(Test). --skip-publish-gate opts out for a quick
+    // manual/local push only; CI never sets it, so a release publish is always gated by default.
     Target DockerPublish => _ => _
         .DependsOn(GenerateVersionDetails)
+        .DependsOn(SkipPublishGate ? [] : [Test, E2E])
         .Executes(() => DockerBuildxBuild(s => s
             .SetProcessWorkingDirectory(RootDirectory)
             .SetPath(".")

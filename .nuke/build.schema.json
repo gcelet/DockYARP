@@ -146,6 +146,10 @@
           "type": "string",
           "description": "Container registry host; empty targets Docker Hub"
         },
+        "SkipPublishGate": {
+          "type": "boolean",
+          "description": "DockerPublish: skip the Test/E2E gate before pushing — for a quick manual/local push only; CI never sets this"
+        },
         "Version": {
           "type": "string",
           "description": "Explicit full version; when set (e.g. the Docker build-arg case), it is used instead of GitVersion"
