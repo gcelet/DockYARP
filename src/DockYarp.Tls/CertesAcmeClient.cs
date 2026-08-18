@@ -2,13 +2,14 @@ namespace DockYarp.Tls;
 
 using System;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 
 using Certes;
 using Certes.Acme;
 using Certes.Acme.Resource;
-using Certes.Pkcs;
 
 /// <summary>ACME client backed by Certes, using the HTTP-01 challenge.</summary>
 /// <remarks>Performs the real network exchange with the CA; exercised via integration only, not unit tests.</remarks>
@@ -37,8 +38,7 @@ public sealed class CertesAcmeClient(TlsOptions options, IHttp01ChallengeStore c
 
             IKey privateKey = KeyFactory.NewKey(KeyAlgorithm.ES256);
             CertificateChain chain = await order.Generate(new CsrInfo { CommonName = host }, privateKey).ConfigureAwait(false);
-            byte[] pfx = BuildPfx(chain, privateKey, host);
-            return CertificateCollectionLoader.LoadKeyed(pfx, string.Empty);
+            return BuildLoadedCertificate(chain, privateKey);
         }
         finally
         {
@@ -46,27 +46,44 @@ public sealed class CertesAcmeClient(TlsOptions options, IHttp01ChallengeStore c
         }
     }
 
-    /// <summary>Builds the PFX from the issued chain, falling back to the leaf when the root is not in the chain.</summary>
+    /// <summary>Assembles the issued leaf (keyed) and every issuer certificate the ACME server returned.</summary>
     /// <param name="chain">The certificate chain returned by the ACME order.</param>
-    /// <param name="privateKey">The certificate's private key.</param>
-    /// <param name="host">The host used as the PFX friendly name.</param>
-    /// <returns>The PFX bytes.</returns>
+    /// <param name="privateKey">The leaf's private key (the CSR's own key, so it always matches the leaf —
+    /// no candidate search is needed the way <see cref="PemCertificateLoader"/> needs one).</param>
+    /// <returns>The keyed leaf plus every issuer certificate returned, regardless of whether a self-signed
+    /// root is among them.</returns>
     /// <remarks>
-    /// Public CAs (for example Let's Encrypt) resolve to a root Certes knows, so the full chain is bundled. A
-    /// private or custom CA (for example step-ca) does not publish its root in the issued chain, so Certes'
-    /// full-chain build fails; the fallback bundles the leaf only (clients trust the CA out of band).
+    /// Deliberately does not use Certes' <c>PfxBuilder.FullChain</c>: that mode requires building a PKIX path
+    /// to a self-signed root found among the returned certificates, which a private CA following normal ACME
+    /// convention (root trusted out of band, never sent in the response) will never have — the resulting
+    /// path-build failure previously fell back to bundling the leaf only, silently dropping intermediates the
+    /// CA did return. Building directly from <see cref="CertificateChain.Certificate"/> and
+    /// <see cref="CertificateChain.Issuers"/> needs no root and drops nothing.
     /// </remarks>
-    private static byte[] BuildPfx(CertificateChain chain, IKey privateKey, string host)
+    internal static LoadedCertificate BuildLoadedCertificate(CertificateChain chain, IKey privateKey)
     {
-        PfxBuilder pfxBuilder = chain.ToPfx(privateKey);
+        using ECDsa ecdsa = ECDsa.Create();
+        ecdsa.ImportFromPem(privateKey.ToPem());
+
+        using X509Certificate2 leafWithoutKey = X509CertificateLoader.LoadCertificate(chain.Certificate.ToDer());
+        X509Certificate2Collection bag = [leafWithoutKey.CopyWithPrivateKey(ecdsa)];
         try
         {
-            return pfxBuilder.Build(host, string.Empty);
+            foreach (IEncodable issuer in chain.Issuers)
+            {
+                bag.Add(X509CertificateLoader.LoadCertificate(issuer.ToDer()));
+            }
+
+            // Never null: exporting a non-empty X509Certificate2Collection as PKCS12 always produces bytes.
+            byte[] pkcs12 = bag.Export(X509ContentType.Pkcs12)!;
+            return CertificateCollectionLoader.LoadKeyed(pkcs12, null);
         }
-        catch (AcmeException)
+        finally
         {
-            pfxBuilder.FullChain = false;
-            return pfxBuilder.Build(host, string.Empty);
+            foreach (X509Certificate2 entry in bag)
+            {
+                entry.Dispose();
+            }
         }
     }
 

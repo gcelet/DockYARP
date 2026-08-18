@@ -17,4 +17,10 @@
     <ProjectReference Include="..\DockYarp.Core\DockYarp.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- CertesAcmeClient's chain-assembly logic is otherwise untestable at the unit level (the rest of the
+         class requires a live ACME network round-trip) — this exposes only that pure, deterministic piece. -->
+    <InternalsVisibleTo Include="DockYarp.Tls.Tests" />
+  </ItemGroup>
+
 </Project>
