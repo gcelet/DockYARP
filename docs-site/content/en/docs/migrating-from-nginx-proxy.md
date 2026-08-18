@@ -291,3 +291,16 @@ instance) rather than public Let's Encrypt, two things need pointing at it:
 
 A private CA reached via HTTP-01 challenge (the default for both `acme-companion` and DockYARP — DNS-01 is not
 currently supported) needs no further configuration beyond the two points above.
+
+### DNS carried over from a split proxy/ACME setup
+
+`acme-companion` and nginx itself are two separate containers with two separate network configurations —
+`acme-companion` makes ACME calls from its own network, typically with ordinary Docker DNS (whatever the
+Docker daemon forwards to). DockYARP is a single process doing both jobs, so it makes its ACME calls from the
+exact same network/DNS configuration as the vhost it proxies. If nginx's own container carried a custom `dns:`
+override (for example one needed only because it sits on a `macvlan` network without Docker's embedded DNS),
+that override is now exercised for ACME calls too — and if it was never actually a working general-purpose
+resolver (only ever reachable/needed for something narrower), ACME lookups for hosts outside that narrow case
+will fail with a DNS resolution error, even though the same override worked fine for nginx. Point DockYARP's
+`dns:` at a DNS server that can resolve **both** internal Docker names and your real domain names before
+assuming a `Resource temporarily unavailable` provisioning failure is a network outage.
