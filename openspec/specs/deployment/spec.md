@@ -60,7 +60,9 @@ repository `Dockerfile` (whose build stage runs the Nuke build). The published *
 release channel: a **stable** release (no pre-release suffix) SHALL push the exact version, its `Major.Minor`,
 its `Major`, and `latest`; a **prerelease** (a `v*` tag with a pre-release suffix) SHALL push only its exact
 version, leaving `latest` and the rolling `Major.Minor`/`Major` tags untouched; a push to the trunk branch (no
-tag) SHALL push its GitVersion-resolved prerelease version plus an `edge` tag.
+tag) SHALL push its GitVersion-resolved prerelease version plus an `edge` tag. A release-tag publish SHALL run
+the `Test` and `End-to-end test suite` gates first, in CI, and SHALL NOT push any image when either gate fails;
+the trunk-branch (edge) publish is not subject to this gate.
 
 #### Scenario: Publish to the default registry (GHCR) on release
 - **WHEN** a stable version tag `vX.Y.Z` is pushed and no custom registry is configured
@@ -85,6 +87,15 @@ tag) SHALL push its GitVersion-resolved prerelease version plus an `edge` tag.
 #### Scenario: Multi-architecture image
 - **WHEN** the image is published
 - **THEN** the pushed manifest includes at least `linux/amd64` and `linux/arm64`
+
+#### Scenario: A failing test or e2e run blocks a release publish
+- **WHEN** a `v*` release tag is pushed and either the `Test` gate or the end-to-end suite fails
+- **THEN** CI fails before the `DockerPublish` step runs, and no image is pushed for that tag
+
+#### Scenario: A trunk push is not gated by the end-to-end suite
+- **WHEN** a commit is pushed to the trunk branch (no tag)
+- **THEN** the edge image is published without waiting for the end-to-end suite (unit/integration coverage
+  from ordinary CI still applies via the separate continuous-integration gate)
 
 ### Requirement: Continuous integration
 The project SHALL run its build-and-test gate automatically on every pull request and on every push to the

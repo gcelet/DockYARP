@@ -30,15 +30,21 @@
 
 ## 3. Real CI validation — required (AG-DEP)
 
-- [ ] 3.1 Push this change and observe a real `publish-release` run on GitHub Actions (either via a real
-      release-shaped ref or `workflow_dispatch`) — confirm `Test` and `E2E` actually run on the hosted runner
-      and the job succeeds end to end, including the actual image push. This is the real answer to whether
-      Aspire/DCP holds up on a GitHub-hosted runner (design.md's flagged risk) — record the outcome.
-- [ ] 3.2 If the real run reveals Aspire/DCP flakiness on the runner, do not silently retry-and-ignore — capture
-      the failure mode as a note (new backlog item candidate if it's a real, recurring problem) rather than
-      quietly working around it in this change.
+- [x] 3.1 Ran for real via `workflow_dispatch` on `image.yml` (run
+      https://github.com/gcelet/DockYARP/actions/runs/32186598665). **The gate itself is confirmed working**:
+      `E2E Failed 4:07` → `Test NotRun` → `DockerPublish NotRun` in the Nuke target summary — no image was
+      pushed. **The end-to-end suite itself failed on the runner**, unrelated to the gate mechanism: `Failed to
+      create resource dockyarp` after the fixture's 180s `StartupTimeoutSeconds` elapsed
+      (`Aspire.Hosting.Dcp.ContainerCreator.BuildAndCreateContainerAsync` → `OperationCanceledException`), while
+      `dockerproxy` had started in ~6s. This is exactly the risk design.md flagged as possible, not assumed.
+- [x] 3.2 Captured as its own follow-up backlog item rather than worked around here:
+      `fix-e2e-ci-runner-timeout` (openspec/backlog/items/). Not silently patched inside this change, per the
+      original design decision and the user's explicit choice when this result came in.
 
 ## 4. Spec sync prep (AG-DEP)
 
-- [ ] 4.1 Verify the delta spec's MODIFIED "Continuous image publishing" requirement (the new gate + trunk-push
+- [x] 4.1 Verify the delta spec's MODIFIED "Continuous image publishing" requirement (the new gate + trunk-push
       exemption scenarios) matches what actually shipped in sections 1–3 before archiving.
+      Verified: the spec describes observable behavior ("a release-tag publish SHALL run Test/E2E first and
+      SHALL NOT push when either fails"), which holds regardless of the mid-implementation mechanism
+      correction — confirmed live via the real CI run (section 3).
