@@ -125,9 +125,35 @@ Root cause (same bug *class*, read side instead of write side): the failing test
 (`MountedPemCertificate_ChainIncludesIntermediate`) uses an in-memory certificate the test harness itself
 generates and never touches disk — isolating the failure to a file step-ca's own container created.
 `PrepareClientCa()`'s chmod on `StepCaDirectory` runs once, before step-ca ever starts, so it cannot reach
-`certs/root_ca.crt` — created *later*, under step-ca's own container umask. Fixed by adding
-`TlsHarness.MakeStepCaPkiReadable()`, a recursive `SetUnixFileMode` widen over everything under
-`StepCaDirectory`, called from `AspireAppHostFixture.StartAsync()` right after the proxy resource reports
-healthy (which transitively guarantees step-ca has finished writing its PKI, since DockYarp itself
-`.WaitForCompletion(caBundle)` and `ca-bundle` polls for those exact files). Validation round 3 (confirming the
-suite goes fully green) pending.
+`certs/root_ca.crt` — created *later*, under step-ca's own container umask.
+
+**First fix attempt failed harder, and taught something new (2026-08-19, round 4)**: added
+`TlsHarness.MakeStepCaPkiReadable()`, a recursive `SetUnixFileMode` widen over `StepCaDirectory`, called from
+`AspireAppHostFixture.StartAsync()` after the proxy resource reports healthy. Pushed, triggered a real
+`workflow_dispatch` run (https://github.com/gcelet/DockYARP/actions/runs/32297816857) — **failed at
+`OneTimeSetUp` entirely**, worse than the 31/32 baseline:
+
+```
+SetUp : System.UnauthorizedAccessException : Access to the path '/tmp/dockyarp-e2e/stepca/templates' is denied.
+  ----> System.IO.IOException : Operation not permitted
+   at Interop.ThrowExceptionForIoErrno(...)
+   at System.IO.FileStatus.SetUnixFileMode(...)
+   at System.IO.File.SetUnixFileMode(String path, UnixFileMode mode)
+   at DockYarp.E2E.Tests.TlsHarness.MakeStepCaPkiReadable()
+```
+
+Root cause: `chmod` (the syscall behind `SetUnixFileMode`) requires being the file's *owner*, or root. The host
+`runner` process is neither for files step-ca's own container UID created — this is a hard permission wall, not
+an oversight fixable by "doing the chmod later." The whole host-side-recursive-chmod approach was structurally
+broken; reverted.
+
+**Second fix attempt: chmod from the container that already owns write access.** `ca-bundle` (`alpine`, root by
+default — no `WithUser` override) already bind-mounts `StepCaDirectory` read-write and already successfully
+reads `root_ca.crt`/`intermediate_ca.crt` from it (its own polling script works). Since it runs as root, it can
+`chmod` those files regardless of ownership — root bypasses the DAC ownership check entirely. Appended
+`chmod -R a+rX /stepca` to `ca-bundle`'s existing `bundleScript` in
+`tests/DockYarp.E2E.AppHost/Program.cs`, right after writing `ca-bundle.crt`. `a+rX` only *adds* bits (read for
+all, conditional execute for directory traversal); it cannot strip step-ca's own write access to files it
+creates later (e.g. its ACME provisioner's ongoing state). Local sanity run (`./build.ps1 E2E`, Windows): 32/32,
+1:26 — sanity only, since this bug class is by construction invisible there. Validation round 4 (confirming the
+suite goes fully green on the real Linux runner) pending.

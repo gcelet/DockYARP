@@ -98,7 +98,8 @@ instead of reading one from disk) passed — isolating the failure to reading a 
 second, complementary decision below.
 
 **Add `TlsHarness.MakeStepCaPkiReadable()` — a recursive permission widen over `StepCaDirectory`, called after
-step-ca has finished writing, not before.**
+step-ca has finished writing, not before.** *(Superseded — see the correction immediately below; kept for the
+record of what was tried and why it failed.)*
 
 Rationale: the write-side fix only *creates room* for step-ca to write; it cannot pre-empt the permissions
 step-ca's own process chooses for files it creates later. The correct fix has to run *after* those files exist.
@@ -108,10 +109,30 @@ and `ca-bundle`'s own script polls until step-ca's `root_ca.crt`/`intermediate_c
 resource reporting healthy transitively guarantees step-ca is done writing its PKI. Walks every entry under
 `StepCaDirectory` via `Directory.EnumerateFileSystemEntries(..., SearchOption.AllDirectories)` and applies the
 same `worldWritable` `UnixFileMode` used elsewhere in this file, guarded `!OperatingSystem.IsWindows()`.
-Considered and rejected: pre-creating `certs/` on the host before step-ca starts (as `PrepareClientCa()` does
-for the top-level directory) — would only work if step-ca's init logic reuses an existing directory as-is
-rather than recreating it, which isn't confirmed behavior for a third-party image and isn't worth depending on;
-the recursive post-hoc widen doesn't need that assumption.
+
+**Correction, found live, round 4**: validated for real (run `32297816857`) — and it made things *worse*, not
+better: the whole fixture's `OneTimeSetUp` now failed outright with
+`UnauthorizedAccessException`/`IOException: Operation not permitted` inside `File.SetUnixFileMode` itself.
+`chmod` requires being the file's *owner*, or root — the host `runner` process is neither for files step-ca's
+own container UID created on the host bind mount. This is a hard permission wall, not a timing/ordering mistake
+fixable by moving the call later; the entire host-side-recursive-chmod approach was structurally broken.
+Reverted from the codebase.
+
+**Actual fix: `chmod -R a+rX /stepca` appended to `ca-bundle`'s existing `bundleScript`
+(`tests/DockYarp.E2E.AppHost/Program.cs`), not any host-side code.**
+
+Rationale: `ca-bundle` (`alpine`, root by default — no `WithUser` override) already bind-mounts
+`StepCaDirectory` read-write and already successfully reads `root_ca.crt`/`intermediate_ca.crt` from it (its
+own polling script works — proven, since DockYarp becoming healthy depends on `ca-bundle` completing). Root
+bypasses the DAC ownership check entirely, so a `chmod` issued from *inside* that already-root container works
+where the host process's own `chmod` attempt cannot. `a+rX` only *adds* bits (read for all, execute for
+directories/already-executable files) — never removes any, so it cannot strip step-ca's own write access to
+files it creates later (e.g. ongoing ACME-provisioner state). This is a smaller, more targeted change than the
+reverted approach: one appended shell command in an existing one-shot container's script, no new C# code, no
+new fixture-lifecycle coupling. Considered and rejected: pre-creating `certs/` on the host before step-ca
+starts (as `PrepareClientCa()` does for the top-level directory) — even if step-ca reused it as-is (not
+confirmed behavior for a third-party image), the *files* step-ca creates inside would still get step-ca's own
+umask, so this wouldn't have avoided the read problem at all, only (maybe) the write problem a second time.
 
 ## Risks / Trade-offs
 

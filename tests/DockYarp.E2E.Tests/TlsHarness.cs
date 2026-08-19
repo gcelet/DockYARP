@@ -126,37 +126,6 @@ internal static class TlsHarness
             leafKey.ExportPkcs8PrivateKeyPem());
     }
 
-    /// <summary>Recursively widens permissions on everything step-ca has written under
-    /// <see cref="E2EPaths.StepCaDirectory"/> so the host test process can read it.</summary>
-    /// <remarks>
-    /// Must be called only after step-ca has actually finished writing its PKI (root_ca.crt,
-    /// intermediate_ca.crt, ...) — this widens permissions on entries that exist at call time, it does not
-    /// pre-empt files created afterward. <see cref="PrepareClientCa"/>'s own chmod on the top-level directory
-    /// runs before step-ca ever starts, so it cannot reach subdirectories/files (like certs/root_ca.crt)
-    /// step-ca's own process creates later under its own umask. Invisible on Windows/Docker Desktop for the
-    /// same permissive-bind-mount-translation reason as the write-side bug <see cref="PrepareClientCa"/> fixes —
-    /// confirmed live via a real GitHub Actions run failing to load certs/root_ca.crt from disk
-    /// (OpenSslCryptographicException) on a native Linux runner, right after that write-side fix landed.
-    /// </remarks>
-    internal static void MakeStepCaPkiReadable()
-    {
-        if (OperatingSystem.IsWindows())
-        {
-            return;
-        }
-
-        const UnixFileMode worldWritable =
-            UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
-            | UnixFileMode.GroupRead | UnixFileMode.GroupWrite | UnixFileMode.GroupExecute
-            | UnixFileMode.OtherRead | UnixFileMode.OtherWrite | UnixFileMode.OtherExecute;
-
-        foreach (string entry in Directory.EnumerateFileSystemEntries(
-            E2EPaths.StepCaDirectory, "*", SearchOption.AllDirectories))
-        {
-            File.SetUnixFileMode(entry, worldWritable);
-        }
-    }
-
     private static void PrepareCertsDirectory()
     {
         // A world-writable directory DockYarp persists certs + DP keys into (bind-mounted at /certs). World-writable

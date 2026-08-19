@@ -35,9 +35,17 @@ builder.AddContainer("stepca", "smallstep/step-ca")
 // alone gives a PartialChain error. This one-shot container waits for step-ca's PKI, writes a root+intermediate
 // bundle DockYarp trusts (SSL_CERT_FILE), then exits; DockYarp waits for it so the bundle exists before
 // the first ACME call (avoids a cached trust failure).
+// The trailing chmod widens read+traverse access on everything step-ca wrote (certs/root_ca.crt included):
+// on a native Linux runner, step-ca's own container UID owns those files/dirs on the host bind mount, and only
+// the owner (or root) can chmod them — the host test process (a different, non-root UID) cannot do this itself
+// (confirmed live: File.SetUnixFileMode from the host failed with EPERM/"Operation not permitted"). This
+// container already runs as root (alpine, no WithUser override) and already has write access to the same bind
+// mount, so it is the natural place to fix it. `a+rX` only ever ADDS bits (read for all, execute for
+// directories/already-executable files) — it cannot strip step-ca's own write access to files it creates later.
 const string bundleScript =
     "until [ -s /stepca/certs/intermediate_ca.crt ] && [ -s /stepca/certs/root_ca.crt ]; do sleep 1; done; " +
-    "cat /stepca/certs/intermediate_ca.crt /stepca/certs/root_ca.crt > /stepca/ca-bundle.crt";
+    "cat /stepca/certs/intermediate_ca.crt /stepca/certs/root_ca.crt > /stepca/ca-bundle.crt; " +
+    "chmod -R a+rX /stepca";
 var caBundle = builder.AddContainer("ca-bundle", "alpine")
     .WithBindMount(E2EPaths.StepCaDirectory, "/stepca")
     .WithArgs("sh", "-c", bundleScript);

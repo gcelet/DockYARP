@@ -55,25 +55,39 @@
       step-ca ever starts, so it cannot reach `certs/root_ca.crt` — a file step-ca creates *later*, under its
       own container's umask.
 
-## 7. The read-side fix (AG-DEP)
+## 7. The read-side fix, attempt 1 — host-side recursive chmod (AG-DEP)
 
 - [x] 7.1 `tests/DockYarp.E2E.Tests/TlsHarness.cs`: new `MakeStepCaPkiReadable()` recursively widens permissions
       on everything under `StepCaDirectory` at call time (`Directory.EnumerateFileSystemEntries(...,
       SearchOption.AllDirectories)` + `File.SetUnixFileMode`), guarded `!OperatingSystem.IsWindows()`.
 - [x] 7.2 `tests/DockYarp.E2E.Tests/AspireAppHostFixture.cs`: call it in `StartAsync()` right after
-      `WaitForResourceHealthyAsync(ProxyResource, token)` — safe only there, since DockYarp
-      `.WaitForCompletion(caBundle)` and `ca-bundle` itself polls until step-ca's PKI files exist, so the proxy
-      resource reporting healthy transitively guarantees step-ca has finished writing them.
+      `WaitForResourceHealthyAsync(ProxyResource, token)`.
 - [x] 7.3 `dotnet build tests/DockYarp.E2E.Tests/DockYarp.E2E.Tests.csproj` — 0 warnings, 0 errors.
+- [x] 7.4 Real CI run (`32297816857`) — **failed at `OneTimeSetUp` entirely**, worse than before:
+      `UnauthorizedAccessException`/`IOException: Operation not permitted` inside `File.SetUnixFileMode` itself.
+      Root cause: `chmod` requires being the file's *owner* (or root) — the host `runner` process is neither for
+      files step-ca's own container UID created. This approach is structurally broken, not just incomplete;
+      reverted (7.1/7.2 removed from the codebase, kept here for the record).
 
-## 8. Real CI validation, round 3 — required (AG-DEP)
+## 8. The read-side fix, attempt 2 — chmod from the container that already owns write access (AG-DEP)
 
-- [ ] 8.1 Push this fix and trigger another real `workflow_dispatch` run — confirm the suite is fully green
-      (32/32), not just improved again. Same rationale as before: this class of bug is by-construction invisible
-      on any local Windows/Docker Desktop run.
-- [ ] 8.2 If it still fails: read the `artifacts/e2e-logs/` artifact before guessing further.
+- [x] 8.1 `tests/DockYarp.E2E.AppHost/Program.cs`: `ca-bundle` (alpine, root by default, no `WithUser`
+      override) already bind-mounts `StepCaDirectory` read-write and already successfully reads
+      `root_ca.crt`/`intermediate_ca.crt` from it — the natural place to fix read permissions, since root bypasses
+      ownership checks for `chmod`. Appended `chmod -R a+rX /stepca` to `bundleScript`, right after writing
+      `ca-bundle.crt`. `a+rX` only *adds* bits (read for all, execute for dirs/already-executable files); cannot
+      strip step-ca's own write access to files it creates later.
+- [x] 8.2 `dotnet build` (AppHost + Tests) — 0 warnings, 0 errors.
+- [x] 8.3 Local sanity run (`./build.ps1 E2E`) — 32/32 passed, 1:26 total. Sanity only, not a validation: this
+      bug class is by construction invisible on Windows/Docker Desktop.
 
-## 9. Spec sync prep (AG-DEP)
+## 9. Real CI validation, round 4 — required (AG-DEP)
 
-- [ ] 9.1 Verify the delta spec's MODIFIED "End-to-end diagnostics capture" requirement (the new CI-retrievable
-      scenario) matches what actually shipped before archiving.
+- [ ] 9.1 Push this fix and trigger another real `workflow_dispatch` run — confirm the suite is fully green
+      (32/32) on the real Linux runner.
+- [ ] 9.2 If it still fails: read the `artifacts/e2e-logs/` artifact before guessing further.
+
+## 10. Spec sync prep (AG-DEP)
+
+- [ ] 10.1 Verify the delta spec's MODIFIED "End-to-end diagnostics capture" requirement (the new
+      CI-retrievable scenario) matches what actually shipped before archiving.
