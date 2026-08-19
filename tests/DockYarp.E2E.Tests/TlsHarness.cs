@@ -38,6 +38,22 @@ internal static class TlsHarness
     internal static void PrepareClientCa()
     {
         Directory.CreateDirectory(E2EPaths.StepCaDirectory);
+
+        // World-writable so step-ca's own container (a non-root user internally) can write into its
+        // bind-mounted /home/step (secrets/password, config/ca.json, certs/*) — a no-op on Windows, where
+        // Docker Desktop's bind-mount translation is already permissive regardless of the container's UID,
+        // which is exactly why this was invisible locally: confirmed live via a real GitHub Actions run
+        // failing with "/entrypoint.sh: line 59: /home/step/password: Permission denied" on a native Linux
+        // runner, where bind-mount permissions are actually enforced. Same pattern as PrepareCertsDirectory.
+        if (!OperatingSystem.IsWindows())
+        {
+            const UnixFileMode worldWritable =
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
+                | UnixFileMode.GroupRead | UnixFileMode.GroupWrite | UnixFileMode.GroupExecute
+                | UnixFileMode.OtherRead | UnixFileMode.OtherWrite | UnixFileMode.OtherExecute;
+            File.SetUnixFileMode(E2EPaths.StepCaDirectory, worldWritable);
+        }
+
         Directory.CreateDirectory(E2EPaths.ClientCaDirectory);
         PrepareCertsDirectory();
 

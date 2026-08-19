@@ -23,17 +23,32 @@
 - [x] 3.2 `actionlint` not available locally; validated `image.yml` parses as syntactically correct YAML via
       `npx js-yaml` (no actionlint-specific schema check, but rules out a syntax/indentation mistake).
 
-## 4. Real CI validation — required (AG-DEP)
+## 4. Real CI validation, round 1 — required (AG-DEP)
 
-- [ ] 4.1 Push this change and trigger a real `workflow_dispatch` run on `image.yml` (`publish-release` job) —
-      this is the only way to know if the fix worked; local runs cannot confirm or refute a CI-runner-specific
-      timing issue. Record the outcome plainly: passed cleanly, or failed again with the new artifact now
-      showing which resource is actually slow.
-- [ ] 4.2 If it fails again: download and read the uploaded `artifacts/e2e-logs/` artifact (`stepca.log`,
-      `ca-bundle.log`, `dockerproxy.log`) before deciding on a next step — don't guess further without looking
-      at the new data this change exists to produce.
+- [x] 4.1 Pushed and triggered a real `workflow_dispatch` run on `image.yml` (`publish-release` job) —
+      https://github.com/gcelet/DockYARP/actions/runs/32293946454. Result: **failed again** — the timeout bump
+      alone was not sufficient (stalled at ~407s of the new 420s budget, same shape as before).
+- [x] 4.2 Downloaded and read the uploaded `artifacts/e2e-logs/` artifact (`gh run download ... -n e2e-logs`).
+      **Found the real root cause**: `stepca.log` contains `/entrypoint.sh: line 59: /home/step/password:
+      Permission denied` — a bind-mount permission issue, not a timing issue. See design.md's Context
+      correction and proposal.md's updated Why for the full finding.
 
-## 5. Spec sync prep (AG-DEP)
+## 5. The actual fix (AG-DEP)
 
-- [ ] 5.1 Verify the delta spec's MODIFIED "End-to-end diagnostics capture" requirement (the new CI-retrievable
+- [x] 5.1 `tests/DockYarp.E2E.Tests/TlsHarness.cs`: `PrepareClientCa()` makes `E2EPaths.StepCaDirectory`
+      world-writable on Linux (`File.SetUnixFileMode`, guarded `!OperatingSystem.IsWindows()`), mirroring the
+      existing `PrepareCertsDirectory()` pattern for `CertsDirectory` verbatim.
+- [x] 5.2 `dotnet build tests/DockYarp.E2E.Tests/DockYarp.E2E.Tests.csproj` — 0 warnings, 0 errors.
+
+## 6. Real CI validation, round 2 — required (AG-DEP)
+
+- [ ] 6.1 Push this fix and trigger another real `workflow_dispatch` run — confirm the permission fix resolves
+      the failure outright. This is the only way to know; the bug is by-construction invisible on any local
+      Windows/Docker Desktop run (WSL2's permissive bind-mount translation), so no local test can substitute.
+- [ ] 6.2 If it still fails: read the (now available) `artifacts/e2e-logs/` artifact again before guessing
+      further — don't assume this was the only issue without checking.
+
+## 7. Spec sync prep (AG-DEP)
+
+- [ ] 7.1 Verify the delta spec's MODIFIED "End-to-end diagnostics capture" requirement (the new CI-retrievable
       scenario) matches what actually shipped before archiving.

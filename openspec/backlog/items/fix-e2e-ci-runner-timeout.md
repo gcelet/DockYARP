@@ -88,10 +88,18 @@ same way: `dockerproxy` ready quickly, then `dockyarp`/`ca-bundle` never complet
 dockyarp` after ~169–180s. Two independent real runs, same failure point, same rough timing → systematic, not
 transient.
 
-**Still unknown**: whether `stepca` itself (PKI init) or `ca-bundle`'s polling loop is the actual slow part —
-`Build.cs`'s `E2E` target only prints `dockyarp.log`'s tail to console on failure, and `image.yml` does not
-upload `artifacts/e2e-logs/` as a workflow artifact, so `stepca.log`/`ca-bundle.log`/`dockerproxy.log` from
-either real failure were never captured. **Proposed next step**: raise `StartupTimeoutSeconds` (generous
-margin — the underlying work isn't broken, just apparently slower on GitHub's infra) AND upload
-`artifacts/e2e-logs/` as a workflow artifact on failure, so a confirming run either passes outright or, if it
-still fails, finally shows which specific resource is the real bottleneck.
+**Update — real root cause found (2026-08-19, round 2)**: the timeout bump (180s → 420s) + artifact upload were
+implemented and pushed. A third real run (workflow_dispatch,
+https://github.com/gcelet/DockYARP/actions/runs/32293946454) **still failed** — the timeout bump alone was not
+the fix (stalled at ~407s of the new 420s budget). But the artifact upload worked, and `stepca.log` finally
+revealed the real cause:
+```
+/entrypoint.sh: line 59: /home/step/password: Permission denied
+```
+`step-ca`'s own container cannot write into its bind-mounted `/home/step` (`E2EPaths.StepCaDirectory`) on a
+native Linux runner — **deterministic, not a timing issue**. Invisible on Windows/Docker Desktop because its
+WSL2 bind-mount translation is permissive regardless of the container's internal UID, which is exactly why
+both local reproduction attempts (cold cache, matched CPU/RAM) never surfaced it despite genuine effort. Same
+class of bug `TlsHarness.PrepareCertsDirectory()` already fixes for `E2EPaths.CertsDirectory`
+(`File.SetUnixFileMode(..., worldWritable)`) — just never applied to `StepCaDirectory`. Fixed by applying the
+identical pattern. Validation round 2 (confirming this actual fix) pending.
