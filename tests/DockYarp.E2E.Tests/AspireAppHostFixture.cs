@@ -81,6 +81,12 @@ public static class AspireAppHostFixture
         await application.StartAsync(token);
         await application.ResourceNotifications.WaitForResourceHealthyAsync(ProxyResource, token);
 
+        // Only safe to widen step-ca's PKI file permissions now: DockYarp itself .WaitForCompletion(caBundle),
+        // and ca-bundle polls until step-ca's root_ca.crt/intermediate_ca.crt exist — so the proxy resource
+        // reporting healthy transitively guarantees step-ca has finished writing them. Doing this any earlier
+        // would race step-ca's own PKI init.
+        TlsHarness.MakeStepCaPkiReadable();
+
         Proxy = application.CreateHttpClient(ProxyResource, ProxyEndpoint);
         using HttpClient httpsProbe = application.CreateHttpClient(ProxyResource, ProxyHttpsEndpoint);
         HttpsBaseAddress = httpsProbe.BaseAddress!;

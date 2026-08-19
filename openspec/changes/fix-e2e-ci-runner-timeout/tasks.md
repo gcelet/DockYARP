@@ -42,13 +42,38 @@
 
 ## 6. Real CI validation, round 2 — required (AG-DEP)
 
-- [ ] 6.1 Push this fix and trigger another real `workflow_dispatch` run — confirm the permission fix resolves
-      the failure outright. This is the only way to know; the bug is by-construction invisible on any local
-      Windows/Docker Desktop run (WSL2's permissive bind-mount translation), so no local test can substitute.
-- [ ] 6.2 If it still fails: read the (now available) `artifacts/e2e-logs/` artifact again before guessing
-      further — don't assume this was the only issue without checking.
+- [x] 6.1 Pushed the `StepCaDirectory` write-permission fix and triggered another real `workflow_dispatch` run —
+      https://github.com/gcelet/DockYARP/actions/runs/32296322764. Result: **massive improvement, not full
+      resolution** — 31/32 tests passed (up from complete E2E startup failure), confirming the write-permission
+      fix works. One new, different failure: `AcmeCertificate_ChainIncludesIntermediate` —
+      `OpenSslCryptographicException` (`error:10080002:BIO routines::system lib`) loading
+      `certs/root_ca.crt` via `X509CertificateLoader.LoadCertificateFromFile`.
+- [x] 6.2 Diagnosed without needing another artifact download: the failing test reads `root_ca.crt` directly
+      from the host filesystem, while its passing sibling (`MountedPemCertificate_ChainIncludesIntermediate`)
+      uses an in-memory certificate and never touches disk — isolating the failure to reading a file step-ca's
+      own container created. Root cause: `PrepareClientCa()`'s chmod on `StepCaDirectory` runs once, before
+      step-ca ever starts, so it cannot reach `certs/root_ca.crt` — a file step-ca creates *later*, under its
+      own container's umask.
 
-## 7. Spec sync prep (AG-DEP)
+## 7. The read-side fix (AG-DEP)
 
-- [ ] 7.1 Verify the delta spec's MODIFIED "End-to-end diagnostics capture" requirement (the new CI-retrievable
+- [x] 7.1 `tests/DockYarp.E2E.Tests/TlsHarness.cs`: new `MakeStepCaPkiReadable()` recursively widens permissions
+      on everything under `StepCaDirectory` at call time (`Directory.EnumerateFileSystemEntries(...,
+      SearchOption.AllDirectories)` + `File.SetUnixFileMode`), guarded `!OperatingSystem.IsWindows()`.
+- [x] 7.2 `tests/DockYarp.E2E.Tests/AspireAppHostFixture.cs`: call it in `StartAsync()` right after
+      `WaitForResourceHealthyAsync(ProxyResource, token)` — safe only there, since DockYarp
+      `.WaitForCompletion(caBundle)` and `ca-bundle` itself polls until step-ca's PKI files exist, so the proxy
+      resource reporting healthy transitively guarantees step-ca has finished writing them.
+- [x] 7.3 `dotnet build tests/DockYarp.E2E.Tests/DockYarp.E2E.Tests.csproj` — 0 warnings, 0 errors.
+
+## 8. Real CI validation, round 3 — required (AG-DEP)
+
+- [ ] 8.1 Push this fix and trigger another real `workflow_dispatch` run — confirm the suite is fully green
+      (32/32), not just improved again. Same rationale as before: this class of bug is by-construction invisible
+      on any local Windows/Docker Desktop run.
+- [ ] 8.2 If it still fails: read the `artifacts/e2e-logs/` artifact before guessing further.
+
+## 9. Spec sync prep (AG-DEP)
+
+- [ ] 9.1 Verify the delta spec's MODIFIED "End-to-end diagnostics capture" requirement (the new CI-retrievable
       scenario) matches what actually shipped before archiving.

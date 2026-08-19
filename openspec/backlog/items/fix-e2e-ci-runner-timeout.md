@@ -102,4 +102,32 @@ WSL2 bind-mount translation is permissive regardless of the container's internal
 both local reproduction attempts (cold cache, matched CPU/RAM) never surfaced it despite genuine effort. Same
 class of bug `TlsHarness.PrepareCertsDirectory()` already fixes for `E2EPaths.CertsDirectory`
 (`File.SetUnixFileMode(..., worldWritable)`) — just never applied to `StepCaDirectory`. Fixed by applying the
-identical pattern. Validation round 2 (confirming this actual fix) pending.
+identical pattern.
+
+**Update — round 2 validation: fix confirmed, second (different) bug surfaced (2026-08-19, round 3)**: pushed
+the `StepCaDirectory` write-permission fix and triggered another real `workflow_dispatch` run
+(https://github.com/gcelet/DockYARP/actions/runs/32296322764). Massive improvement — 31/32 tests passed (up
+from complete E2E startup failure), confirming the write-permission fix works. One new, different failure:
+
+```
+Failed AcmeCertificate_ChainIncludesIntermediate [5 ms]
+Error Message:
+ Interop+Crypto+OpenSslCryptographicException : error:10080002:BIO routines::system lib
+Stack Trace:
+   at Interop.Crypto.CheckValidOpenSslHandle(SafeHandle handle)
+   at System.Security.Cryptography.X509Certificates.X509CertificateLoader.LoadCertificatePalFromFile(String path)
+   at System.Security.Cryptography.X509Certificates.X509CertificateLoader.LoadCertificateFromFile(String path)
+   at DockYarp.E2E.Tests.TlsTests.AcmeCertificate_ChainIncludesIntermediate() in .../TlsTests.cs:line 54
+```
+
+Root cause (same bug *class*, read side instead of write side): the failing test reads
+`E2EPaths.StepCaDirectory/certs/root_ca.crt` directly from the host filesystem; its passing sibling
+(`MountedPemCertificate_ChainIncludesIntermediate`) uses an in-memory certificate the test harness itself
+generates and never touches disk — isolating the failure to a file step-ca's own container created.
+`PrepareClientCa()`'s chmod on `StepCaDirectory` runs once, before step-ca ever starts, so it cannot reach
+`certs/root_ca.crt` — created *later*, under step-ca's own container umask. Fixed by adding
+`TlsHarness.MakeStepCaPkiReadable()`, a recursive `SetUnixFileMode` widen over everything under
+`StepCaDirectory`, called from `AspireAppHostFixture.StartAsync()` right after the proxy resource reports
+healthy (which transitively guarantees step-ca has finished writing its PKI, since DockYarp itself
+`.WaitForCompletion(caBundle)` and `ca-bundle` polls for those exact files). Validation round 3 (confirming the
+suite goes fully green) pending.

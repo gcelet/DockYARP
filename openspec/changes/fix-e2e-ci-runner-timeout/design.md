@@ -87,6 +87,32 @@ anyway). Considered and rejected: fixing this inside the `smallstep/step-ca` ima
 not this project's image to change; fixing host-side permissions is the correct, minimal-footprint side to own
 the mitigation on, same as the existing `CertsDirectory` precedent already does for DockYarp's own container.
 
+**Correction, found live, round 2**: this write-side fix was validated for real (run `32296322764`) and does
+work — 31/32 tests, up from complete failure. But it is not the whole story: `PrepareClientCa()`'s chmod runs
+once, at prep time, *before* step-ca ever starts — it only ever touches the top-level directory that exists at
+that moment. It cannot retroactively affect files/subdirectories step-ca's own container process creates
+*afterward* (`certs/root_ca.crt`, `certs/intermediate_ca.crt`, ...) under its own umask. This surfaced as a
+read-side failure: `AcmeCertificate_ChainIncludesIntermediate` failing to load `certs/root_ca.crt` from the
+host filesystem (`OpenSslCryptographicException`), while its sibling test (which uses an in-memory certificate
+instead of reading one from disk) passed — isolating the failure to reading a step-ca-created file. Fixed by a
+second, complementary decision below.
+
+**Add `TlsHarness.MakeStepCaPkiReadable()` — a recursive permission widen over `StepCaDirectory`, called after
+step-ca has finished writing, not before.**
+
+Rationale: the write-side fix only *creates room* for step-ca to write; it cannot pre-empt the permissions
+step-ca's own process chooses for files it creates later. The correct fix has to run *after* those files exist.
+`AspireAppHostFixture.StartAsync()` already has a natural, correct hook: right after
+`WaitForResourceHealthyAsync(ProxyResource, token)` succeeds — DockYarp itself `.WaitForCompletion(caBundle)`,
+and `ca-bundle`'s own script polls until step-ca's `root_ca.crt`/`intermediate_ca.crt` exist, so the proxy
+resource reporting healthy transitively guarantees step-ca is done writing its PKI. Walks every entry under
+`StepCaDirectory` via `Directory.EnumerateFileSystemEntries(..., SearchOption.AllDirectories)` and applies the
+same `worldWritable` `UnixFileMode` used elsewhere in this file, guarded `!OperatingSystem.IsWindows()`.
+Considered and rejected: pre-creating `certs/` on the host before step-ca starts (as `PrepareClientCa()` does
+for the top-level directory) — would only work if step-ca's init logic reuses an existing directory as-is
+rather than recreating it, which isn't confirmed behavior for a third-party image and isn't worth depending on;
+the recursive post-hoc widen doesn't need that assumption.
+
 ## Risks / Trade-offs
 
 - [Risk] 420s might still not be enough for some *other* reason once the permission bug is fixed (unlikely,
