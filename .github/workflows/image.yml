@@ -16,7 +16,7 @@ permissions:
   packages: write
 
 concurrency:
-  group: image-${{ github.ref }}
+  group: image-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: false
 
 jobs:
@@ -57,6 +57,17 @@ jobs:
         uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+
+      # Same key as ci.yml's cache step, verbatim — GitHub Actions cache scope is per-repository, not
+      # per-workflow, so a matching key shares the entry with ci.yml's restore (and vice versa) instead of
+      # each workflow downloading NuGet packages independently on every push.
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', 'global.json') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -141,6 +152,17 @@ jobs:
         uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+
+      # Same key as ci.yml's cache step, verbatim — GitHub Actions cache scope is per-repository, not
+      # per-workflow, so a matching key shares the entry with ci.yml's restore (and vice versa) instead of
+      # each workflow downloading NuGet packages independently on every push.
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', 'global.json') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
