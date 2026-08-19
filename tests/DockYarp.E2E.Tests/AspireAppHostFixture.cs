@@ -30,7 +30,12 @@ public static class AspireAppHostFixture
     private const string ProxyEndpoint = "http";
     private const string ProxyHttpsEndpoint = "https";
     private const string ProxyProtocolResource = "dockyarp-pp";
-    private const int StartupTimeoutSeconds = 180;
+
+    // A generous, deliberately-not-precisely-measured margin, not a minimum derived from local timing: local
+    // runs (including under CPU/RAM matched to a GitHub-hosted runner) complete the same startup in well under
+    // two minutes, but two real GitHub Actions runs both hit the previous 180s budget exactly, never finishing
+    // organically. See openspec/backlog/items/fix-e2e-ci-runner-timeout.md's investigation log.
+    private const int StartupTimeoutSeconds = 420;
 
     private static DistributedApplication? application;
 

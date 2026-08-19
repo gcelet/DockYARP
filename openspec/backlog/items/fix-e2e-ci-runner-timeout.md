@@ -65,3 +65,33 @@ Investigate before picking a fix — several plausible, non-exclusive options:
   even though nothing is on fire today (edge publishes are unaffected, they skip the gate).
 - `add-nondcp-e2e-harness` is unrelated to this — that item is about DCP's *architectural* inability to run
   certain network topologies at all, not about *timing* on a real runner.
+
+## Investigation log (2026-08-19)
+
+**Local reproduction attempted, twice, both negative** — genuinely tried before assuming, not skipped:
+1. Cold external-image cache only (`smallstep/step-ca`, `alpine`, `alpine/socat`,
+   `tecnativa/docker-socket-proxy`, `traefik/whoami`, both `aspnet:10.0` variants removed, normal Docker
+   Desktop resources): `./build.ps1 E2E` succeeded in 1:50 total.
+2. CPU/RAM constrained to match GitHub's published `ubuntu-latest` spec exactly (2 vCPU, ~6.8 GB via a
+   temporary `.wslconfig`, Docker Desktop fully restarted to apply it, restored afterward — confirmed via
+   `docker info` before/after): warm cache → 1:24; **cold cache + constrained together (closest local proxy for
+   the real CI environment)** → 1:26.
+
+None of these reproduced anything close to the real failure. This rules out "generic resource/cache
+constraints matching GitHub's published specs" as sufficient on their own — something else about the actual
+runner environment (network path/registry throttling specific to GitHub's infra, or per-core compute
+characteristics not captured by a raw vCPU count, or disk I/O) is the more likely remaining explanation.
+
+**Second real CI run, same-shape failure — ruled out "one-off fluke"**: a second `workflow_dispatch` run
+(https://github.com/gcelet/DockYARP/actions/runs/32292201589, no code changes from the first run) failed the
+same way: `dockerproxy` ready quickly, then `dockyarp`/`ca-bundle` never completing, `Failed to create resource
+dockyarp` after ~169–180s. Two independent real runs, same failure point, same rough timing → systematic, not
+transient.
+
+**Still unknown**: whether `stepca` itself (PKI init) or `ca-bundle`'s polling loop is the actual slow part —
+`Build.cs`'s `E2E` target only prints `dockyarp.log`'s tail to console on failure, and `image.yml` does not
+upload `artifacts/e2e-logs/` as a workflow artifact, so `stepca.log`/`ca-bundle.log`/`dockerproxy.log` from
+either real failure were never captured. **Proposed next step**: raise `StartupTimeoutSeconds` (generous
+margin — the underlying work isn't broken, just apparently slower on GitHub's infra) AND upload
+`artifacts/e2e-logs/` as a workflow artifact on failure, so a confirming run either passes outright or, if it
+still fails, finally shows which specific resource is the real bottleneck.

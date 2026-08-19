@@ -82,6 +82,18 @@ jobs:
           VERSION: ${{ steps.cfg.outputs.version }}
         run: ./build.sh DockerPublish --registry "$REGISTRY" --image-repository "$REPOSITORY" --version "$VERSION" --platforms linux/amd64,linux/arm64
 
+      # The E2E target writes each Aspire resource's own logs here (stepca.log, ca-bundle.log, dockerproxy.log,
+      # ...), but the runner is torn down after the job ends — without this, a CI-only E2E failure is only ever
+      # diagnosable from dockyarp.log's console tail (the target's own on-failure summary), never the other
+      # resources' logs. Only runs on failure so successful releases carry no extra artifact.
+      - name: Upload E2E diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-logs
+          path: artifacts/e2e-logs/
+          if-no-files-found: ignore
+
       # Both steps inspect the image just pushed above by registry reference — no separate rebuild.
       - name: Generate SBOM
         uses: anchore/sbom-action@v0
