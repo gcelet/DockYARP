@@ -83,11 +83,16 @@
 
 ## 9. Real CI validation, round 4 — required (AG-DEP)
 
-- [ ] 9.1 Push this fix and trigger another real `workflow_dispatch` run — confirm the suite is fully green
-      (32/32) on the real Linux runner.
-- [ ] 9.2 If it still fails: read the `artifacts/e2e-logs/` artifact before guessing further.
+- [x] 9.1 Pushed (commit `91fec88`) and triggered another real `workflow_dispatch` run —
+      https://github.com/gcelet/DockYARP/actions/runs/32298840624. **Fully green**: `Passed! - Failed: 0,
+      Passed: 32, Skipped: 0, Total: 32` for `DockYarp.E2E.Tests.dll`, all other test projects also 100% green
+      (`Docker`, `IntegrationTests`, `Tls`, `Core`, `Security`). The job's 12m36s wall time is normal multi-arch
+      `DockerPublish` push time under QEMU emulation (~6.5 min of it), not a stall — the E2E test run itself
+      took 1m18s.
+- [x] 9.2 Not needed — no failure to diagnose.
 
 ## 10. Spec sync prep (AG-DEP)
 
-- [ ] 10.1 Verify the delta spec's MODIFIED "End-to-end diagnostics capture" requirement (the new
-      CI-retrievable scenario) matches what actually shipped before archiving.
+- [x] 10.1 Verified: the delta spec's MODIFIED "End-to-end diagnostics capture" requirement (CI-retrievable
+      `artifacts/e2e-logs/` upload on failure) matches what shipped — `actions/upload-artifact@v7`,
+      `if: failure()`, `path: artifacts/e2e-logs/`, `if-no-files-found: ignore` in `.github/workflows/image.yml`.
