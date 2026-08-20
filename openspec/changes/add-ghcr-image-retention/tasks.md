@@ -24,12 +24,16 @@
 
 ## 3. Real dry-run validation — required (AG-DEP)
 
-- [ ] 3.1 Once the secret exists: push this workflow file and trigger a real `workflow_dispatch` run with
-      `dry-run: true` still set.
-- [ ] 3.2 Read the run's own output/logs for the reported deletion list. Confirm: every stable release tag
-      (`X.Y.Z`/`X.Y`/`X`/`latest`) and `edge` are absent from that list; only hyphenated GitVersion
-      edge-prerelease tags appear. If anything unexpected appears, stop and re-investigate the filter — do not
-      flip to real deletion until this list looks exactly right.
+- [x] 3.1 Secret confirmed present (`gh secret list` shows `GHCR_CLEANUP_TOKEN`), pushed, triggered a real
+      `workflow_dispatch` run — https://github.com/gcelet/DockYARP/actions/runs/32414866147. **Failed**:
+      `Failed to fetch packages: ... 404 ... list-packages-for-an-organization`. Root cause: `account` was set
+      to `${{ github.repository_owner }}` (`gcelet`), triggering the org-scoped endpoint — `gcelet` is a
+      personal account, not an org. Fixed: `account: user` (the literal string the action documents for this
+      exact case).
+- [ ] 3.2 Push the `account: user` fix and trigger another real `workflow_dispatch` run. Read the reported
+      deletion list. Confirm: every stable release tag (`X.Y.Z`/`X.Y`/`X`/`latest`) and `edge` are absent from
+      it; only hyphenated GitVersion edge-prerelease tags appear. If anything unexpected appears, stop and
+      re-investigate — do not flip to real deletion until this list looks exactly right.
 - [ ] 3.3 Spot-check that a retained tag (e.g. `edge`) still has both `linux/amd64` and `linux/arm64` manifests
       reported/intact per the action's own output or a manual `docker manifest inspect`, confirming the
       multi-arch-protection claim actually holds for this repo's real package shape, not just trusted from the

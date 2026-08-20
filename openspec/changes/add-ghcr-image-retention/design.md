@@ -2,8 +2,10 @@
 
 See `proposal.md` — Why. Confirmed action inputs (fetched from the action's own README, not guessed):
 
-- `account` (required): org/user — `gcelet` for this repo, resolved dynamically from `github.repository_owner`
-  rather than hardcoded, matching the existing dynamic-resolution pattern in `image.yml`'s "Resolve target" step.
+- `account` (required): org name, or the literal string `"user"` for a personal account. **Correction, found
+  live (run `32414866147`)**: originally set to `${{ github.repository_owner }}` (`gcelet`), which made the
+  action call the organization-scoped list-packages endpoint — a 404, since `gcelet` is a personal account,
+  not an org. Fixed to the literal `user` (the action then resolves against the token's own owner).
 - `token` (required): needs **both** `read:packages` (to list versions at all) **and** `delete:packages` (to
   delete them) — confirmed against GitHub's own REST API docs, not the action's summarized README alone; the
   default `GITHUB_TOKEN` does not carry delete rights for packages, only write. **A user-provisioned secret,

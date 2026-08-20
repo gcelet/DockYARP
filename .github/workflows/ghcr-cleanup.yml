@@ -24,7 +24,10 @@ jobs:
       - name: Prune superseded edge prerelease tags
         uses: snok/container-retention-policy@v3.1.0
         with:
-          account: ${{ github.repository_owner }}
+          # Literal "user", not github.repository_owner: gcelet is a personal account, not an organization —
+          # passing the owner name here made the action call the organization-scoped list-packages endpoint,
+          # which 404s for a personal account (confirmed live, run 32414866147).
+          account: user
           token: ${{ secrets.GHCR_CLEANUP_TOKEN }}
           image-names: dockyarp
           image-tags: '*-*'
