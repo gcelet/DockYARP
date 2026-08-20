@@ -19,8 +19,9 @@ jobs:
       # GitVersion-resolved edge-prerelease tag always does (semver's own "-" separator, e.g.
       # "0.1.0-alpha.223"). image-tags: "*-*" is therefore a positive filter for exactly the tags that should
       # ever be deleted — no keep-list to enumerate or maintain as the release tag scheme evolves elsewhere.
-      # dry-run stays true until a real run's reported deletion list has been reviewed (see the change's
-      # tasks.md) and flipped deliberately, not by default.
+      # dry-run: false — validated across three real runs (32414866147 investigation, 32415763262, 32416211579
+      # debug trace, 32416645294 post-revert) with a stable, correct, explicitly user-reviewed deletion list
+      # before this was flipped.
       - name: Prune superseded edge prerelease tags
         uses: snok/container-retention-policy@v3.1.0
         with:
@@ -33,4 +34,4 @@ jobs:
           image-tags: '*-*'
           tag-selection: tagged
           cut-off: 3d
-          dry-run: true
+          dry-run: false

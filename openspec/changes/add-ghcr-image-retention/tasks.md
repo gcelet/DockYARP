@@ -55,13 +55,18 @@
       were all published ~23-24h ago — correctly excluded by `cut-off: 3d`, not evidence of a bug. The
       screenshot was a partial/scrolled view, not the full list. **No fix needed** — reverted the temporary
       debug logging back to the default.
+- [x] 3b.3 User's actual question clarified: not doubting alpha.286/284's existence, but why the *visible*
+      screenshot entries weren't selected — confirmed it's the 3-day cut-off. Pushed the revert, re-ran
+      (https://github.com/gcelet/DockYARP/actions/runs/32416645294) — identical result
+      (`alpha.286`/`alpha.284` only), confirming stability across three independent runs.
 
 ## 4. Go live — required, after explicit user confirmation (AG-DEP)
 
-- [ ] 4.1 With the user's explicit go-ahead (having reviewed task 3's dry-run output), flip `dry-run` to
-      `false` in `ghcr-cleanup.yml`.
+- [x] 4.1 User gave explicit go-ahead ("oui on passe au réel") after reviewing three consistent dry-run
+      results plus the debug-trace investigation. Flipped `dry-run` to `false` in `ghcr-cleanup.yml`.
 - [ ] 4.2 Trigger one more real `workflow_dispatch` run with real deletion enabled, confirm it completes
-      successfully and the deleted list matches what the dry-run previously reported.
+      successfully and the deleted list matches what the dry-run previously reported
+      (`0.1.0-alpha.286`, `0.1.0-alpha.284`).
 - [ ] 4.3 Confirm a kept tag (`edge` or the latest stable release) still pulls successfully after the real run
       (`docker pull` against the real registry).
 
