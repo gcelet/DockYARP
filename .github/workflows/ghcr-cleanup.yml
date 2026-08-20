@@ -1,0 +1,33 @@
+name: GHCR image retention
+
+on:
+  schedule:
+    # Sunday, 03:00 UTC — matches this project's evening-only/low-cadence development rhythm; the package only
+    # meaningfully grows on active development days, so a weekly sweep is enough.
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+
+permissions:
+  packages: write
+
+jobs:
+  cleanup:
+    name: Prune superseded edge tags
+    runs-on: ubuntu-latest
+    steps:
+      # Every DockYarp release tag (X, X.Y, X.Y.Z, latest) and `edge` itself never contain a hyphen; every
+      # GitVersion-resolved edge-prerelease tag always does (semver's own "-" separator, e.g.
+      # "0.1.0-alpha.223"). image-tags: "*-*" is therefore a positive filter for exactly the tags that should
+      # ever be deleted — no keep-list to enumerate or maintain as the release tag scheme evolves elsewhere.
+      # dry-run stays true until a real run's reported deletion list has been reviewed (see the change's
+      # tasks.md) and flipped deliberately, not by default.
+      - name: Prune superseded edge prerelease tags
+        uses: snok/container-retention-policy@v3.1.0
+        with:
+          account: ${{ github.repository_owner }}
+          token: ${{ secrets.GHCR_CLEANUP_TOKEN }}
+          image-names: dockyarp
+          image-tags: '*-*'
+          tag-selection: tagged
+          cut-off: 3d
+          dry-run: true
