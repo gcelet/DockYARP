@@ -165,6 +165,76 @@ public sealed class CertificateStoreTests
         store.Find("app.local").Should().NotBeNull();
     }
 
+    /// <summary>IsPfxBacked reflects the live on-disk state: true for a PFX-only host, false once a PEM pair
+    /// exists, false for a host with no certificate at all.</summary>
+    [Test]
+    public void IsPfxBackedReflectsDiskState()
+    {
+        using X509Certificate2 pfxOnly = DefaultCertificateFactory.CreateSelfSigned("pfx-only.local");
+        using X509Certificate2 pemPair = DefaultCertificateFactory.CreateSelfSigned("pem-pair.local");
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "pfx-only.local.pfx"),
+            new MockFileData(pfxOnly.Export(X509ContentType.Pfx)));
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "pem-pair.local.crt"),
+            new MockFileData(pemPair.ExportCertificatePem()));
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "pem-pair.local.key"),
+            new MockFileData(pemPair.GetRSAPrivateKey()!.ExportPkcs8PrivateKeyPem()));
+
+        using FileCertificateStore store = new(new TlsOptions { CertificateDirectory = directory }, fileSystem);
+
+        store.IsPfxBacked("pfx-only.local").Should().BeTrue();
+        store.IsPfxBacked("pem-pair.local").Should().BeFalse();
+        store.IsPfxBacked("unknown.local").Should().BeFalse();
+    }
+
+    /// <summary>ConvertToPem rewrites a PFX-backed host as PEM, removes the stale PFX, and leaves the
+    /// certificate served correctly afterward — not disposed, same thumbprint (the exact regression a
+    /// Save()-based implementation would risk).</summary>
+    [Test]
+    public void ConvertToPemRewritesPfxAsUsablePem()
+    {
+        using X509Certificate2 source = DefaultCertificateFactory.CreateSelfSigned("convert-me.local");
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        string pfxPath = fileSystem.Path.Combine(directory, "convert-me.local.pfx");
+        fileSystem.AddFile(pfxPath, new MockFileData(source.Export(X509ContentType.Pfx)));
+        using FileCertificateStore store = new(new TlsOptions { CertificateDirectory = directory }, fileSystem);
+        LoadedCertificate? beforeConversion = store.Find("convert-me.local");
+        beforeConversion.Should().NotBeNull();
+
+        bool converted = store.ConvertToPem("convert-me.local");
+
+        converted.Should().BeTrue();
+        fileSystem.File.Exists(pfxPath).Should().BeFalse("the stale PFX must be removed after conversion");
+        fileSystem.File.Exists(fileSystem.Path.Combine(directory, "convert-me.local.crt")).Should().BeTrue();
+        fileSystem.File.Exists(fileSystem.Path.Combine(directory, "convert-me.local.key")).Should().BeTrue();
+        store.IsPfxBacked("convert-me.local").Should().BeFalse();
+
+        LoadedCertificate? afterConversion = store.Find("convert-me.local");
+        afterConversion.Should().NotBeNull();
+        ReferenceEquals(afterConversion, beforeConversion).Should().BeTrue(
+            "ConvertToPem must not replace/dispose the in-memory certificate via Save()'s remove-then-dispose " +
+            "path — the exact same object must still be served afterward");
+        afterConversion!.Leaf.Thumbprint.Should().Be(source.Thumbprint);
+        afterConversion.Leaf.HasPrivateKey.Should().BeTrue();
+    }
+
+    /// <summary>Converting an unknown host is a no-op that returns false and touches no files.</summary>
+    [Test]
+    public void ConvertToPemOnUnknownHostReturnsFalse()
+    {
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        using FileCertificateStore store = new(new TlsOptions { CertificateDirectory = directory }, fileSystem);
+
+        store.ConvertToPem("unknown.local").Should().BeFalse();
+        fileSystem.File.Exists(fileSystem.Path.Combine(directory, "unknown.local.crt")).Should().BeFalse();
+    }
+
     /// <summary>A .crt without a matching .key is skipped.</summary>
     [Test]
     public void UnpairedCertificateIsSkipped()

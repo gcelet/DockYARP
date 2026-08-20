@@ -55,6 +55,39 @@ public sealed class FileCertificateStore : ICertificateStore, IDisposable
     }
 
     /// <inheritdoc />
+    public bool IsPfxBacked(string host) =>
+        fileSystem.File.Exists(PathFor(host, ".pfx")) && !fileSystem.File.Exists(PathFor(host, ".crt"));
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Writes the already-loaded certificate's PEM directly and does not call <see cref="Save"/>: <c>Save</c>'s
+    /// remove-then-dispose logic assumes a genuinely new certificate is replacing the old one, but here the
+    /// "new" and "old" are the same object — going through it would dispose the certificate this method is
+    /// meant to leave usable, breaking the next SNI lookup for this host.
+    /// </remarks>
+    public bool ConvertToPem(string host)
+    {
+        lock (gate)
+        {
+            if (!certificates.TryGetValue(host, out LoadedCertificate? certificate))
+            {
+                return false;
+            }
+
+            fileSystem.File.WriteAllText(PathFor(host, ".crt"), certificate.ExportChainPem());
+            fileSystem.File.WriteAllText(PathFor(host, ".key"), certificate.ExportPrivateKeyPem());
+
+            string pfxPath = PathFor(host, ".pfx");
+            if (fileSystem.File.Exists(pfxPath))
+            {
+                fileSystem.File.Delete(pfxPath);
+            }
+
+            return true;
+        }
+    }
+
+    /// <inheritdoc />
     public IReadOnlyList<CertificateInfo> List()
     {
         lock (gate)

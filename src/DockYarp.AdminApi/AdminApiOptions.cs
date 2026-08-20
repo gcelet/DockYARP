@@ -32,4 +32,14 @@ public sealed class AdminApiOptions
     /// (<see cref="Host"/>) as the rest of the admin surface — there is no additional application-level
     /// authentication. Has no effect unless <see cref="Surface"/> is <see cref="AdminApiSurface.ApiAndDashboard"/>.</remarks>
     public bool AllowCertificateDownload { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether the dashboard exposes the PFX-to-PEM certificate
+    /// conversion action.</summary>
+    /// <remarks>Opt-in (default <see langword="false"/>) — its own independent setting, deliberately not
+    /// reusing <see cref="AllowCertificateDownload"/>: this is the first (and only) mutating action the admin
+    /// surface exposes, gated on that basis rather than on secret-exposure risk (conversion doesn't expose any
+    /// key material that wasn't already reachable via volume access — it only rewrites the on-disk format of an
+    /// already-served certificate). Has no effect unless <see cref="Surface"/> is
+    /// <see cref="AdminApiSurface.ApiAndDashboard"/>.</remarks>
+    public bool AllowCertificateConversion { get; set; }
 }

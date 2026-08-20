@@ -15,9 +15,14 @@ internal static class CertificateCollectionLoader
     /// <param name="password">The password the PKCS12 bag was protected with, or <see langword="null"/>.</param>
     /// <returns>The keyed leaf plus any additional certificates found alongside it.</returns>
     /// <exception cref="InvalidOperationException">No certificate in the bag has a private key.</exception>
+    // Exportable: without it, a platform PAL that imports into a non-exportable key store (CNG on Windows) makes
+    // the private key permanently unexportable for the process lifetime — ConvertToPem (add-admin-dashboard-
+    // cert-conversion) needs to re-export a PFX-loaded key as PEM, which would otherwise fail with
+    // "The requested operation is not supported" regardless of retrying; it must be requested at import time.
     public static LoadedCertificate LoadKeyed(byte[] pkcs12, string? password)
     {
-        X509Certificate2Collection loaded = X509CertificateLoader.LoadPkcs12Collection(pkcs12, password);
+        X509Certificate2Collection loaded =
+            X509CertificateLoader.LoadPkcs12Collection(pkcs12, password, X509KeyStorageFlags.Exportable);
         X509Certificate2? leaf = loaded.FirstOrDefault(entry => entry.HasPrivateKey);
         if (leaf is null)
         {

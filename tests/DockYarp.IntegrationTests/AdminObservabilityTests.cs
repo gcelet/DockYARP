@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 using AwesomeAssertions;
@@ -165,6 +166,96 @@ public sealed class AdminObservabilityTests
         client.DefaultRequestHeaders.Contains("X-Api-Key").Should().BeFalse();
     }
 
+    /// <summary>No conversion action is available when <c>AllowCertificateConversion</c> is left at its
+    /// default (<see langword="false"/>): the "Convert to PEM" form doesn't render, even for a host the fake
+    /// converter reports as PFX-backed.</summary>
+    [Test]
+    public async Task CertificateConversionDefaultsToDisabled()
+    {
+        FakeCertificateConverter converter = new();
+        using WebApplicationFactory<Program> factory = ConversionFactory(
+            allowCertificateConversion: false,
+            services =>
+            {
+                services.AddSingleton<ICertificateInventory>(new FakeCertificateInventory());
+                services.AddSingleton<ICertificateConverter>(converter);
+            });
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage response = await client.GetAsync("/dashboard");
+        string html = await response.Content.ReadAsStringAsync();
+
+        html.Should().NotContain("Convert to PEM");
+        converter.ConvertedHosts.Should().BeEmpty();
+    }
+
+    /// <summary>Enabled: submitting the convert form (with its real anti-forgery token) for a PFX-backed host
+    /// invokes the converter for that host.</summary>
+    [Test]
+    public async Task ConvertingCertificateInvokesConverter()
+    {
+        FakeCertificateConverter converter = new();
+        using WebApplicationFactory<Program> factory = ConversionFactory(
+            allowCertificateConversion: true,
+            services =>
+            {
+                services.AddSingleton<ICertificateInventory>(new FakeCertificateInventory());
+                services.AddSingleton<ICertificateConverter>(converter);
+            });
+        using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        string token = await GetAntiForgeryTokenAsync(client, "/dashboard");
+
+        using HttpResponseMessage response = await client.PostAsync(
+            "/dashboard?handler=Convert&host=app.local",
+            new FormUrlEncodedContent([new KeyValuePair<string, string>("__RequestVerificationToken", token)]));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect, "post-redirect-get back to /dashboard");
+        converter.ConvertedHosts.Should().ContainSingle().Which.Should().Be("app.local");
+    }
+
+    /// <summary>The conversion action actually enforces anti-forgery — a request without a valid token is
+    /// rejected, not silently honored, proving the CSRF protection is genuinely active rather than assumed.</summary>
+    [Test]
+    public async Task ConvertingWithoutAntiForgeryTokenIsRejected()
+    {
+        FakeCertificateConverter converter = new();
+        using WebApplicationFactory<Program> factory = ConversionFactory(
+            allowCertificateConversion: true,
+            services =>
+            {
+                services.AddSingleton<ICertificateInventory>(new FakeCertificateInventory());
+                services.AddSingleton<ICertificateConverter>(converter);
+            });
+        using HttpClient client = factory.CreateClient();
+        await GetAntiForgeryTokenAsync(client, "/dashboard"); // establishes the anti-forgery cookie, token discarded
+
+        using HttpResponseMessage response =
+            await client.PostAsync("/dashboard?handler=Convert&host=app.local", new FormUrlEncodedContent([]));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        converter.ConvertedHosts.Should().BeEmpty();
+    }
+
+    private static async Task<string> GetAntiForgeryTokenAsync(HttpClient client, string path)
+    {
+        using HttpResponseMessage response = await client.GetAsync(path);
+        string html = await response.Content.ReadAsStringAsync();
+        Match match = Regex.Match(html, @"name=""__RequestVerificationToken""[^>]*?value=""([^""]+)""");
+        match.Success.Should().BeTrue("the conversion form must render its anti-forgery token");
+        return match.Groups[1].Value;
+    }
+
+    private static WebApplicationFactory<Program> ConversionFactory(
+        bool allowCertificateConversion, Action<IServiceCollection> configureServices) =>
+        new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("AdminApi:ApiKey", ApiKey);
+            builder.UseSetting("AdminApi:Surface", "ApiAndDashboard");
+            builder.UseSetting("AdminApi:Host", "localhost");
+            builder.UseSetting("AdminApi:AllowCertificateConversion", allowCertificateConversion.ToString());
+            builder.ConfigureTestServices(configureServices);
+        });
+
     private static WebApplicationFactory<Program> Factory(Action<IServiceCollection> configureServices) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
@@ -198,6 +289,19 @@ public sealed class AdminObservabilityTests
     {
         public IReadOnlyList<AdminApiModels.CertView> List() =>
             [new AdminApiModels.CertView("app.local", "2027-01-01T00:00:00.0000000+00:00")];
+    }
+
+    private sealed class FakeCertificateConverter : ICertificateConverter
+    {
+        public List<string> ConvertedHosts { get; } = [];
+
+        public bool IsPfxBacked(string host) => host == "app.local";
+
+        public bool ConvertToPem(string host)
+        {
+            ConvertedHosts.Add(host);
+            return true;
+        }
     }
 
     private sealed class FakeDiscoveryHealth : IDiscoveryHealth

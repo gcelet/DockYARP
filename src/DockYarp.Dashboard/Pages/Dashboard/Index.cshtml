@@ -66,7 +66,14 @@
   else
   {
     <table>
-      <thead><tr><th>Host</th><th>Expires</th>@if (Model.AllowCertificateDownload) { <th>Download</th> }</tr></thead>
+      <thead>
+        <tr>
+          <th>Host</th>
+          <th>Expires</th>
+          @if (Model.AllowCertificateDownload) { <th>Download</th> }
+          @if (Model.AllowCertificateConversion) { <th>Format</th> }
+        </tr>
+      </thead>
       <tbody>
       @foreach (var cert in Model.Certificates)
       {
@@ -85,6 +92,17 @@
               <a href="/dashboard/certs/@Uri.EscapeDataString(cert.Host)/certificate">certificate</a>
               ·
               <a href="/dashboard/certs/@Uri.EscapeDataString(cert.Host)/private-key">private key</a>
+            </td>
+          }
+          @if (Model.AllowCertificateConversion)
+          {
+            <td>
+              @if (cert.IsPfxBacked)
+              {
+                <form method="post" asp-page-handler="Convert" asp-route-host="@cert.Host">
+                  <button type="submit">Convert to PEM</button>
+                </form>
+              }
             </td>
           }
         </tr>

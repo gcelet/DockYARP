@@ -11,6 +11,7 @@ using DockYarp.AdminApi;
 using DockYarp.Core.Interfaces;
 using DockYarp.Core.Models;
 
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 /// <summary>Page model for the read-only admin dashboard at <c>/dashboard</c>.</summary>
@@ -24,6 +25,7 @@ public sealed class IndexModel(
     IRouteConfigStore routeConfigStore,
     ICertificateInventory certificateInventory,
     IDiscoveryHealth discoveryHealth,
+    ICertificateConverter certificateConverter,
     AdminApiOptions adminApiOptions) : PageModel
 {
     /// <summary>A certificate row with its expiry pre-parsed for the view (avoids re-parsing in Razor markup).</summary>
@@ -37,6 +39,9 @@ public sealed class IndexModel(
 
         /// <summary>Gets a value indicating whether the certificate expires within the warning window.</summary>
         public required bool NearExpiry { get; init; }
+
+        /// <summary>Gets a value indicating whether this certificate is currently backed by a legacy PFX file.</summary>
+        public required bool IsPfxBacked { get; init; }
     }
 
     private static readonly TimeSpan NearExpiryWindow = TimeSpan.FromDays(14);
@@ -53,6 +58,10 @@ public sealed class IndexModel(
 
     /// <summary>Gets a value indicating whether the certificate table should render download links.</summary>
     public bool AllowCertificateDownload => adminApiOptions.AllowCertificateDownload;
+
+    /// <summary>Gets a value indicating whether the certificate table should render the PFX-to-PEM conversion
+    /// action.</summary>
+    public bool AllowCertificateConversion => adminApiOptions.AllowCertificateConversion;
 
     /// <summary>Gets the overall health status (<c>Healthy</c> or <c>Degraded</c>).</summary>
     public string Status { get; private set; } = "Healthy";
@@ -79,7 +88,26 @@ public sealed class IndexModel(
         (Status, DiscoveryStatus) = AdminMapper.ResolveHealth(discoveryHealth);
     }
 
-    private static CertificateRow ToCertificateRow(AdminApiModels.CertView cert)
+    /// <summary>Converts a PFX-backed host's certificate to PEM, then redirects back to the dashboard
+    /// (post-redirect-get, avoiding a resubmission prompt on refresh).</summary>
+    /// <param name="host">The host to convert.</param>
+    /// <returns>A redirect to <c>/dashboard</c>.</returns>
+    /// <remarks>
+    /// Checks <see cref="AllowCertificateConversion"/> itself rather than trusting the view to have hidden the
+    /// form — defense in depth, since the option gates both whether the action renders and whether it is
+    /// honored. Razor Pages validates the anti-forgery token on this handler automatically before it runs.
+    /// </remarks>
+    public IActionResult OnPostConvert(string host)
+    {
+        if (AllowCertificateConversion)
+        {
+            certificateConverter.ConvertToPem(host);
+        }
+
+        return RedirectToPage();
+    }
+
+    private CertificateRow ToCertificateRow(AdminApiModels.CertView cert)
     {
         DateTimeOffset notAfter = DateTimeOffset.Parse(cert.NotAfter, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
         return new CertificateRow
@@ -87,6 +115,7 @@ public sealed class IndexModel(
             Host = cert.Host,
             NotAfter = notAfter,
             NearExpiry = notAfter - DateTimeOffset.UtcNow <= NearExpiryWindow,
+            IsPfxBacked = certificateConverter.IsPfxBacked(cert.Host),
         };
     }
 }

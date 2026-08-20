@@ -17,6 +17,10 @@ internal sealed class FakeCertificateStore : ICertificateStore
 
     public void Save(string host, LoadedCertificate certificate) => certificates[host] = certificate;
 
+    public bool IsPfxBacked(string host) => false;
+
+    public bool ConvertToPem(string host) => certificates.ContainsKey(host);
+
     public IReadOnlyList<CertificateInfo> List() =>
         [.. certificates.Select(entry => new CertificateInfo(entry.Key, new DateTimeOffset(entry.Value.Leaf.NotAfter)))];
 }

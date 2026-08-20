@@ -168,6 +168,7 @@ the container must listen on 80/443 directly — see [Examples](/docs/examples/#
 | `LetsEncrypt` | `false` | Opt in to ACME-provision a certificate for `Host` (needs `Host` set). When enabled, the admin host is provisioned and renewed like any vhost; otherwise it keeps the default/operator certificate. |
 | `ContactEmail` | — | ACME contact email for the admin host; falls back to `Tls:ContactEmail` when unset. |
 | `AllowCertificateDownload` | `false` | Opt in to certificate/private-key download links on `/dashboard` (needs `Surface: ApiAndDashboard`). **Security note:** once enabled, a stored certificate's private key is downloadable over HTTP, protected only by `Host`'s network isolation — no application-level authentication. Only enable this on an admin host that is genuinely not reachable from an untrusted network. |
+| `AllowCertificateConversion` | `false` | Opt in to a "Convert to PEM" action on `/dashboard` for any certificate still backed by a legacy `.pfx` file (needs `Surface: ApiAndDashboard`). This is the **one mutating action** the admin surface exposes — it only rewrites the on-disk format of an already-served certificate (no re-provisioning, no change to what's served), protected by the same anti-forgery mechanism as any other Razor Pages form submission. Gated independently of `AllowCertificateDownload`. |
 
 ### `Compression`
 
