@@ -7,7 +7,7 @@ DockYarp obtains and serves HTTPS certificates automatically for hosts that decl
 
 | Type | Role |
 |---|---|
-| `ICertificateStore` / `FileCertificateStore` | PFX and PEM files under a directory, mirrored in memory for SNI. |
+| `ICertificateStore` / `FileCertificateStore` | PEM files under a directory (also reads legacy/operator-provided PFX), mirrored in memory for SNI. |
 | `DefaultCertificateProvider` | Self-signed **fallback** certificate generated at startup. |
 | `SniCertificateSelector` | Picks the exact host certificate, then a wildcard parent, else the fallback. |
 | `KestrelTlsConfigurator` | Wires the selector into Kestrel's HTTPS defaults. |
@@ -35,11 +35,13 @@ ports-only HTTPS endpoint requires a default certificate to start).
 
 ## Provided certificates & wildcard selection
 
-Operators can **mount their own certificates** into `CertificateDirectory` (loaded at startup, alongside
-ACME-persisted ones):
+ACME-issued certificates are persisted as a PEM pair (`{host}.crt` for the full chain, `{host}.key` for the
+private key) — the same format an operator provides. Operators can **mount their own certificates** into
+`CertificateDirectory` (loaded at startup, alongside ACME-persisted ones):
 
 - **PEM pair**: `{host}.crt` + `{host}.key` (a `.crt` with no matching `.key` is skipped).
-- **PFX**: `{host}.pfx`.
+- **PFX**: `{host}.pfx` — still read for backward compatibility (e.g. a certificate persisted by an older
+  DockYarp version), but a `{host}.crt`/`{host}.key` pair for the same host always takes precedence.
 
 A mounted certificate takes precedence over an ACME-persisted one for the same host. Files are keyed by the
 host in the file name. For a **wildcard** certificate (`*.example.com`), provide it under its base domain
@@ -55,7 +57,7 @@ Certes↔CA network exchange is untested (validate manually against Let's Encryp
 
 ## Configuration (`TlsOptions`)
 
-- `CertificateDirectory` — where PFX files live (default `certs`; mount `/certs` in the container).
+- `CertificateDirectory` — where certificate PEM files live (default `certs`; mount `/certs` in the container).
 - `ContactEmail` — default ACME contact (per-host `LETSENCRYPT_EMAIL` overrides).
 - `AcmeDirectoryUri` — defaults to **Let's Encrypt staging** to avoid rate limits.
 - `AcceptTermsOfService`, `RenewBeforeExpiry` (default 30 days), `CheckInterval` (default 12 h).

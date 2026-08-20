@@ -3,6 +3,7 @@ namespace DockYarp.Tls.Tests;
 using System.IO;
 using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
 using AwesomeAssertions;
@@ -36,6 +37,95 @@ public sealed class CertificateStoreTests
         {
             directory.Delete(recursive: true);
         }
+    }
+
+    /// <summary>Save() persists a PEM pair (.crt/.key), not a PFX file, for an RSA-keyed certificate.</summary>
+    [Test]
+    public void SaveWritesRsaPemPair()
+    {
+        using X509Certificate2 certificate = DefaultCertificateFactory.CreateSelfSigned("pem-write-rsa.local");
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        using FileCertificateStore store = new(new TlsOptions { CertificateDirectory = directory }, fileSystem);
+
+        store.Save("pem-write-rsa.local", new LoadedCertificate(certificate, []));
+
+        string crtPath = fileSystem.Path.Combine(directory, "pem-write-rsa.local.crt");
+        string keyPath = fileSystem.Path.Combine(directory, "pem-write-rsa.local.key");
+        fileSystem.File.Exists(crtPath).Should().BeTrue();
+        fileSystem.File.Exists(keyPath).Should().BeTrue();
+        fileSystem.File.Exists(fileSystem.Path.Combine(directory, "pem-write-rsa.local.pfx")).Should().BeFalse();
+
+        PemCertificateLoader.TryLoad(fileSystem, crtPath, keyPath, out LoadedCertificate reloaded).Should().BeTrue();
+        reloaded.Leaf.HasPrivateKey.Should().BeTrue();
+        reloaded.Leaf.Thumbprint.Should().Be(certificate.Thumbprint);
+    }
+
+    /// <summary>Save() persists a usable PEM pair for an EC-keyed certificate too (the ACME path's key
+    /// algorithm), not just RSA.</summary>
+    [Test]
+    public void SaveWritesEcPemPair()
+    {
+        using ECDsa ecdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        CertificateRequest request = new("CN=pem-write-ec.local", ecdsa, HashAlgorithmName.SHA256);
+        using X509Certificate2 certificate =
+            request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        using FileCertificateStore store = new(new TlsOptions { CertificateDirectory = directory }, fileSystem);
+
+        store.Save("pem-write-ec.local", new LoadedCertificate(certificate, []));
+
+        string crtPath = fileSystem.Path.Combine(directory, "pem-write-ec.local.crt");
+        string keyPath = fileSystem.Path.Combine(directory, "pem-write-ec.local.key");
+        PemCertificateLoader.TryLoad(fileSystem, crtPath, keyPath, out LoadedCertificate reloaded).Should().BeTrue();
+        reloaded.Leaf.HasPrivateKey.Should().BeTrue();
+        reloaded.Leaf.Thumbprint.Should().Be(certificate.Thumbprint);
+    }
+
+    /// <summary>Save() persists a full-chain .crt (leaf + intermediate) that round-trips intact through Load().</summary>
+    [Test]
+    public void SaveWritesFullChainPem()
+    {
+        (X509Certificate2 leaf, X509Certificate2 intermediate) = TestChainFactory.CreateChain("pem-write-chain.local");
+        using X509Certificate2 disposableLeaf = leaf;
+        using X509Certificate2 disposableIntermediate = intermediate;
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        using FileCertificateStore store = new(new TlsOptions { CertificateDirectory = directory }, fileSystem);
+
+        store.Save("pem-write-chain.local", new LoadedCertificate(leaf, [intermediate]));
+
+        string crtPath = fileSystem.Path.Combine(directory, "pem-write-chain.local.crt");
+        string keyPath = fileSystem.Path.Combine(directory, "pem-write-chain.local.key");
+        PemCertificateLoader.TryLoad(fileSystem, crtPath, keyPath, out LoadedCertificate reloaded).Should().BeTrue();
+        reloaded.Additional.Should().HaveCount(1, "the intermediate must round-trip through the written PEM file");
+        ChainBuildsAgainst(reloaded, intermediate).Should().BeTrue();
+    }
+
+    /// <summary>A PEM pair wins over a legacy PFX for the same host, regardless of directory enumeration order.</summary>
+    [Test]
+    public void PemPairTakesPrecedenceOverPfxForSameHost()
+    {
+        using X509Certificate2 pemCertificate = DefaultCertificateFactory.CreateSelfSigned("precedence.local");
+        using X509Certificate2 pfxCertificate = DefaultCertificateFactory.CreateSelfSigned("precedence.local");
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "precedence.local.crt"),
+            new MockFileData(pemCertificate.ExportCertificatePem()));
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "precedence.local.key"),
+            new MockFileData(pemCertificate.GetRSAPrivateKey()!.ExportPkcs8PrivateKeyPem()));
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "precedence.local.pfx"),
+            new MockFileData(pfxCertificate.Export(X509ContentType.Pfx)));
+
+        using FileCertificateStore store = new(new TlsOptions { CertificateDirectory = directory }, fileSystem);
+
+        LoadedCertificate? loaded = store.Find("precedence.local");
+        loaded.Should().NotBeNull();
+        loaded!.Leaf.Thumbprint.Should().Be(pemCertificate.Thumbprint, "the PEM pair must win over a same-host legacy PFX");
     }
 
     /// <summary>A mounted PEM pair is loaded and served with a usable private key.</summary>

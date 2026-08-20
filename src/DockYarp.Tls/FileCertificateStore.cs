@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 
@@ -40,7 +41,8 @@ public sealed class FileCertificateStore : ICertificateStore, IDisposable
     {
         ArgumentNullException.ThrowIfNull(certificate);
         fileSystem.Directory.CreateDirectory(directory);
-        fileSystem.File.WriteAllBytes(PathFor(host, ".pfx"), ExportChain(certificate));
+        fileSystem.File.WriteAllText(PathFor(host, ".crt"), ExportChainPem(certificate));
+        fileSystem.File.WriteAllText(PathFor(host, ".key"), ExportPrivateKeyPem(certificate.Leaf));
 
         lock (gate)
         {
@@ -83,7 +85,12 @@ public sealed class FileCertificateStore : ICertificateStore, IDisposable
             return;
         }
 
-        // Load PFX first, then PEM, so a mounted PEM certificate overrides an ACME-persisted PFX for the same host.
+        // PFX is loaded into a separate working set first, then PEM is loaded directly into `certificates` —
+        // so a PEM pair can never be overwritten by a PFX read, regardless of directory enumeration order.
+        // Only PFX entries whose host has no PEM pair are merged in afterward: a legacy PFX left over from
+        // before this store started writing PEM (or an operator-provided one) never wins over a PEM pair for
+        // the same host.
+        Dictionary<string, LoadedCertificate> pfxOnly = new(StringComparer.OrdinalIgnoreCase);
         foreach (string file in fileSystem.Directory.EnumerateFiles(directory, "*.pfx"))
         {
             string host = fileSystem.Path.GetFileNameWithoutExtension(file);
@@ -92,7 +99,7 @@ public sealed class FileCertificateStore : ICertificateStore, IDisposable
                 continue;
             }
 
-            certificates[host] = CertificateCollectionLoader.LoadKeyed(fileSystem.File.ReadAllBytes(file), null);
+            pfxOnly[host] = CertificateCollectionLoader.LoadKeyed(fileSystem.File.ReadAllBytes(file), null);
         }
 
         foreach (string file in fileSystem.Directory.EnumerateFiles(directory, "*.crt"))
@@ -107,15 +114,39 @@ public sealed class FileCertificateStore : ICertificateStore, IDisposable
             if (PemCertificateLoader.TryLoad(fileSystem, file, keyPath, out LoadedCertificate certificate))
             {
                 certificates[host] = certificate;
+                if (pfxOnly.Remove(host, out LoadedCertificate? shadowed))
+                {
+                    DisposeCertificate(shadowed);
+                }
             }
+        }
+
+        foreach ((string host, LoadedCertificate certificate) in pfxOnly)
+        {
+            certificates[host] = certificate;
         }
     }
 
-    // Never null: exporting a collection that always contains at least the leaf produces bytes.
-    private static byte[] ExportChain(LoadedCertificate certificate)
+    private static string ExportChainPem(LoadedCertificate certificate) =>
+        string.Join('\n', new[] { certificate.Leaf }.Concat(certificate.Additional).Select(c => c.ExportCertificatePem()));
+
+    // Tries RSA, then EC — the two private-key algorithms this store has ever documented supporting
+    // (see PemCertificateLoader.TryAttachPrivateKey, which does the equivalent try-order on import).
+    private static string ExportPrivateKeyPem(X509Certificate2 leaf)
     {
-        X509Certificate2Collection bag = [certificate.Leaf, .. certificate.Additional];
-        return bag.Export(X509ContentType.Pfx)!;
+        using RSA? rsa = leaf.GetRSAPrivateKey();
+        if (rsa is not null)
+        {
+            return rsa.ExportPkcs8PrivateKeyPem();
+        }
+
+        using ECDsa? ecdsa = leaf.GetECDsaPrivateKey();
+        if (ecdsa is not null)
+        {
+            return ecdsa.ExportPkcs8PrivateKeyPem();
+        }
+
+        throw new InvalidOperationException($"The certificate for '{leaf.Subject}' has no exportable RSA or EC private key.");
     }
 
     private static void DisposeCertificate(LoadedCertificate certificate)
