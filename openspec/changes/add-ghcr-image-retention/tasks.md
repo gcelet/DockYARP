@@ -35,8 +35,26 @@
       user", "Selected 2 tagged and 0 untagged package versions for deletion". Reported deletion list:
       `dockyarp:0.1.0-alpha.286` and `dockyarp:0.1.0-alpha.284` — exactly the expected shape (hyphenated
       GitVersion edge-prerelease tags). No stable release tag and no `edge` appear in the list.
-- [ ] 3.3 Deferred to task 4.3 (after a real, non-dry-run deletion) — a dry-run doesn't touch anything, so
+- [x] 3.3 Deferred to task 4.3 (after a real, non-dry-run deletion) — a dry-run doesn't touch anything, so
       "still pullable after pruning" can't be meaningfully observed until something has actually been deleted.
+
+## 3b. Investigating an apparent discrepancy — resolved, not a bug (AG-DEP)
+
+- [x] 3b.1 User inspected the real GHCR package UI (screenshot) and flagged that the dry-run's 2-candidate list
+      looked incomplete against a package showing "8 tagged, 32 untagged" — reasonable to question given only
+      the top of a scrollable list was visible. Investigated for real rather than dismissed: bumped
+      `rust-log: container_retention_policy=debug` temporarily (still `dry-run: true`, zero risk), pushed,
+      re-ran (https://github.com/gcelet/DockYARP/actions/runs/32416211579), then pulled the true raw job log via
+      `gh api .../logs --allow-escape-sequences` (not just `gh run view --log`, to rule out any CLI-side
+      truncation).
+- [x] 3b.2 Confirmed from the action's own debug trace: `Found 40 package versions for package` (exactly
+      matches the screenshot's 8+32=40 — no pagination bug), `Filtered out 38/40 package versions`,
+      `Selected 2 package versions`. The two selected (`0.1.0-alpha.286`, `0.1.0-alpha.284`) are the only tagged
+      versions matching both filters (hyphenated tag shape AND older than the 3-day cut-off); the other visible
+      tagged versions in the screenshot (`0.1.0-alpha.302`+`edge`, `0.1.0-alpha.301`, `0.0.1-timeout-fix-test`)
+      were all published ~23-24h ago — correctly excluded by `cut-off: 3d`, not evidence of a bug. The
+      screenshot was a partial/scrolled view, not the full list. **No fix needed** — reverted the temporary
+      debug logging back to the default.
 
 ## 4. Go live — required, after explicit user confirmation (AG-DEP)
 
