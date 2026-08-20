@@ -64,13 +64,12 @@
 
 - [x] 4.1 User gave explicit go-ahead ("oui on passe au réel") after reviewing three consistent dry-run
       results plus the debug-trace investigation. Flipped `dry-run` to `false` in `ghcr-cleanup.yml`.
-- [ ] 4.2 Trigger one more real `workflow_dispatch` run with real deletion enabled, confirm it completes
-      successfully and the deleted list matches what the dry-run previously reported
-      (`0.1.0-alpha.286`, `0.1.0-alpha.284`).
-- [ ] 4.3 Confirm a kept tag (`edge` or the latest stable release) still pulls successfully after the real run
-      (`docker pull` against the real registry).
+- [x] 4.2 Real `workflow_dispatch` run — https://github.com/gcelet/DockYARP/actions/runs/32417094743.
+      `Deleted dockyarp:0.1.0-alpha.284`, `Deleted dockyarp:0.1.0-alpha.286` — exact match to what every prior
+      dry-run reported, nothing else touched.
+- [x] 4.3 `docker pull ghcr.io/gcelet/dockyarp:edge` succeeded immediately after the real deletion —
+      multi-arch protection held, the retained tag is unaffected.
 
 ## 5. Final validation (AG-DEP)
 
-- [ ] 5.1 `openspec validate add-ghcr-image-retention --strict` passes (already done at propose time; re-confirm
-      unchanged).
+- [x] 5.1 `openspec validate add-ghcr-image-retention --strict` passes.
