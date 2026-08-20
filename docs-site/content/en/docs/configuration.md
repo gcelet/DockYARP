@@ -167,6 +167,7 @@ the container must listen on 80/443 directly — see [Examples](/docs/examples/#
 | `Host` | — | Dedicated host to scope the admin API (`/api/*`), `/metrics`, and the dashboard to. **Required whenever `Surface` is not `Disabled`** — the app fails to start otherwise. When set, those paths answer only on this host; on any other host they fall through to proxying (so a backend's `/api/*` is not shadowed). |
 | `LetsEncrypt` | `false` | Opt in to ACME-provision a certificate for `Host` (needs `Host` set). When enabled, the admin host is provisioned and renewed like any vhost; otherwise it keeps the default/operator certificate. |
 | `ContactEmail` | — | ACME contact email for the admin host; falls back to `Tls:ContactEmail` when unset. |
+| `AllowCertificateDownload` | `false` | Opt in to certificate/private-key download links on `/dashboard` (needs `Surface: ApiAndDashboard`). **Security note:** once enabled, a stored certificate's private key is downloadable over HTTP, protected only by `Host`'s network isolation — no application-level authentication. Only enable this on an admin host that is genuinely not reachable from an untrusted network. |
 
 ### `Compression`
 

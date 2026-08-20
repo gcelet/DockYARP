@@ -23,7 +23,8 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 public sealed class IndexModel(
     IRouteConfigStore routeConfigStore,
     ICertificateInventory certificateInventory,
-    IDiscoveryHealth discoveryHealth) : PageModel
+    IDiscoveryHealth discoveryHealth,
+    AdminApiOptions adminApiOptions) : PageModel
 {
     /// <summary>A certificate row with its expiry pre-parsed for the view (avoids re-parsing in Razor markup).</summary>
     public sealed record CertificateRow
@@ -49,6 +50,9 @@ public sealed class IndexModel(
 
     /// <summary>Gets the stored certificates, with expiry parsed and near-expiry flagged for display.</summary>
     public IReadOnlyList<CertificateRow> Certificates { get; private set; } = [];
+
+    /// <summary>Gets a value indicating whether the certificate table should render download links.</summary>
+    public bool AllowCertificateDownload => adminApiOptions.AllowCertificateDownload;
 
     /// <summary>Gets the overall health status (<c>Healthy</c> or <c>Degraded</c>).</summary>
     public string Status { get; private set; } = "Healthy";

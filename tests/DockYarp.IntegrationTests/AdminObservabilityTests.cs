@@ -2,6 +2,7 @@ namespace DockYarp.IntegrationTests;
 
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 
@@ -65,6 +66,105 @@ public sealed class AdminObservabilityTests
         body.Should().Contain("disconnected");
     }
 
+    /// <summary>The download routes are not mapped at all when <c>AdminApi:AllowCertificateDownload</c> is left
+    /// at its default (<see langword="false"/>) — proven with an exporter that *would* match, so a 404 here
+    /// means the route itself isn't mapped, not merely that the lookup failed.</summary>
+    [Test]
+    public async Task CertificateDownloadDefaultsToDisabled()
+    {
+        using WebApplicationFactory<Program> factory = DashboardFactory(
+            allowCertificateDownload: false,
+            services => services.AddSingleton<ICertificateExporter>(new FakeCertificateExporter()));
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage certificateResponse = await client.GetAsync("/dashboard/certs/app.local/certificate");
+        using HttpResponseMessage keyResponse = await client.GetAsync("/dashboard/certs/app.local/private-key");
+
+        certificateResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        keyResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    /// <summary>Downloading a known host's certificate returns the PEM chain as a file attachment.</summary>
+    [Test]
+    public async Task DownloadingCertificateReturnsPemChain()
+    {
+        using WebApplicationFactory<Program> factory = DashboardFactory(
+            allowCertificateDownload: true,
+            services => services.AddSingleton<ICertificateExporter>(new FakeCertificateExporter()));
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage response = await client.GetAsync("/dashboard/certs/app.local/certificate");
+        string body = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        body.Should().Be(FakeCertificateExporter.CertificatePem);
+        response.Content.Headers.ContentDisposition?.FileName.Should().Be("app.local.crt");
+    }
+
+    /// <summary>Downloading a known host's private key returns the PEM key as a file attachment.</summary>
+    [Test]
+    public async Task DownloadingPrivateKeyReturnsPemKey()
+    {
+        using WebApplicationFactory<Program> factory = DashboardFactory(
+            allowCertificateDownload: true,
+            services => services.AddSingleton<ICertificateExporter>(new FakeCertificateExporter()));
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage response = await client.GetAsync("/dashboard/certs/app.local/private-key");
+        string body = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        body.Should().Be(FakeCertificateExporter.PrivateKeyPem);
+        response.Content.Headers.ContentDisposition?.FileName.Should().Be("app.local.key");
+    }
+
+    /// <summary>A host with no stored certificate 404s rather than returning an empty or malformed file.</summary>
+    [Test]
+    public async Task DownloadingUnknownHostReturnsNotFound()
+    {
+        using WebApplicationFactory<Program> factory = DashboardFactory(
+            allowCertificateDownload: true,
+            services => services.AddSingleton<ICertificateExporter>(new FakeCertificateExporter()));
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage response = await client.GetAsync("/dashboard/certs/unknown.local/certificate");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    /// <summary>The download routes follow the dashboard's own host isolation: a request for a different host
+    /// falls through rather than being handled.</summary>
+    [Test]
+    public async Task DownloadFollowsHostIsolation()
+    {
+        using WebApplicationFactory<Program> factory = DashboardFactory(
+            allowCertificateDownload: true,
+            services => services.AddSingleton<ICertificateExporter>(new FakeCertificateExporter()),
+            host: "admin.local");
+        using HttpClient client = factory.CreateClient();
+        client.DefaultRequestHeaders.Host = "other.local";
+
+        using HttpResponseMessage response = await client.GetAsync("/dashboard/certs/app.local/certificate");
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.OK);
+    }
+
+    /// <summary>A download succeeds with no admin API key present anywhere in the request — it never goes
+    /// through the API-key-protected <c>/api/*</c> surface.</summary>
+    [Test]
+    public async Task DownloadNeedsNoAdminApiKey()
+    {
+        using WebApplicationFactory<Program> factory = DashboardFactory(
+            allowCertificateDownload: true,
+            services => services.AddSingleton<ICertificateExporter>(new FakeCertificateExporter()));
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage response = await client.GetAsync("/dashboard/certs/app.local/certificate");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        client.DefaultRequestHeaders.Contains("X-Api-Key").Should().BeFalse();
+    }
+
     private static WebApplicationFactory<Program> Factory(Action<IServiceCollection> configureServices) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
@@ -73,6 +173,26 @@ public sealed class AdminObservabilityTests
             builder.UseSetting("AdminApi:Host", "localhost");
             builder.ConfigureTestServices(configureServices);
         });
+
+    private static WebApplicationFactory<Program> DashboardFactory(
+        bool allowCertificateDownload, Action<IServiceCollection> configureServices, string host = "localhost") =>
+        new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("AdminApi:ApiKey", ApiKey);
+            builder.UseSetting("AdminApi:Surface", "ApiAndDashboard");
+            builder.UseSetting("AdminApi:Host", host);
+            builder.UseSetting("AdminApi:AllowCertificateDownload", allowCertificateDownload.ToString());
+            builder.ConfigureTestServices(configureServices);
+        });
+
+    private sealed class FakeCertificateExporter : ICertificateExporter
+    {
+        public const string CertificatePem = "-----BEGIN CERTIFICATE-----\nFAKE-CERT\n-----END CERTIFICATE-----\n";
+        public const string PrivateKeyPem = "-----BEGIN PRIVATE KEY-----\nFAKE-KEY\n-----END PRIVATE KEY-----\n";
+
+        public CertificateExport? Export(string host) =>
+            host == "app.local" ? new CertificateExport(CertificatePem, PrivateKeyPem) : null;
+    }
 
     private sealed class FakeCertificateInventory : ICertificateInventory
     {

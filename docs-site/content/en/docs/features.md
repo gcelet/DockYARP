@@ -116,6 +116,12 @@ authentication of its own** — unlike `/api/*`, no API key protects it. It only
 `AdminApi:Surface` is `ApiAndDashboard`; set it to `Api` instead to keep the JSON API without the dashboard, or
 leave `Surface` at its default (`Disabled`) to serve neither.
 
+Setting `AdminApi:AllowCertificateDownload: true` (default `false`) adds certificate and private-key download
+links to the dashboard's certificate table. **This is opt-in for a reason**: once enabled, a stored certificate's
+private key becomes downloadable over HTTP, protected only by the same network isolation (`AdminApi:Host`) as
+the rest of the admin surface — no additional login or token is required. Only turn this on when the admin host
+genuinely isn't reachable from a network you don't trust.
+
 ## Static configuration
 
 Point `StaticConfig:Path` at a JSON file with `Routes`, `Clusters`, and per-host `Overrides` to configure

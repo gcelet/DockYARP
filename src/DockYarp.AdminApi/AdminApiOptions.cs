@@ -24,4 +24,12 @@ public sealed class AdminApiOptions
     /// <see cref="Host"/> is also the dashboard's only trust boundary (it carries no application-level
     /// authentication of its own).</remarks>
     public AdminApiSurface Surface { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether the dashboard exposes certificate download links.</summary>
+    /// <remarks>Opt-in (default <see langword="false"/>), mirroring <see cref="LetsEncrypt"/>'s pattern on this
+    /// same options type. When enabled, a stored certificate's public chain and private key both become
+    /// downloadable from <c>/dashboard</c>, protected only by the same network-isolation trust boundary
+    /// (<see cref="Host"/>) as the rest of the admin surface — there is no additional application-level
+    /// authentication. Has no effect unless <see cref="Surface"/> is <see cref="AdminApiSurface.ApiAndDashboard"/>.</remarks>
+    public bool AllowCertificateDownload { get; set; }
 }

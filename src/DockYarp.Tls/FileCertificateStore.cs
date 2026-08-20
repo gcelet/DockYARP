@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.IO.Abstractions;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 
@@ -41,8 +40,8 @@ public sealed class FileCertificateStore : ICertificateStore, IDisposable
     {
         ArgumentNullException.ThrowIfNull(certificate);
         fileSystem.Directory.CreateDirectory(directory);
-        fileSystem.File.WriteAllText(PathFor(host, ".crt"), ExportChainPem(certificate));
-        fileSystem.File.WriteAllText(PathFor(host, ".key"), ExportPrivateKeyPem(certificate.Leaf));
+        fileSystem.File.WriteAllText(PathFor(host, ".crt"), certificate.ExportChainPem());
+        fileSystem.File.WriteAllText(PathFor(host, ".key"), certificate.ExportPrivateKeyPem());
 
         lock (gate)
         {
@@ -125,28 +124,6 @@ public sealed class FileCertificateStore : ICertificateStore, IDisposable
         {
             certificates[host] = certificate;
         }
-    }
-
-    private static string ExportChainPem(LoadedCertificate certificate) =>
-        string.Join('\n', new[] { certificate.Leaf }.Concat(certificate.Additional).Select(c => c.ExportCertificatePem()));
-
-    // Tries RSA, then EC — the two private-key algorithms this store has ever documented supporting
-    // (see PemCertificateLoader.TryAttachPrivateKey, which does the equivalent try-order on import).
-    private static string ExportPrivateKeyPem(X509Certificate2 leaf)
-    {
-        using RSA? rsa = leaf.GetRSAPrivateKey();
-        if (rsa is not null)
-        {
-            return rsa.ExportPkcs8PrivateKeyPem();
-        }
-
-        using ECDsa? ecdsa = leaf.GetECDsaPrivateKey();
-        if (ecdsa is not null)
-        {
-            return ecdsa.ExportPkcs8PrivateKeyPem();
-        }
-
-        throw new InvalidOperationException($"The certificate for '{leaf.Subject}' has no exportable RSA or EC private key.");
     }
 
     private static void DisposeCertificate(LoadedCertificate certificate)
