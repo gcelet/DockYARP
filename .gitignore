@@ -495,3 +495,7 @@ artifacts/
 .claude/settings.local.json
 .claude/.mcp.local.json
 
+# DockYarp's own runtime certs/DataProtection-keys directory (TlsOptions:CertificateDirectory's default
+# relative path) — a local `dotnet run` writes real key material here; never intentionally committed.
+src/DockYarp.App/certs/
+
