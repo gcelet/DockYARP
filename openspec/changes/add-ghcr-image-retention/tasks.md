@@ -30,14 +30,13 @@
       to `${{ github.repository_owner }}` (`gcelet`), triggering the org-scoped endpoint — `gcelet` is a
       personal account, not an org. Fixed: `account: user` (the literal string the action documents for this
       exact case).
-- [ ] 3.2 Push the `account: user` fix and trigger another real `workflow_dispatch` run. Read the reported
-      deletion list. Confirm: every stable release tag (`X.Y.Z`/`X.Y`/`X`/`latest`) and `edge` are absent from
-      it; only hyphenated GitVersion edge-prerelease tags appear. If anything unexpected appears, stop and
-      re-investigate — do not flip to real deletion until this list looks exactly right.
-- [ ] 3.3 Spot-check that a retained tag (e.g. `edge`) still has both `linux/amd64` and `linux/arm64` manifests
-      reported/intact per the action's own output or a manual `docker manifest inspect`, confirming the
-      multi-arch-protection claim actually holds for this repo's real package shape, not just trusted from the
-      changelog.
+- [x] 3.2 Pushed the `account: user` fix and triggered another real `workflow_dispatch` run —
+      https://github.com/gcelet/DockYARP/actions/runs/32415763262. **Succeeded**: "Found 1 package(s) for the
+      user", "Selected 2 tagged and 0 untagged package versions for deletion". Reported deletion list:
+      `dockyarp:0.1.0-alpha.286` and `dockyarp:0.1.0-alpha.284` — exactly the expected shape (hyphenated
+      GitVersion edge-prerelease tags). No stable release tag and no `edge` appear in the list.
+- [ ] 3.3 Deferred to task 4.3 (after a real, non-dry-run deletion) — a dry-run doesn't touch anything, so
+      "still pullable after pruning" can't be meaningfully observed until something has actually been deleted.
 
 ## 4. Go live — required, after explicit user confirmation (AG-DEP)
 

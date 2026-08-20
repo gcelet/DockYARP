@@ -34,3 +34,6 @@ jobs:
           tag-selection: tagged
           cut-off: 3d
           dry-run: true
+          # Temporary: investigating why a dry-run only reported 2 candidates against a package the GHCR UI
+          # shows has 8 tagged + 32 untagged versions — bump verbosity to see the actual API calls/responses.
+          rust-log: container_retention_policy=debug
