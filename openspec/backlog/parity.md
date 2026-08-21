@@ -49,7 +49,7 @@ docker-gen exposes both `.Env` and `.Labels` with no precedence — the template
 | Regex `VIRTUAL_PATH` (location) | ✅ | `MatcherPolicy` over route metadata; compiled/cached regex, ReDoS-bounded. |
 | `DEFAULT_ROOT` arbitrary fallback (return/redirect) | ✅ | Status or templated redirect (`$scheme`/`$host`/`$request_uri`); `Routing:DefaultResponseLocation`. |
 | Raw-IP `VIRTUAL_HOST` | ✅ | Bare IPv4 matched exactly; IPv6 literal is a caveat. |
-| Client-affinity / `ip_hash` (`loadbalance` label) | ⛔ | YARP has no ip-hash policy; session affinity (+ Data Protection gate) → [`add-session-affinity`](items/add-session-affinity.md). |
+| Client-affinity / `ip_hash` (`loadbalance` label) | ✅ ➕ | `DOCKYARP_AFFINITY=ip-hash` (custom `ISessionAffinityPolicy`, stateless, no Data Protection) is the direct parity mechanism; `cookie`/`custom-header` (YARP's own encrypted policies, DP-gated) are a superset beyond nginx-proxy's own ceiling — open-source nginx has no cookie-based sticky-session mechanism at all. |
 
 ## Protocols
 
