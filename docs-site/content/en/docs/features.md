@@ -122,6 +122,14 @@ private key becomes downloadable over HTTP, protected only by the same network i
 the rest of the admin surface — no additional login or token is required. Only turn this on when the admin host
 genuinely isn't reachable from a network you don't trust.
 
+Setting `AdminApi:AllowCertificateConversion: true` (default `false`) adds a "Re-encrypt key" action to the
+dashboard's certificate table once `Tls:PrivateKeyEncryptionPassphrase` is also set (see [Configuration →
+`Tls`](configuration.md)): it rewrites a host's stored private key under the current passphrase, covering both
+a first-time enable (an existing plain key) and a passphrase rotation. Hosts whose key is not yet under the
+current passphrase are flagged with a "needs re-encryption" badge. Note that encrypting the key this way does
+**not** defend against `AllowCertificateDownload` above — DockYarp decrypts the key itself, automatically, at
+startup, to serve TLS, so it only protects against someone with filesystem/volume/backup access.
+
 ## Static configuration
 
 Point `StaticConfig:Path` at a JSON file with `Routes`, `Clusters`, and per-host `Overrides` to configure

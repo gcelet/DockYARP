@@ -42,6 +42,10 @@ public sealed class IndexModel(
 
         /// <summary>Gets a value indicating whether this certificate is currently backed by a legacy PFX file.</summary>
         public required bool IsPfxBacked { get; init; }
+
+        /// <summary>Gets a value indicating whether this host's private key still needs re-encryption onto the
+        /// currently configured passphrase.</summary>
+        public required bool RequiresKeyReencryption { get; init; }
     }
 
     private static readonly TimeSpan NearExpiryWindow = TimeSpan.FromDays(14);
@@ -62,6 +66,18 @@ public sealed class IndexModel(
     /// <summary>Gets a value indicating whether the certificate table should render the PFX-to-PEM conversion
     /// action.</summary>
     public bool AllowCertificateConversion => adminApiOptions.AllowCertificateConversion;
+
+    /// <summary>Gets a value indicating whether the certificate table should render the key re-encryption
+    /// action.</summary>
+    /// <remarks>
+    /// Gated on <see cref="ICertificateConverter.PrivateKeyEncryptionConfigured"/> being <see langword="true"/>
+    /// at all — not specifically on a "previous" passphrase — so it covers both a first-time enable (an
+    /// existing plain key that has never been encrypted) and a rotation (an already-encrypted key that should
+    /// move to the new passphrase). Rendered for every row rather than per-host, since there is no cheap way to
+    /// tell from the dashboard which key is already under the current passphrase without decrypting it.
+    /// </remarks>
+    public bool AllowKeyReencryption =>
+        adminApiOptions.AllowCertificateConversion && certificateConverter.PrivateKeyEncryptionConfigured;
 
     /// <summary>Gets the overall health status (<c>Healthy</c> or <c>Degraded</c>).</summary>
     public string Status { get; private set; } = "Healthy";
@@ -107,6 +123,25 @@ public sealed class IndexModel(
         return RedirectToPage();
     }
 
+    /// <summary>Rewrites a host's private key under the currently configured passphrase, then redirects back to
+    /// the dashboard (post-redirect-get, avoiding a resubmission prompt on refresh).</summary>
+    /// <param name="host">The host whose key should be re-encrypted.</param>
+    /// <returns>A redirect to <c>/dashboard</c>.</returns>
+    /// <remarks>
+    /// Checks <see cref="AllowKeyReencryption"/> itself rather than trusting the view to have hidden the form —
+    /// defense in depth, same as <see cref="OnPostConvert"/>. Razor Pages validates the anti-forgery token on
+    /// this handler automatically before it runs.
+    /// </remarks>
+    public IActionResult OnPostReencrypt(string host)
+    {
+        if (AllowKeyReencryption)
+        {
+            certificateConverter.ReencryptPrivateKey(host);
+        }
+
+        return RedirectToPage();
+    }
+
     private CertificateRow ToCertificateRow(AdminApiModels.CertView cert)
     {
         DateTimeOffset notAfter = DateTimeOffset.Parse(cert.NotAfter, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
@@ -116,6 +151,7 @@ public sealed class IndexModel(
             NotAfter = notAfter,
             NearExpiry = notAfter - DateTimeOffset.UtcNow <= NearExpiryWindow,
             IsPfxBacked = certificateConverter.IsPfxBacked(cert.Host),
+            RequiresKeyReencryption = certificateConverter.RequiresKeyReencryption(cert.Host),
         };
     }
 }

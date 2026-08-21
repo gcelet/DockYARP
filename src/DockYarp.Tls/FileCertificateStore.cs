@@ -12,17 +12,22 @@ public sealed class FileCertificateStore : ICertificateStore, IDisposable
 {
     private readonly Lock gate = new();
     private readonly Dictionary<string, LoadedCertificate> certificates = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> hostsRequiringReencryption = new(StringComparer.OrdinalIgnoreCase);
     private readonly IFileSystem fileSystem;
     private readonly string directory;
+    private readonly string? encryptionPassphrase;
+    private readonly string? previousEncryptionPassphrase;
 
     /// <summary>Creates the store and loads any existing certificates from the configured directory.</summary>
-    /// <param name="options">TLS options carrying the certificate directory.</param>
+    /// <param name="options">TLS options carrying the certificate directory and optional key-encryption passphrases.</param>
     /// <param name="fileSystem">Filesystem abstraction used to read and write certificate files.</param>
     public FileCertificateStore(TlsOptions options, IFileSystem fileSystem)
     {
         ArgumentNullException.ThrowIfNull(options);
         this.fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
         directory = options.CertificateDirectory;
+        encryptionPassphrase = options.PrivateKeyEncryptionPassphrase;
+        previousEncryptionPassphrase = options.PreviousPrivateKeyEncryptionPassphrase;
         Load();
     }
 
@@ -41,7 +46,7 @@ public sealed class FileCertificateStore : ICertificateStore, IDisposable
         ArgumentNullException.ThrowIfNull(certificate);
         fileSystem.Directory.CreateDirectory(directory);
         fileSystem.File.WriteAllText(PathFor(host, ".crt"), certificate.ExportChainPem());
-        fileSystem.File.WriteAllText(PathFor(host, ".key"), certificate.ExportPrivateKeyPem());
+        fileSystem.File.WriteAllText(PathFor(host, ".key"), certificate.ExportPrivateKeyPem(encryptionPassphrase));
 
         lock (gate)
         {
@@ -51,12 +56,22 @@ public sealed class FileCertificateStore : ICertificateStore, IDisposable
             }
 
             certificates[host] = certificate;
+            hostsRequiringReencryption.Remove(host);
         }
     }
 
     /// <inheritdoc />
     public bool IsPfxBacked(string host) =>
         fileSystem.File.Exists(PathFor(host, ".pfx")) && !fileSystem.File.Exists(PathFor(host, ".crt"));
+
+    /// <inheritdoc />
+    public bool RequiresKeyReencryption(string host)
+    {
+        lock (gate)
+        {
+            return hostsRequiringReencryption.Contains(host);
+        }
+    }
 
     /// <inheritdoc />
     /// <remarks>
@@ -75,7 +90,8 @@ public sealed class FileCertificateStore : ICertificateStore, IDisposable
             }
 
             fileSystem.File.WriteAllText(PathFor(host, ".crt"), certificate.ExportChainPem());
-            fileSystem.File.WriteAllText(PathFor(host, ".key"), certificate.ExportPrivateKeyPem());
+            fileSystem.File.WriteAllText(PathFor(host, ".key"), certificate.ExportPrivateKeyPem(encryptionPassphrase));
+            hostsRequiringReencryption.Remove(host);
 
             string pfxPath = PathFor(host, ".pfx");
             if (fileSystem.File.Exists(pfxPath))
@@ -83,6 +99,29 @@ public sealed class FileCertificateStore : ICertificateStore, IDisposable
                 fileSystem.File.Delete(pfxPath);
             }
 
+            return true;
+        }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Same "write the already-loaded certificate directly, never call <see cref="Save"/>" rationale as
+    /// <see cref="ConvertToPem"/> — the in-memory object is unchanged, only its on-disk key encryption. Unlike
+    /// <see cref="ConvertToPem"/>, this never touches <c>.crt</c> content or a <c>.pfx</c> file: it exists
+    /// specifically to rewrite <c>.key</c> under the currently configured passphrase, whether that's a
+    /// first-time enable (the key was plain) or a rotation (the key was encrypted with a previous passphrase).
+    /// </remarks>
+    public bool ReencryptPrivateKey(string host)
+    {
+        lock (gate)
+        {
+            if (!certificates.TryGetValue(host, out LoadedCertificate? certificate))
+            {
+                return false;
+            }
+
+            fileSystem.File.WriteAllText(PathFor(host, ".key"), certificate.ExportPrivateKeyPem(encryptionPassphrase));
+            hostsRequiringReencryption.Remove(host);
             return true;
         }
     }
@@ -107,6 +146,7 @@ public sealed class FileCertificateStore : ICertificateStore, IDisposable
             }
 
             certificates.Clear();
+            hostsRequiringReencryption.Clear();
         }
     }
 
@@ -143,9 +183,15 @@ public sealed class FileCertificateStore : ICertificateStore, IDisposable
             }
 
             string keyPath = fileSystem.Path.ChangeExtension(file, ".key");
-            if (PemCertificateLoader.TryLoad(fileSystem, file, keyPath, out LoadedCertificate certificate))
+            PrivateKeyPassphrases passphrases = new(encryptionPassphrase, previousEncryptionPassphrase);
+            if (PemCertificateLoader.TryLoad(fileSystem, file, keyPath, passphrases, out PemLoadResult result))
             {
-                certificates[host] = certificate;
+                certificates[host] = result.Certificate;
+                if (result.RequiresReencryption)
+                {
+                    hostsRequiringReencryption.Add(host);
+                }
+
                 if (pfxOnly.Remove(host, out LoadedCertificate? shadowed))
                 {
                     DisposeCertificate(shadowed);

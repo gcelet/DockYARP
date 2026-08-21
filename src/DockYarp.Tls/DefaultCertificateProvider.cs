@@ -21,8 +21,9 @@ public sealed class DefaultCertificateProvider : IDisposable
 
         string certPath = fileSystem.Path.Combine(options.CertificateDirectory, "default.crt");
         string keyPath = fileSystem.Path.Combine(options.CertificateDirectory, "default.key");
-        Certificate = PemCertificateLoader.TryLoad(fileSystem, certPath, keyPath, out LoadedCertificate provided)
-            ? provided
+        PrivateKeyPassphrases passphrases = new(options.PrivateKeyEncryptionPassphrase, options.PreviousPrivateKeyEncryptionPassphrase);
+        Certificate = PemCertificateLoader.TryLoad(fileSystem, certPath, keyPath, passphrases, out PemLoadResult provided)
+            ? provided.Certificate
             : new LoadedCertificate(DefaultCertificateFactory.CreateSelfSigned("dockyarp.local"), []);
     }
 

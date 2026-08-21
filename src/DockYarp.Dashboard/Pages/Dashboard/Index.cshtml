@@ -72,6 +72,7 @@
           <th>Expires</th>
           @if (Model.AllowCertificateDownload) { <th>Download</th> }
           @if (Model.AllowCertificateConversion) { <th>Format</th> }
+          @if (Model.AllowKeyReencryption) { <th>Key encryption</th> }
         </tr>
       </thead>
       <tbody>
@@ -102,6 +103,18 @@
                 <form method="post" asp-page-handler="Convert" asp-route-host="@cert.Host">
                   <button type="submit">Convert to PEM</button>
                 </form>
+              }
+            </td>
+          }
+          @if (Model.AllowKeyReencryption)
+          {
+            <td>
+              <form method="post" asp-page-handler="Reencrypt" asp-route-host="@cert.Host">
+                <button type="submit">Re-encrypt key</button>
+              </form>
+              @if (cert.RequiresKeyReencryption)
+              {
+                <span class="badge badge-warn">needs re-encryption</span>
               }
             </td>
           }

@@ -56,7 +56,8 @@ public sealed class CertificateStoreTests
         fileSystem.File.Exists(keyPath).Should().BeTrue();
         fileSystem.File.Exists(fileSystem.Path.Combine(directory, "pem-write-rsa.local.pfx")).Should().BeFalse();
 
-        PemCertificateLoader.TryLoad(fileSystem, crtPath, keyPath, out LoadedCertificate reloaded).Should().BeTrue();
+        PemCertificateLoader.TryLoad(fileSystem, crtPath, keyPath, PrivateKeyPassphrases.None, out PemLoadResult reloadedResult).Should().BeTrue();
+        LoadedCertificate reloaded = reloadedResult.Certificate;
         reloaded.Leaf.HasPrivateKey.Should().BeTrue();
         reloaded.Leaf.Thumbprint.Should().Be(certificate.Thumbprint);
     }
@@ -78,7 +79,8 @@ public sealed class CertificateStoreTests
 
         string crtPath = fileSystem.Path.Combine(directory, "pem-write-ec.local.crt");
         string keyPath = fileSystem.Path.Combine(directory, "pem-write-ec.local.key");
-        PemCertificateLoader.TryLoad(fileSystem, crtPath, keyPath, out LoadedCertificate reloaded).Should().BeTrue();
+        PemCertificateLoader.TryLoad(fileSystem, crtPath, keyPath, PrivateKeyPassphrases.None, out PemLoadResult reloadedResult).Should().BeTrue();
+        LoadedCertificate reloaded = reloadedResult.Certificate;
         reloaded.Leaf.HasPrivateKey.Should().BeTrue();
         reloaded.Leaf.Thumbprint.Should().Be(certificate.Thumbprint);
     }
@@ -98,9 +100,258 @@ public sealed class CertificateStoreTests
 
         string crtPath = fileSystem.Path.Combine(directory, "pem-write-chain.local.crt");
         string keyPath = fileSystem.Path.Combine(directory, "pem-write-chain.local.key");
-        PemCertificateLoader.TryLoad(fileSystem, crtPath, keyPath, out LoadedCertificate reloaded).Should().BeTrue();
+        PemCertificateLoader.TryLoad(fileSystem, crtPath, keyPath, PrivateKeyPassphrases.None, out PemLoadResult reloadedResult).Should().BeTrue();
+        LoadedCertificate reloaded = reloadedResult.Certificate;
         reloaded.Additional.Should().HaveCount(1, "the intermediate must round-trip through the written PEM file");
         ChainBuildsAgainst(reloaded, intermediate).Should().BeTrue();
+    }
+
+    /// <summary>Save() writes an encrypted private key when a passphrase is configured, and the store still
+    /// serves it correctly (round-trips through a fresh store over the same directory).</summary>
+    [Test]
+    public void SaveEncryptsPrivateKeyWhenPassphraseConfigured()
+    {
+        using X509Certificate2 certificate = DefaultCertificateFactory.CreateSelfSigned("encrypted-write.local");
+        string expectedThumbprint = certificate.Thumbprint; // captured before any store can dispose the certificate
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        TlsOptions options = new() { CertificateDirectory = directory, PrivateKeyEncryptionPassphrase = "correct horse" };
+
+        using (FileCertificateStore store = new(options, fileSystem))
+        {
+            store.Save("encrypted-write.local", new LoadedCertificate(certificate, []));
+        }
+
+        string keyPath = fileSystem.Path.Combine(directory, "encrypted-write.local.key");
+        fileSystem.File.ReadAllText(keyPath).Should().Contain("ENCRYPTED PRIVATE KEY");
+
+        using FileCertificateStore reloaded = new(options, fileSystem);
+        LoadedCertificate? loaded = reloaded.Find("encrypted-write.local");
+        loaded.Should().NotBeNull();
+        loaded!.Leaf.Thumbprint.Should().Be(expectedThumbprint);
+        loaded.Leaf.HasPrivateKey.Should().BeTrue();
+    }
+
+    /// <summary>An operator-provided plain (unencrypted) key still loads correctly even when a passphrase is
+    /// configured — plain-vs-encrypted is decided from the PEM's own label, never from configuration.</summary>
+    [Test]
+    public void PlainKeyStillLoadsWhenPassphraseConfigured()
+    {
+        using X509Certificate2 source = DefaultCertificateFactory.CreateSelfSigned("plain-with-passphrase.local");
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "plain-with-passphrase.local.crt"),
+            new MockFileData(source.ExportCertificatePem()));
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "plain-with-passphrase.local.key"),
+            new MockFileData(source.GetRSAPrivateKey()!.ExportPkcs8PrivateKeyPem()));
+
+        using FileCertificateStore store = new(
+            new TlsOptions { CertificateDirectory = directory, PrivateKeyEncryptionPassphrase = "some passphrase" },
+            fileSystem);
+
+        LoadedCertificate? loaded = store.Find("plain-with-passphrase.local");
+        loaded.Should().NotBeNull();
+        loaded!.Leaf.HasPrivateKey.Should().BeTrue();
+    }
+
+    /// <summary>A key encrypted with the previous passphrase still loads via the rotation fallback.</summary>
+    [Test]
+    public void EncryptedKeyLoadsViaPreviousPassphraseFallback()
+    {
+        using X509Certificate2 source = DefaultCertificateFactory.CreateSelfSigned("rotated.local");
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        string oldPassphrase = "old passphrase";
+        PbeParameters pbe = new(PbeEncryptionAlgorithm.Aes256Cbc, HashAlgorithmName.SHA256, iterationCount: 1000);
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "rotated.local.crt"),
+            new MockFileData(source.ExportCertificatePem()));
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "rotated.local.key"),
+            new MockFileData(source.GetRSAPrivateKey()!.ExportEncryptedPkcs8PrivateKeyPem(oldPassphrase, pbe)));
+
+        using FileCertificateStore store = new(
+            new TlsOptions
+            {
+                CertificateDirectory = directory,
+                PrivateKeyEncryptionPassphrase = "new passphrase",
+                PreviousPrivateKeyEncryptionPassphrase = oldPassphrase,
+            },
+            fileSystem);
+
+        LoadedCertificate? loaded = store.Find("rotated.local");
+        loaded.Should().NotBeNull();
+        loaded!.Leaf.HasPrivateKey.Should().BeTrue();
+    }
+
+    /// <summary>An encrypted key that neither the current nor previous configured passphrase decrypts fails
+    /// loudly at construction, not silently.</summary>
+    [Test]
+    public void UndecryptableEncryptedKeyFailsFast()
+    {
+        using X509Certificate2 source = DefaultCertificateFactory.CreateSelfSigned("undecryptable.local");
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        PbeParameters pbe = new(PbeEncryptionAlgorithm.Aes256Cbc, HashAlgorithmName.SHA256, iterationCount: 1000);
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "undecryptable.local.crt"),
+            new MockFileData(source.ExportCertificatePem()));
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "undecryptable.local.key"),
+            new MockFileData(source.GetRSAPrivateKey()!.ExportEncryptedPkcs8PrivateKeyPem("actual passphrase", pbe)));
+
+        TlsOptions options = new()
+        {
+            CertificateDirectory = directory,
+            PrivateKeyEncryptionPassphrase = "wrong passphrase",
+            PreviousPrivateKeyEncryptionPassphrase = "also wrong",
+        };
+
+        FluentActions.Invoking(() => new FileCertificateStore(options, fileSystem))
+            .Should().Throw<InvalidOperationException>()
+            .WithMessage("*undecryptable.local.key*");
+    }
+
+    /// <summary>No passphrase configured: the feature is fully off, so nothing is ever flagged as needing
+    /// re-encryption, regardless of the key's own on-disk form.</summary>
+    [Test]
+    public void RequiresKeyReencryptionFalseWhenNoPassphraseConfigured()
+    {
+        using X509Certificate2 source = DefaultCertificateFactory.CreateSelfSigned("no-passphrase.local");
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "no-passphrase.local.crt"),
+            new MockFileData(source.ExportCertificatePem()));
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "no-passphrase.local.key"),
+            new MockFileData(source.GetRSAPrivateKey()!.ExportPkcs8PrivateKeyPem()));
+
+        using FileCertificateStore store = new(new TlsOptions { CertificateDirectory = directory }, fileSystem);
+
+        store.RequiresKeyReencryption("no-passphrase.local").Should().BeFalse();
+    }
+
+    /// <summary>A plain key loaded while a passphrase is configured is flagged as needing re-encryption — the
+    /// exact case the dashboard button/badge exists to surface (first-time enable).</summary>
+    [Test]
+    public void RequiresKeyReencryptionTrueForPlainKeyWhenPassphraseConfigured()
+    {
+        using X509Certificate2 source = DefaultCertificateFactory.CreateSelfSigned("plain-needs-reencrypt.local");
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "plain-needs-reencrypt.local.crt"),
+            new MockFileData(source.ExportCertificatePem()));
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "plain-needs-reencrypt.local.key"),
+            new MockFileData(source.GetRSAPrivateKey()!.ExportPkcs8PrivateKeyPem()));
+
+        using FileCertificateStore store = new(
+            new TlsOptions { CertificateDirectory = directory, PrivateKeyEncryptionPassphrase = "some passphrase" },
+            fileSystem);
+
+        store.RequiresKeyReencryption("plain-needs-reencrypt.local").Should().BeTrue();
+    }
+
+    /// <summary>A key that only loaded via the previous-passphrase rotation fallback is flagged as needing
+    /// re-encryption onto the new current passphrase.</summary>
+    [Test]
+    public void RequiresKeyReencryptionTrueForPreviousPassphraseFallback()
+    {
+        using X509Certificate2 source = DefaultCertificateFactory.CreateSelfSigned("rotated-needs-reencrypt.local");
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        string oldPassphrase = "old passphrase";
+        PbeParameters pbe = new(PbeEncryptionAlgorithm.Aes256Cbc, HashAlgorithmName.SHA256, iterationCount: 1000);
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "rotated-needs-reencrypt.local.crt"),
+            new MockFileData(source.ExportCertificatePem()));
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "rotated-needs-reencrypt.local.key"),
+            new MockFileData(source.GetRSAPrivateKey()!.ExportEncryptedPkcs8PrivateKeyPem(oldPassphrase, pbe)));
+
+        using FileCertificateStore store = new(
+            new TlsOptions
+            {
+                CertificateDirectory = directory,
+                PrivateKeyEncryptionPassphrase = "new passphrase",
+                PreviousPrivateKeyEncryptionPassphrase = oldPassphrase,
+            },
+            fileSystem);
+
+        store.RequiresKeyReencryption("rotated-needs-reencrypt.local").Should().BeTrue();
+    }
+
+    /// <summary>A key already encrypted with the current passphrase is not flagged — nothing left to do.</summary>
+    [Test]
+    public void RequiresKeyReencryptionFalseWhenKeyAlreadyUnderCurrentPassphrase()
+    {
+        using X509Certificate2 source = DefaultCertificateFactory.CreateSelfSigned("already-current.local");
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        string passphrase = "current passphrase";
+        PbeParameters pbe = new(PbeEncryptionAlgorithm.Aes256Cbc, HashAlgorithmName.SHA256, iterationCount: 1000);
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "already-current.local.crt"),
+            new MockFileData(source.ExportCertificatePem()));
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "already-current.local.key"),
+            new MockFileData(source.GetRSAPrivateKey()!.ExportEncryptedPkcs8PrivateKeyPem(passphrase, pbe)));
+
+        using FileCertificateStore store = new(
+            new TlsOptions { CertificateDirectory = directory, PrivateKeyEncryptionPassphrase = passphrase },
+            fileSystem);
+
+        store.RequiresKeyReencryption("already-current.local").Should().BeFalse();
+    }
+
+    /// <summary>A PFX-backed host is never flagged, even with a passphrase configured — <see
+    /// cref="FileCertificateStore.ConvertToPem"/> is the action for that host, and it already applies the
+    /// current passphrase itself.</summary>
+    [Test]
+    public void RequiresKeyReencryptionFalseForPfxBackedHost()
+    {
+        using X509Certificate2 source = DefaultCertificateFactory.CreateSelfSigned("pfx-backed.local");
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "pfx-backed.local.pfx"),
+            new MockFileData(source.Export(X509ContentType.Pfx)));
+
+        using FileCertificateStore store = new(
+            new TlsOptions { CertificateDirectory = directory, PrivateKeyEncryptionPassphrase = "some passphrase" },
+            fileSystem);
+
+        store.RequiresKeyReencryption("pfx-backed.local").Should().BeFalse();
+    }
+
+    /// <summary>ReencryptPrivateKey clears the flag: after rewriting the key under the current passphrase, the
+    /// host no longer needs the action.</summary>
+    [Test]
+    public void ReencryptPrivateKeyClearsRequiresKeyReencryptionFlag()
+    {
+        using X509Certificate2 source = DefaultCertificateFactory.CreateSelfSigned("clears-flag.local");
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "clears-flag.local.crt"),
+            new MockFileData(source.ExportCertificatePem()));
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "clears-flag.local.key"),
+            new MockFileData(source.GetRSAPrivateKey()!.ExportPkcs8PrivateKeyPem()));
+
+        using FileCertificateStore store = new(
+            new TlsOptions { CertificateDirectory = directory, PrivateKeyEncryptionPassphrase = "some passphrase" },
+            fileSystem);
+        store.RequiresKeyReencryption("clears-flag.local").Should().BeTrue();
+
+        store.ReencryptPrivateKey("clears-flag.local").Should().BeTrue();
+
+        store.RequiresKeyReencryption("clears-flag.local").Should().BeFalse();
+        fileSystem.File.ReadAllText(fileSystem.Path.Combine(directory, "clears-flag.local.key")).Should().Contain("ENCRYPTED PRIVATE KEY");
     }
 
     /// <summary>A PEM pair wins over a legacy PFX for the same host, regardless of directory enumeration order.</summary>

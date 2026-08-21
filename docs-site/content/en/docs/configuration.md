@@ -119,6 +119,8 @@ the container must listen on 80/443 directly — see [Examples](/docs/examples/#
 | `CipherSuites` | — | Explicit cipher allow-list (applied on Linux/macOS only). |
 | `HttpProtocols` | `Http1AndHttp2` | Enabled HTTP protocols on the HTTPS endpoint. |
 | `ClientCaCertificatePath` | — | Client CA (PEM) enabling mutual TLS. |
+| `PrivateKeyEncryptionPassphrase` | — (plain) | Opt in to encrypting every stored certificate's private key at rest (`ENCRYPTED PRIVATE KEY` PEM). Plain-vs-encrypted is always decided from the key file's own PEM label, never from this setting, so an operator-provided plain key keeps loading even once set. **Security note:** this protects against someone with filesystem/volume/backup access only — it does **not** defend against `AdminApi:AllowCertificateDownload`, since DockYarp must decrypt the key itself, automatically, at startup, to serve TLS; whoever can reach the dashboard is, in practice, in the same trust domain as whatever holds this passphrase. |
+| `PreviousPrivateKeyEncryptionPassphrase` | — | Fallback passphrase tried when a stored key doesn't decrypt with `PrivateKeyEncryptionPassphrase`. Set this to the outgoing value while rotating `PrivateKeyEncryptionPassphrase` to a new one, so already-encrypted keys keep loading until they are next rewritten (a renewal, or the dashboard's "Re-encrypt key" action — see `AdminApi:AllowCertificateConversion`). |
 
 ### `Security`
 
@@ -168,7 +170,7 @@ the container must listen on 80/443 directly — see [Examples](/docs/examples/#
 | `LetsEncrypt` | `false` | Opt in to ACME-provision a certificate for `Host` (needs `Host` set). When enabled, the admin host is provisioned and renewed like any vhost; otherwise it keeps the default/operator certificate. |
 | `ContactEmail` | — | ACME contact email for the admin host; falls back to `Tls:ContactEmail` when unset. |
 | `AllowCertificateDownload` | `false` | Opt in to certificate/private-key download links on `/dashboard` (needs `Surface: ApiAndDashboard`). **Security note:** once enabled, a stored certificate's private key is downloadable over HTTP, protected only by `Host`'s network isolation — no application-level authentication. Only enable this on an admin host that is genuinely not reachable from an untrusted network. |
-| `AllowCertificateConversion` | `false` | Opt in to a "Convert to PEM" action on `/dashboard` for any certificate still backed by a legacy `.pfx` file (needs `Surface: ApiAndDashboard`). This is the **one mutating action** the admin surface exposes — it only rewrites the on-disk format of an already-served certificate (no re-provisioning, no change to what's served), protected by the same anti-forgery mechanism as any other Razor Pages form submission. Gated independently of `AllowCertificateDownload`. |
+| `AllowCertificateConversion` | `false` | Opt in to a "Convert to PEM" action on `/dashboard` for any certificate still backed by a legacy `.pfx` file (needs `Surface: ApiAndDashboard`). This also gates the "Re-encrypt key" action (see `Tls:PrivateKeyEncryptionPassphrase` below), which additionally requires that passphrase to be configured. These are the **only mutating actions** the admin surface exposes — each only rewrites the on-disk format of an already-served certificate (no re-provisioning, no change to what's served), protected by the same anti-forgery mechanism as any other Razor Pages form submission. Gated independently of `AllowCertificateDownload`. |
 
 ### `Compression`
 

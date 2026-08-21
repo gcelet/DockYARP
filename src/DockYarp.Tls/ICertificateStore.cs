@@ -33,4 +33,22 @@ public interface ICertificateStore
     /// <returns><see langword="true"/> when a certificate was found for <paramref name="host"/> and converted;
     /// <see langword="false"/> when no certificate is stored for it.</returns>
     bool ConvertToPem(string host);
+
+    /// <summary>Rewrites a host's already-loaded certificate's private key under the currently configured
+    /// encryption passphrase, whether that's a first-time enable (the key was plain) or a rotation (the key
+    /// was encrypted with a previous passphrase). Does not touch <c>.crt</c> content or any <c>.pfx</c> file.</summary>
+    /// <param name="host">The host whose key to re-encrypt.</param>
+    /// <returns><see langword="true"/> when a certificate was found for <paramref name="host"/> and its key
+    /// rewritten; <see langword="false"/> when no certificate is stored for it.</returns>
+    bool ReencryptPrivateKey(string host);
+
+    /// <summary>Checks whether a host's private key still needs re-encryption onto the currently configured
+    /// passphrase.</summary>
+    /// <param name="host">The host to check.</param>
+    /// <returns><see langword="true"/> when a passphrase is configured but the host's key was loaded plain or
+    /// via the previous passphrase fallback; <see langword="false"/> otherwise (including when no passphrase is
+    /// configured, the key already matches the current passphrase, or the host has no PEM-loaded key at all —
+    /// e.g. a <c>.pfx</c>-backed host, for which <see cref="ConvertToPem"/> already applies the current
+    /// passphrase).</returns>
+    bool RequiresKeyReencryption(string host);
 }

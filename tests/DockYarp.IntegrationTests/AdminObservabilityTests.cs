@@ -236,6 +236,110 @@ public sealed class AdminObservabilityTests
         converter.ConvertedHosts.Should().BeEmpty();
     }
 
+    /// <summary>No re-encryption action is available when no private-key encryption passphrase is configured,
+    /// even with <c>AllowCertificateConversion</c> enabled — the two settings are independent gates and both
+    /// must be satisfied. Also rejected server-side (defense in depth) even when posted with a genuinely valid
+    /// anti-forgery token, proving the gate isn't just a hidden button.</summary>
+    [Test]
+    public async Task KeyReencryptionAbsentAndRejectedWhenPassphraseNotConfigured()
+    {
+        FakeCertificateConverter converter = new() { PrivateKeyEncryptionConfigured = false };
+        using WebApplicationFactory<Program> factory = ConversionFactory(
+            allowCertificateConversion: true,
+            services =>
+            {
+                services.AddSingleton<ICertificateInventory>(new FakeCertificateInventory());
+                services.AddSingleton<ICertificateConverter>(converter);
+            });
+        using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        string token = await GetAntiForgeryTokenAsync(client, "/dashboard");
+        string html = await (await client.GetAsync("/dashboard")).Content.ReadAsStringAsync();
+
+        html.Should().NotContain("Re-encrypt key");
+
+        using HttpResponseMessage response = await client.PostAsync(
+            "/dashboard?handler=Reencrypt&host=app.local",
+            new FormUrlEncodedContent([new KeyValuePair<string, string>("__RequestVerificationToken", token)]));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect, "the handler no-ops rather than erroring, matching OnPostConvert's own gating shape");
+        converter.ReencryptedHosts.Should().BeEmpty();
+    }
+
+    /// <summary>Enabled: submitting the re-encrypt form (with its real anti-forgery token) invokes the converter
+    /// for that host — proving it isn't restricted to PFX-backed hosts the way <c>ConvertToPem</c>'s own action
+    /// is, since the fake converter reports <c>app.local</c> as PFX-backed and a second, plain-key host both work.</summary>
+    [TestCase("app.local")]
+    [TestCase("plain.local")]
+    public async Task ReencryptingKeyInvokesConverter(string host)
+    {
+        FakeCertificateConverter converter = new() { PrivateKeyEncryptionConfigured = true };
+        using WebApplicationFactory<Program> factory = ConversionFactory(
+            allowCertificateConversion: true,
+            services =>
+            {
+                services.AddSingleton<ICertificateInventory>(new FakeCertificateInventory());
+                services.AddSingleton<ICertificateConverter>(converter);
+            });
+        using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        string token = await GetAntiForgeryTokenAsync(client, "/dashboard");
+
+        using HttpResponseMessage response = await client.PostAsync(
+            $"/dashboard?handler=Reencrypt&host={host}",
+            new FormUrlEncodedContent([new KeyValuePair<string, string>("__RequestVerificationToken", token)]));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect, "post-redirect-get back to /dashboard");
+        converter.ReencryptedHosts.Should().ContainSingle().Which.Should().Be(host);
+    }
+
+    /// <summary>The "needs re-encryption" badge renders only for a host the converter reports as still needing
+    /// it, not for every row the re-encryption action itself renders for.</summary>
+    [Test]
+    public async Task NeedsReencryptionBadgeReflectsPerHostState()
+    {
+        FakeCertificateConverter converter = new()
+        {
+            PrivateKeyEncryptionConfigured = true,
+            HostsRequiringReencryption = ["app.local"],
+        };
+        using WebApplicationFactory<Program> factory = ConversionFactory(
+            allowCertificateConversion: true,
+            services =>
+            {
+                services.AddSingleton<ICertificateInventory>(new FakeCertificateInventory());
+                services.AddSingleton<ICertificateConverter>(converter);
+            });
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage response = await client.GetAsync("/dashboard");
+        string html = await response.Content.ReadAsStringAsync();
+
+        html.Should().Contain("needs re-encryption");
+        html.Should().Contain("Re-encrypt key");
+    }
+
+    /// <summary>The re-encryption action actually enforces anti-forgery — a request without a valid token is
+    /// rejected, not silently honored (mirrors <see cref="ConvertingWithoutAntiForgeryTokenIsRejected"/>).</summary>
+    [Test]
+    public async Task ReencryptingWithoutAntiForgeryTokenIsRejected()
+    {
+        FakeCertificateConverter converter = new() { PrivateKeyEncryptionConfigured = true };
+        using WebApplicationFactory<Program> factory = ConversionFactory(
+            allowCertificateConversion: true,
+            services =>
+            {
+                services.AddSingleton<ICertificateInventory>(new FakeCertificateInventory());
+                services.AddSingleton<ICertificateConverter>(converter);
+            });
+        using HttpClient client = factory.CreateClient();
+        await GetAntiForgeryTokenAsync(client, "/dashboard"); // establishes the anti-forgery cookie, token discarded
+
+        using HttpResponseMessage response =
+            await client.PostAsync("/dashboard?handler=Reencrypt&host=app.local", new FormUrlEncodedContent([]));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        converter.ReencryptedHosts.Should().BeEmpty();
+    }
+
     private static async Task<string> GetAntiForgeryTokenAsync(HttpClient client, string path)
     {
         using HttpResponseMessage response = await client.GetAsync(path);
@@ -295,11 +399,25 @@ public sealed class AdminObservabilityTests
     {
         public List<string> ConvertedHosts { get; } = [];
 
+        public List<string> ReencryptedHosts { get; } = [];
+
+        public bool PrivateKeyEncryptionConfigured { get; init; }
+
+        public HashSet<string> HostsRequiringReencryption { get; init; } = [];
+
         public bool IsPfxBacked(string host) => host == "app.local";
+
+        public bool RequiresKeyReencryption(string host) => HostsRequiringReencryption.Contains(host);
 
         public bool ConvertToPem(string host)
         {
             ConvertedHosts.Add(host);
+            return true;
+        }
+
+        public bool ReencryptPrivateKey(string host)
+        {
+            ReencryptedHosts.Add(host);
             return true;
         }
     }

@@ -21,6 +21,10 @@ internal sealed class FakeCertificateStore : ICertificateStore
 
     public bool ConvertToPem(string host) => certificates.ContainsKey(host);
 
+    public bool ReencryptPrivateKey(string host) => certificates.ContainsKey(host);
+
+    public bool RequiresKeyReencryption(string host) => false;
+
     public IReadOnlyList<CertificateInfo> List() =>
         [.. certificates.Select(entry => new CertificateInfo(entry.Key, new DateTimeOffset(entry.Value.Leaf.NotAfter)))];
 }
