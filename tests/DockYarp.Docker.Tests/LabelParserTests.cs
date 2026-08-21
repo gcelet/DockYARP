@@ -487,6 +487,65 @@ public sealed class LabelParserTests
         LabelParser.HasUnsupportedLoadBalancing(container.Labels).Should().BeTrue();
     }
 
+    /// <summary>DOCKYARP_AFFINITY maps each supported value (dash/case-insensitive) to its policy.</summary>
+    [TestCase("true", SessionAffinityPolicy.ClientIpHash)]
+    [TestCase("ip-hash", SessionAffinityPolicy.ClientIpHash)]
+    [TestCase("IP-HASH", SessionAffinityPolicy.ClientIpHash)]
+    [TestCase("cookie", SessionAffinityPolicy.Cookie)]
+    [TestCase("custom-header", SessionAffinityPolicy.CustomHeader)]
+    [TestCase("false", SessionAffinityPolicy.None)]
+    public void SessionAffinityPolicyIsParsed(string label, SessionAffinityPolicy expected)
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.SessionAffinity, label)));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.SessionAffinityPolicy.Should().Be(expected);
+        LabelParser.HasUnsupportedAffinity(container.Labels).Should().BeFalse();
+    }
+
+    /// <summary>An unrecognized DOCKYARP_AFFINITY yields no policy and is flagged unsupported.</summary>
+    [Test]
+    public void UnknownAffinityIsFlagged()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.SessionAffinity, "bogus")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.SessionAffinityPolicy.Should().BeNull();
+        LabelParser.HasUnsupportedAffinity(container.Labels).Should().BeTrue();
+    }
+
+    /// <summary>DOCKYARP_AFFINITY takes precedence over a conflicting nginx-proxy loadbalance compat value.</summary>
+    [Test]
+    public void NativeAffinityTakesPrecedenceOverNginxCompat()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.SessionAffinity, "false"),
+                (DockerLabels.NginxLoadBalance, "ip_hash;")));
+
+        LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
+
+        config!.SessionAffinityPolicy.Should().Be(SessionAffinityPolicy.None);
+    }
+
     /// <summary>EffectiveConfig merges env over labels (env wins), keeping label-only and env-only keys.</summary>
     [Test]
     public void EffectiveConfigMergesEnvOverLabels()
@@ -715,6 +774,21 @@ public sealed class LabelParserTests
             .Should().Be(LoadBalancingPolicy.LeastRequests);
         ParseConfig(DockerLabels.NginxLoadBalance, "hash $remote_addr;").LoadBalancingPolicy
             .Should().BeNull(); // hashing is session affinity, not a policy
+    }
+
+    /// <summary>The nginx-proxy loadbalance compat label's ip_hash/hash directives translate to client-IP-hash
+    /// affinity; a directive with no affinity meaning does not (falls back to unset, matching
+    /// TranslateNginxLoadBalance's own "unrecognized" shape — not a warning, since the directive is still a
+    /// valid load-balancing choice, just not an affinity one).</summary>
+    [Test]
+    public void NginxLoadBalanceAliasMapsToAffinity()
+    {
+        ParseConfig(DockerLabels.NginxLoadBalance, "ip_hash;").SessionAffinityPolicy
+            .Should().Be(SessionAffinityPolicy.ClientIpHash);
+        ParseConfig(DockerLabels.NginxLoadBalance, "hash $remote_addr consistent;").SessionAffinityPolicy
+            .Should().Be(SessionAffinityPolicy.ClientIpHash);
+        ParseConfig(DockerLabels.NginxLoadBalance, "round_robin;").SessionAffinityPolicy
+            .Should().BeNull(); // a real load-balancing directive, not an affinity one
     }
 
     /// <summary>When both the DockYarp-native key and the namespaced label are set, the native value wins.</summary>

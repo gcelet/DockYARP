@@ -66,6 +66,9 @@ public sealed record ContainerLabelConfig
     /// <summary>Gets the requested load-balancing policy (<c>DOCKYARP_LB</c>), if any.</summary>
     public LoadBalancingPolicy? LoadBalancingPolicy { get; init; }
 
+    /// <summary>Gets the requested session affinity policy (<c>DOCKYARP_AFFINITY</c>), if any.</summary>
+    public SessionAffinityPolicy? SessionAffinityPolicy { get; init; }
+
     /// <summary>Gets the route priority (<c>DOCKYARP_PRIORITY</c>); higher wins, default <c>0</c>.</summary>
     public int Priority { get; init; }
 

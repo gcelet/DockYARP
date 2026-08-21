@@ -24,11 +24,15 @@ public static class DataProtectionSetup
     /// <returns>Whether the key ring is encrypted at rest, or its unencrypted-keys warning was suppressed.</returns>
     /// <remarks>
     /// Data Protection is registered transitively (YARP uses it for session affinity) and ASP.NET initializes the
-    /// key ring at startup even though DockYarp currently protects no sensitive payload (no affinity, cookies, or
-    /// auth). With no encryption certificate the key ring is persisted unencrypted and the resulting
-    /// <c>XmlKeyManager</c> warning is benign, so it is suppressed; supplying a certificate enables real at-rest
-    /// encryption (and the warning disappears on its own). A future Data-Protection-consuming feature must instead
-    /// <b>require</b> the certificate and fail fast — tracked on the <c>add-loadbalance-policies</c> backlog item.
+    /// key ring at startup even though DockYarp does not always protect a sensitive payload with it. With no
+    /// encryption certificate the key ring is persisted unencrypted and the resulting <c>XmlKeyManager</c> warning
+    /// is benign, so it is suppressed; supplying a certificate enables real at-rest encryption (and the warning
+    /// disappears on its own). <c>add-session-affinity</c>'s <c>Cookie</c>/<c>CustomHeader</c> affinity policies
+    /// are a <em>conditional</em> Data Protection consumer: when no certificate is configured, a cluster
+    /// requesting either is served with no affinity (not a hard failure) and an Error-level diagnostic is logged —
+    /// not the host-startup fail-fast this remark once anticipated, because affinity is a per-container,
+    /// dynamically-discovered opt-in setting, not a precondition knowable at startup the way
+    /// <c>AdminApi:Surface</c>/<c>Host</c> are. <c>ClientIpHash</c> affinity needs no Data Protection at all.
     /// </remarks>
     public static DataProtectionKeyEncryption AddDockYarpDataProtection(
         this IHostApplicationBuilder builder, DataProtectionOptions options, string keyDirectory)
@@ -36,6 +40,10 @@ public static class DataProtectionSetup
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentException.ThrowIfNullOrEmpty(keyDirectory);
+
+        // Registered so downstream consumers (e.g. YarpConfigBridge, gating Cookie/CustomHeader session
+        // affinity) can tell whether a Data Protection certificate is configured without re-reading config.
+        builder.Services.AddSingleton(options);
 
         IDataProtectionBuilder dataProtection = builder.Services.AddDataProtection()
             .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(keyDirectory, "dataprotection-keys")))

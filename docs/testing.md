@@ -28,6 +28,7 @@ runtime behavior through the real proxy.
 | · `UnhealthyBackend_IsExcluded` | A Docker-unhealthy container is excluded from routing. |
 | **RoutingTests** · `PathRewrite_StripsPrefix` | `VIRTUAL_PATH` + `VIRTUAL_DEST=/` strips the prefix before forwarding. |
 | · `MultiPort_RoutesPerPath` | `VIRTUAL_HOST_MULTIPORTS` routes per path to different container ports. |
+| · `Affinity_StickyClientRoutesToSameBackend` | `DOCKYARP_AFFINITY=ip-hash` sticks one client to one replica — proves the custom `ISessionAffinityPolicy` is wired into the live DI/middleware pipeline with a real client IP, which unit/integration cannot. |
 | **EnvVarConfigTests** · `EnvOnlyBackend_IsDiscoveredAndProxied` | Config via environment variables (no labels). |
 | · `EnvVar_OverridesSameNamedLabel` | Env value wins over a same-named label. |
 | **TlsTests** · `AcmeCertificate_IsProvisionedForHost` | ACME (step-ca) provisions a cert for `LETSENCRYPT_HOST`. |

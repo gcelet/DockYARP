@@ -17,6 +17,12 @@ public sealed record Cluster
     /// <summary>Gets the policy used to pick an endpoint per request.</summary>
     public LoadBalancingPolicy LoadBalancingPolicy { get; init; } = LoadBalancingPolicy.RoundRobin;
 
+    /// <summary>Gets the client-affinity ("sticky session") policy.</summary>
+    /// <remarks><see cref="Models.SessionAffinityPolicy.ClientIpHash"/> needs no Data Protection;
+    /// <see cref="Models.SessionAffinityPolicy.Cookie"/> and <see cref="Models.SessionAffinityPolicy.CustomHeader"/>
+    /// do, and degrade to no affinity (not a hard failure) when it isn't configured.</remarks>
+    public SessionAffinityPolicy SessionAffinityPolicy { get; init; } = SessionAffinityPolicy.None;
+
     /// <summary>Gets the optional health-check configuration.</summary>
     public HealthCheckConfig? HealthCheck { get; init; }
 

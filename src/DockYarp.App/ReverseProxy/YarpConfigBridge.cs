@@ -7,7 +7,9 @@ using System.Threading.Tasks;
 
 using DockYarp.Core.Configuration;
 using DockYarp.Core.Interfaces;
+using DockYarp.Security;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Yarp.ReverseProxy.Configuration;
 
 /// <summary>Keeps YARP's in-memory configuration in sync with the routing store.</summary>
@@ -18,8 +20,15 @@ using Yarp.ReverseProxy.Configuration;
 /// <param name="store">The routing store.</param>
 /// <param name="provider">YARP's in-memory configuration provider.</param>
 /// <param name="routing">Routing options supplying the optional default host.</param>
-public sealed class YarpConfigBridge(IRouteConfigStore store, InMemoryConfigProvider provider, RoutingOptions routing)
-    : IHostedService, IDisposable
+/// <param name="dataProtection">Data Protection options — whether <c>Cookie</c>/<c>CustomHeader</c> session
+/// affinity is usable.</param>
+/// <param name="logger">Logger for affinity-downgrade diagnostics.</param>
+public sealed class YarpConfigBridge(
+    IRouteConfigStore store,
+    InMemoryConfigProvider provider,
+    RoutingOptions routing,
+    DataProtectionOptions dataProtection,
+    ILogger<YarpConfigBridge> logger) : IHostedService, IDisposable
 {
     /// <inheritdoc />
     public Task StartAsync(CancellationToken cancellationToken)
@@ -47,8 +56,11 @@ public sealed class YarpConfigBridge(IRouteConfigStore store, InMemoryConfigProv
 
     private void Publish()
     {
-        (IReadOnlyList<RouteConfig> routes, IReadOnlyList<ClusterConfig> clusters) =
-            YarpConfigMapper.Map(store.Current, routing.DefaultHost);
-        provider.Update(routes, clusters);
+        YarpConfigMapResult result = YarpConfigMapper.Map(store.Current, routing.DefaultHost, dataProtection);
+        provider.Update(result.Routes, result.Clusters);
+        foreach (string diagnostic in result.Diagnostics)
+        {
+            logger.LogError("{Diagnostic}", diagnostic);
+        }
     }
 }

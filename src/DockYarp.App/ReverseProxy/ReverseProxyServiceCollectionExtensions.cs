@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Routing.Matching;
 using Microsoft.Extensions.DependencyInjection;
 
 using Yarp.ReverseProxy.Configuration;
+using Yarp.ReverseProxy.SessionAffinity;
 using Yarp.ReverseProxy.Transforms;
 
 /// <summary>Registers the YARP reverse proxy driven from the routing store.</summary>
@@ -21,6 +22,7 @@ internal static class ReverseProxyServiceCollectionExtensions
         ForwardedTransformActions xForwardedAction)
     {
         services.AddSingleton<IRouteConfigStore, RouteConfigStore>();
+        services.AddSingleton<ISessionAffinityPolicy, ClientIpHashSessionAffinityPolicy>();
         services.AddReverseProxy()
             .LoadFromMemory([], [])
             .AddTransforms(context => ForwardedHeadersTransform.Apply(context, xForwardedAction));

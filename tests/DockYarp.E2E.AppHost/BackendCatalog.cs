@@ -42,6 +42,7 @@ internal static class BackendCatalog
     private const string ClientCert = "DOCKYARP_CLIENT_CERT";
     private const string SslPolicy = "SSL_POLICY";
     private const string DockYarpHttp2 = "DOCKYARP_HTTP2";
+    private const string DockYarpAffinity = "DOCKYARP_AFFINITY";
 
     /// <summary>Gets every backend the AppHost adds to the distributed system.</summary>
     public static IReadOnlyList<BackendSpec> All { get; } =
@@ -79,6 +80,24 @@ internal static class BackendCatalog
             Tag = EchoTag,
             Labels = [Kv(VirtualHostMultiports, "{multiport.local: {/: {port: 8080}, /api: {port: 8081}}}")],
             Environment = EchoEnv("8080;8081", id: null),
+        },
+        new BackendSpec
+        {
+            // sticky affinity: two replicas behind one host, DOCKYARP_AFFINITY=ip-hash pins the (single, stable)
+            // test client to whichever replica its IP hashes to.
+            Name = "echo-affinity-1",
+            Image = EchoImage,
+            Tag = EchoTag,
+            Labels = [Kv(VirtualHost, "affinity.local"), Kv(VirtualPort, EchoPort), Kv(DockYarpAffinity, "ip-hash")],
+            Environment = EchoEnv(EchoPort, id: "affinity-1"),
+        },
+        new BackendSpec
+        {
+            Name = "echo-affinity-2", // same host as echo-affinity-1, the other replica
+            Image = EchoImage,
+            Tag = EchoTag,
+            Labels = [Kv(VirtualHost, "affinity.local"), Kv(VirtualPort, EchoPort), Kv(DockYarpAffinity, "ip-hash")],
+            Environment = EchoEnv(EchoPort, id: "affinity-2"),
         },
         new BackendSpec
         {

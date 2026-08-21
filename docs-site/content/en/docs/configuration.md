@@ -50,6 +50,7 @@ compatible; DockYARP's own keys use the `DOCKYARP_` prefix.
 | `DOCKYARP_CLIENT_CERT` | Client-certificate requirement (mutual TLS): `required`, `optional`, `none`/`off`. | `required` |
 | `DOCKYARP_AUTH_USER` / `_PASSWORD` / `_REALM` | Route Basic Auth credentials (with an optional realm). | `admin` / `s3cret` |
 | `DOCKYARP_LB` | Load-balancing policy: `round-robin` (default), `least-requests`, `power-of-two-choices`, `random`, `first-alphabetical`. | `least-requests` |
+| `DOCKYARP_AFFINITY` | Session affinity ("sticky sessions"): `ip-hash`/`true` (client-IP hash, first 3 IPv4 octets — matches nginx-proxy's own `ip_hash`, needs no Data Protection), `cookie` or `custom-header` (YARP's encrypted policies — a DockYarp value-add beyond nginx-proxy, since open-source nginx has no cookie-based sticky-session mechanism; both **require** `DataProtection:CertificatePath` and are otherwise served with no affinity, logged as an error). Unset/`false` disables it (default). | `ip-hash` |
 | `DOCKYARP_PRIORITY` | Route priority; higher wins when several routes match (default `0`). | `10` |
 | `DOCKYARP_PROXY_TIMEOUT` | Per-route upstream timeout in seconds. | `30` |
 | `DOCKYARP_MAX_BODY_SIZE` | Per-route maximum request body size in bytes. | `1048576` |
@@ -63,7 +64,7 @@ DockYARP-native key wins when both are set):
 
 | nginx-proxy label | DockYARP key |
 |-------------------|--------------|
-| `com.github.nginx-proxy.nginx-proxy.loadbalance` | `DOCKYARP_LB` (`least_conn`→least-requests, `random`, `round_robin`) |
+| `com.github.nginx-proxy.nginx-proxy.loadbalance` | `DOCKYARP_LB` (`least_conn`→least-requests, `random`, `round_robin`); `ip_hash`/`hash $x` → `DOCKYARP_AFFINITY=ip-hash` instead (session affinity, not a load-balancing policy) |
 | `com.github.nginx-proxy.nginx-proxy.ssl_verify_client` | `DOCKYARP_CLIENT_CERT` (`on`→required, `optional`→optional) |
 | `com.github.nginx-proxy.nginx-proxy.trust-default-cert` | `TRUST_DEFAULT_CERT` |
 | `com.github.nginx-proxy.nginx-proxy.http2.enable` | `DOCKYARP_HTTP2` |

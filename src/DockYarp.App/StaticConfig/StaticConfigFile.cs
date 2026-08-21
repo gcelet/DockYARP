@@ -35,6 +35,9 @@ internal sealed record StaticConfigFile
 
         /// <summary>Gets the load-balancing policy (<c>round-robin</c> or <c>least-requests</c>).</summary>
         public string? LoadBalancing { get; init; }
+
+        /// <summary>Gets the session affinity policy (<c>ip-hash</c>, <c>cookie</c>, or <c>custom-header</c>).</summary>
+        public string? Affinity { get; init; }
     }
 
     /// <summary>A route declared in the static configuration file.</summary>

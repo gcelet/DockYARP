@@ -9,9 +9,11 @@ using System.Net.Http;
 
 using DockYarp.Core.Models;
 using DockYarp.Core.Routing;
+using DockYarp.Security;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Forwarder;
 using Yarp.ReverseProxy.LoadBalancing;
+using Yarp.ReverseProxy.SessionAffinity;
 
 using CoreHealthCheck = DockYarp.Core.Models.HealthCheckConfig;
 using YarpHealthCheck = Yarp.ReverseProxy.Configuration.HealthCheckConfig;
@@ -19,29 +21,34 @@ using YarpHealthCheck = Yarp.ReverseProxy.Configuration.HealthCheckConfig;
 /// <summary>Maps the internal routing snapshot to YARP configuration objects.</summary>
 public static class YarpConfigMapper
 {
-    /// <summary>Maps a snapshot to YARP routes and clusters, with no default host.</summary>
+    /// <summary>Maps a snapshot to YARP routes and clusters, with no default host and no Data Protection.</summary>
     /// <param name="snapshot">The routing snapshot.</param>
-    /// <returns>The YARP route and cluster configuration.</returns>
-    public static (IReadOnlyList<RouteConfig> Routes, IReadOnlyList<ClusterConfig> Clusters) Map(
-        RouteConfigSnapshot snapshot) => Map(snapshot, defaultHost: null);
+    /// <returns>The mapped routes, clusters, and any affinity-downgrade diagnostics.</returns>
+    public static YarpConfigMapResult Map(RouteConfigSnapshot snapshot) =>
+        Map(snapshot, defaultHost: null, dataProtection: new DataProtectionOptions());
 
     /// <summary>Maps a snapshot to YARP routes and clusters.</summary>
     /// <param name="snapshot">The routing snapshot.</param>
     /// <param name="defaultHost">Host whose backend also serves requests matching no other host, or <see langword="null"/>.</param>
-    /// <returns>The YARP route and cluster configuration.</returns>
-    public static (IReadOnlyList<RouteConfig> Routes, IReadOnlyList<ClusterConfig> Clusters) Map(
-        RouteConfigSnapshot snapshot,
-        string? defaultHost)
+    /// <param name="dataProtection">Data Protection options — a configured <see cref="DataProtectionOptions.CertificatePath"/>
+    /// is required for the <c>Cookie</c>/<c>CustomHeader</c> affinity policies; when absent, a cluster
+    /// requesting either is served with no affinity instead, and a diagnostic is returned.</param>
+    /// <returns>The mapped routes, clusters, and any affinity-downgrade diagnostics.</returns>
+    public static YarpConfigMapResult Map(RouteConfigSnapshot snapshot, string? defaultHost, DataProtectionOptions dataProtection)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
+        ArgumentNullException.ThrowIfNull(dataProtection);
         List<RouteConfig> routeList = [.. snapshot.Routes.Select(BuildRoute)];
         if (BuildDefaultRoute(snapshot, defaultHost) is { } catchAll)
         {
             routeList.Add(catchAll);
         }
 
-        IReadOnlyList<ClusterConfig> clusters = [.. snapshot.Clusters.Select(BuildCluster)];
-        return (routeList, clusters);
+        bool dataProtectionConfigured = dataProtection.CertificatePath is { Length: > 0 };
+        List<string> diagnostics = [];
+        IReadOnlyList<ClusterConfig> clusters =
+            [.. snapshot.Clusters.Select(cluster => BuildCluster(cluster, dataProtectionConfigured, diagnostics))];
+        return new YarpConfigMapResult { Routes = routeList, Clusters = clusters, Diagnostics = diagnostics };
     }
 
     private static RouteConfig? BuildDefaultRoute(RouteConfigSnapshot snapshot, string? defaultHost)
@@ -184,16 +191,56 @@ public static class YarpConfigMapper
         return list.Count > 0 ? list : null;
     }
 
-    private static ClusterConfig BuildCluster(Cluster cluster) =>
+    private static ClusterConfig BuildCluster(Cluster cluster, bool dataProtectionConfigured, List<string> diagnostics) =>
         new()
         {
             ClusterId = cluster.Id,
             LoadBalancingPolicy = MapPolicy(cluster.LoadBalancingPolicy),
+            SessionAffinity = BuildSessionAffinity(cluster, dataProtectionConfigured, diagnostics),
             Destinations = BuildDestinations(cluster.Endpoints),
             HealthCheck = BuildHealth(cluster.HealthCheck),
             HttpRequest = BuildRequestConfig(cluster),
             HttpClient = BuildHttpClientConfig(cluster),
         };
+
+    // ClientIpHash needs no Data Protection. Cookie/CustomHeader encrypt their key via Data Protection — when
+    // it isn't configured, the cluster is served with no affinity (not excluded: the route itself still works
+    // fine via ordinary load-balancing, matching this project's established per-container degradation idiom
+    // for unsupported/invalid config — see design.md), and a diagnostic is returned for the caller to log at
+    // Error (not the usual Warning, since silently downgrading to unencrypted would defeat the security
+    // property the operator opted into).
+    private static SessionAffinityConfig? BuildSessionAffinity(Cluster cluster, bool dataProtectionConfigured, List<string> diagnostics)
+    {
+        string? policyName = cluster.SessionAffinityPolicy switch
+        {
+            SessionAffinityPolicy.ClientIpHash => ClientIpHashSessionAffinityPolicy.PolicyName,
+            SessionAffinityPolicy.Cookie when dataProtectionConfigured => SessionAffinityConstants.Policies.Cookie,
+            SessionAffinityPolicy.CustomHeader when dataProtectionConfigured => SessionAffinityConstants.Policies.CustomHeader,
+            _ => null,
+        };
+
+        if (policyName is not null)
+        {
+            return new SessionAffinityConfig
+            {
+                Enabled = true,
+                Policy = policyName,
+                FailurePolicy = SessionAffinityConstants.FailurePolicies.Redistribute,
+
+                // Unused by ClientIpHash (stateless, nothing stored); a real, meaningful name for Cookie/CustomHeader.
+                AffinityKeyName = "dockyarp-affinity",
+            };
+        }
+
+        if (cluster.SessionAffinityPolicy is SessionAffinityPolicy.Cookie or SessionAffinityPolicy.CustomHeader)
+        {
+            string value = cluster.SessionAffinityPolicy == SessionAffinityPolicy.Cookie ? "cookie" : "custom-header";
+            diagnostics.Add(
+                $"Cluster '{cluster.Id}': DOCKYARP_AFFINITY={value} requires DataProtection:CertificatePath; affinity not applied.");
+        }
+
+        return null;
+    }
 
     // Per-cluster backend HTTP client tuning; null keeps YARP's default connection pooling unchanged.
     private static HttpClientConfig? BuildHttpClientConfig(Cluster cluster) =>

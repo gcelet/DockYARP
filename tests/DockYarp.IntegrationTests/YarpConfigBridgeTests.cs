@@ -10,6 +10,9 @@ using DockYarp.App.ReverseProxy;
 using DockYarp.Core.Configuration;
 using DockYarp.Core.Models;
 using DockYarp.Core.Stores;
+using DockYarp.Security;
+
+using Microsoft.Extensions.Logging.Abstractions;
 
 using Yarp.ReverseProxy.Configuration;
 
@@ -22,7 +25,8 @@ public sealed class YarpConfigBridgeTests
     {
         RouteConfigStore store = new();
         InMemoryConfigProvider provider = new([], []);
-        YarpConfigBridge bridge = new(store, provider, new RoutingOptions());
+        YarpConfigBridge bridge = new(
+            store, provider, new RoutingOptions(), new DataProtectionOptions(), NullLogger<YarpConfigBridge>.Instance);
         await bridge.StartAsync(CancellationToken.None);
 
         try

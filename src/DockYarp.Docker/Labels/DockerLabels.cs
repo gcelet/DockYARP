@@ -64,6 +64,11 @@ public static class DockerLabels
     /// <summary>DockYarp-specific load-balancing policy (<c>round-robin</c> or <c>least-requests</c>).</summary>
     public const string LoadBalancing = "DOCKYARP_LB";
 
+    /// <summary>Client-affinity ("sticky session") policy: <c>ip-hash</c> (also <c>true</c>), <c>cookie</c>, or
+    /// <c>custom-header</c>. Separate from <see cref="LoadBalancing"/> — an orthogonal YARP cluster property,
+    /// not a sixth load-balancing policy.</summary>
+    public const string SessionAffinity = "DOCKYARP_AFFINITY";
+
     /// <summary>Route priority; higher wins when several routes could match (default <c>0</c>).</summary>
     public const string Priority = "DOCKYARP_PRIORITY";
 

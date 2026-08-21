@@ -168,6 +168,11 @@ public static class ContainerMapper
             warnings.Add($"{container.Name} ({id}): unrecognized {DockerLabels.LoadBalancing}; using round-robin.");
         }
 
+        if (LabelParser.HasUnsupportedAffinity(config))
+        {
+            warnings.Add($"{container.Name} ({id}): unrecognized {DockerLabels.SessionAffinity}; affinity not applied.");
+        }
+
         if (LabelParser.HasUnsupportedClientCert(config))
         {
             warnings.Add($"{container.Name} ({id}): unrecognized {DockerLabels.ClientCert}; requiring no client certificate.");
@@ -257,6 +262,7 @@ public static class ContainerMapper
                 Id = host,
                 Endpoints = [.. endpoints],
                 LoadBalancingPolicy = first.LoadBalancingPolicy ?? LoadBalancingPolicy.RoundRobin,
+                SessionAffinityPolicy = first.SessionAffinityPolicy ?? SessionAffinityPolicy.None,
                 RequestTimeout = first.ProxyTimeout,
                 Http2Only = first.Http2,
                 MaxConnectionsPerServer = first.MaxConnectionsPerServer,
@@ -321,6 +327,7 @@ public static class ContainerMapper
                 Id = clusterId,
                 Endpoints = [.. endpoints],
                 LoadBalancingPolicy = common.LoadBalancingPolicy ?? LoadBalancingPolicy.RoundRobin,
+                SessionAffinityPolicy = common.SessionAffinityPolicy ?? SessionAffinityPolicy.None,
                 RequestTimeout = common.ProxyTimeout,
                 MaxConnectionsPerServer = common.MaxConnectionsPerServer,
             };

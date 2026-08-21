@@ -80,9 +80,11 @@ builder.Services.AddSingleton(serverEndpoints);
 TlsOptions tlsOptions = builder.Configuration.GetSection("Tls").Get<TlsOptions>() ?? new();
 builder.Services.AddDockYarpTls(tlsOptions);
 
-// Data Protection is registered transitively (YARP uses it for session affinity). Persist its keys under the
-// certificate volume so they survive container recreation, and encrypt them at rest when an operator supplies a
-// certificate; otherwise the benign "unencrypted keys" warning is suppressed (no sensitive payload is protected).
+// Data Protection is registered transitively (YARP uses it for session affinity — Cookie/CustomHeader
+// specifically; ClientIpHash needs none). Persist its keys under the certificate volume so they survive
+// container recreation, and encrypt them at rest when an operator supplies a certificate; otherwise the benign
+// "unencrypted keys" warning is suppressed (no sensitive payload is protected). AddDockYarpDataProtection also
+// registers DataProtectionOptions in DI so YarpConfigBridge can tell whether Cookie/CustomHeader is usable.
 builder.AddDockYarpDataProtection(
     builder.Configuration.GetSection("DataProtection").Get<DataProtectionOptions>() ?? new(),
     tlsOptions.CertificateDirectory);

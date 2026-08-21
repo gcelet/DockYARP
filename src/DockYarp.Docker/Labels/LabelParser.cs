@@ -89,6 +89,7 @@ public static class LabelParser
             HttpsMethod = ParseHttpsMethod(GetOrNull(labels, DockerLabels.HttpsMethod)),
             Hsts = GetOrNull(labels, DockerLabels.Hsts),
             LoadBalancingPolicy = ResolveLoadBalancing(labels),
+            SessionAffinityPolicy = ResolveAffinity(labels),
             Priority = ParsePriority(GetOrNull(labels, DockerLabels.Priority)),
             ClientCertificate = ResolveClientCertificate(labels),
             ProxyTimeout = ParseTimeoutSeconds(GetOrNull(labels, DockerLabels.ProxyTimeout)),
@@ -122,6 +123,7 @@ public static class LabelParser
             TrustDefaultCert = ParseBool(
                 GetOrNull(labels, DockerLabels.TrustDefaultCert) ?? GetOrNull(labels, DockerLabels.NginxTrustDefaultCert)),
             LoadBalancingPolicy = ResolveLoadBalancing(labels),
+            SessionAffinityPolicy = ResolveAffinity(labels),
             Priority = ParsePriority(GetOrNull(labels, DockerLabels.Priority)),
             ClientCertificate = ResolveClientCertificate(labels),
             ProxyTimeout = ParseTimeoutSeconds(GetOrNull(labels, DockerLabels.ProxyTimeout)),
@@ -424,5 +426,65 @@ public static class LabelParser
         ArgumentNullException.ThrowIfNull(labels);
         string? value = GetOrNull(labels, DockerLabels.LoadBalancing);
         return value is not null && ParsePolicy(value) is null;
+    }
+
+    /// <summary>Parses a <c>DOCKYARP_AFFINITY</c> value into a <see cref="SessionAffinityPolicy"/>.</summary>
+    /// <param name="value">The raw label value.</param>
+    /// <returns>The matching policy, or <see langword="null"/> when unrecognized.</returns>
+    private static SessionAffinityPolicy? ParseAffinityPolicy(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return value.Trim().ToUpperInvariant() switch
+        {
+            "TRUE" or "IP-HASH" or "IPHASH" => SessionAffinityPolicy.ClientIpHash,
+            "COOKIE" => SessionAffinityPolicy.Cookie,
+            "CUSTOM-HEADER" or "CUSTOMHEADER" => SessionAffinityPolicy.CustomHeader,
+            "FALSE" => SessionAffinityPolicy.None,
+            _ => null,
+        };
+    }
+
+    // DockYarp-native DOCKYARP_AFFINITY wins; the nginx-proxy loadbalance directive is the compatibility
+    // fallback, but only for its ip_hash/hash shape — nginx has no equivalent to translate for cookie/
+    // custom-header (open-source nginx, which nginx-proxy is built on, has no cookie-based sticky-session
+    // mechanism at all).
+    private static SessionAffinityPolicy? ResolveAffinity(IReadOnlyDictionary<string, string> labels)
+    {
+        if (GetOrNull(labels, DockerLabels.SessionAffinity) is { } native)
+        {
+            return ParseAffinityPolicy(native);
+        }
+
+        return GetOrNull(labels, DockerLabels.NginxLoadBalance) is { } directive
+            ? TranslateNginxAffinity(directive)
+            : null;
+    }
+
+    private static SessionAffinityPolicy? TranslateNginxAffinity(string value)
+    {
+        // Same trim/first-token shape as TranslateNginxLoadBalance: drop a trailing ';' and any arguments
+        // (e.g. "hash $remote_addr consistent;"), keep the directive name.
+        string trimmed = value.Trim().TrimEnd(';').Trim();
+        int space = trimmed.IndexOf(' ', StringComparison.Ordinal);
+        string directive = space >= 0 ? trimmed[..space] : trimmed;
+        return directive.ToUpperInvariant() switch
+        {
+            "IP_HASH" or "HASH" => SessionAffinityPolicy.ClientIpHash,
+            _ => null,
+        };
+    }
+
+    /// <summary>Reports whether <c>DOCKYARP_AFFINITY</c> is present but not a recognized policy.</summary>
+    /// <param name="labels">The container labels.</param>
+    /// <returns><see langword="true"/> when the value does not map to a known affinity policy.</returns>
+    public static bool HasUnsupportedAffinity(IReadOnlyDictionary<string, string> labels)
+    {
+        ArgumentNullException.ThrowIfNull(labels);
+        string? value = GetOrNull(labels, DockerLabels.SessionAffinity);
+        return value is not null && ParseAffinityPolicy(value) is null;
     }
 }

@@ -117,6 +117,7 @@ public sealed class StaticConfigProvider : IStaticConfigProvider
                 Id = entry.Id ?? string.Empty,
                 Endpoints = [.. (entry.Addresses ?? []).Select(address => new ClusterEndpoint(address, address))],
                 LoadBalancingPolicy = ParsePolicy(entry.LoadBalancing),
+                SessionAffinityPolicy = ParseAffinityPolicy(entry.Affinity),
             }),
         ];
         ImmutableArray<RouteRule> routes =
@@ -136,4 +137,13 @@ public sealed class StaticConfigProvider : IStaticConfigProvider
         value?.Replace("-", string.Empty, StringComparison.OrdinalIgnoreCase).ToUpperInvariant() == "LEASTREQUESTS"
             ? LoadBalancingPolicy.LeastRequests
             : LoadBalancingPolicy.RoundRobin;
+
+    private static SessionAffinityPolicy ParseAffinityPolicy(string? value) =>
+        value?.Replace("-", string.Empty, StringComparison.OrdinalIgnoreCase).ToUpperInvariant() switch
+        {
+            "TRUE" or "IPHASH" => SessionAffinityPolicy.ClientIpHash,
+            "COOKIE" => SessionAffinityPolicy.Cookie,
+            "CUSTOMHEADER" => SessionAffinityPolicy.CustomHeader,
+            _ => SessionAffinityPolicy.None,
+        };
 }

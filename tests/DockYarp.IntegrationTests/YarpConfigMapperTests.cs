@@ -6,8 +6,10 @@ using AwesomeAssertions;
 
 using DockYarp.App.ReverseProxy;
 using DockYarp.Core.Models;
+using DockYarp.Security;
 
 using Yarp.ReverseProxy.Configuration;
+using Yarp.ReverseProxy.SessionAffinity;
 
 /// <summary>Tests for <see cref="YarpConfigMapper"/>.</summary>
 public sealed class YarpConfigMapperTests
@@ -21,7 +23,7 @@ public sealed class YarpConfigMapperTests
             [Cluster("app", LoadBalancingPolicy.RoundRobin)],
             1);
 
-        (System.Collections.Generic.IReadOnlyList<RouteConfig> routes, _) = YarpConfigMapper.Map(snapshot);
+        System.Collections.Generic.IReadOnlyList<RouteConfig> routes = YarpConfigMapper.Map(snapshot).Routes;
 
         RouteConfig route = routes.Single();
         route.ClusterId.Should().Be("app");
@@ -38,7 +40,7 @@ public sealed class YarpConfigMapperTests
             [Cluster("app", LoadBalancingPolicy.LeastRequests)],
             1);
 
-        (_, System.Collections.Generic.IReadOnlyList<ClusterConfig> clusters) = YarpConfigMapper.Map(snapshot);
+        System.Collections.Generic.IReadOnlyList<ClusterConfig> clusters = YarpConfigMapper.Map(snapshot).Clusters;
 
         ClusterConfig cluster = clusters.Single();
         cluster.LoadBalancingPolicy.Should().Be("LeastRequests");
@@ -58,7 +60,7 @@ public sealed class YarpConfigMapperTests
             [Cluster("app", policy)],
             1);
 
-        (_, System.Collections.Generic.IReadOnlyList<ClusterConfig> clusters) = YarpConfigMapper.Map(snapshot);
+        System.Collections.Generic.IReadOnlyList<ClusterConfig> clusters = YarpConfigMapper.Map(snapshot).Clusters;
 
         clusters.Single().LoadBalancingPolicy.Should().Be(expected);
     }
@@ -81,7 +83,7 @@ public sealed class YarpConfigMapperTests
             [withHealth],
             1);
 
-        (_, System.Collections.Generic.IReadOnlyList<ClusterConfig> clusters) = YarpConfigMapper.Map(snapshot);
+        System.Collections.Generic.IReadOnlyList<ClusterConfig> clusters = YarpConfigMapper.Map(snapshot).Clusters;
 
         clusters.Single().HealthCheck.Should().NotBeNull();
         clusters.Single().HealthCheck!.Active!.Path.Should().Be("/health");
@@ -104,7 +106,7 @@ public sealed class YarpConfigMapperTests
             [Cluster("app", LoadBalancingPolicy.RoundRobin)],
             1);
 
-        (System.Collections.Generic.IReadOnlyList<RouteConfig> routes, _) = YarpConfigMapper.Map(snapshot);
+        System.Collections.Generic.IReadOnlyList<RouteConfig> routes = YarpConfigMapper.Map(snapshot).Routes;
 
         routes.Single().Transforms.Should().ContainSingle()
             .Which.Should().Contain(
@@ -128,7 +130,7 @@ public sealed class YarpConfigMapperTests
             [Cluster("app", LoadBalancingPolicy.RoundRobin)],
             1);
 
-        (System.Collections.Generic.IReadOnlyList<RouteConfig> routes, _) = YarpConfigMapper.Map(snapshot);
+        System.Collections.Generic.IReadOnlyList<RouteConfig> routes = YarpConfigMapper.Map(snapshot).Routes;
 
         System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyDictionary<string, string>> transforms =
             routes.Single().Transforms!;
@@ -148,7 +150,7 @@ public sealed class YarpConfigMapperTests
             [Cluster("app", LoadBalancingPolicy.RoundRobin)],
             1);
 
-        (System.Collections.Generic.IReadOnlyList<RouteConfig> routes, _) = YarpConfigMapper.Map(snapshot);
+        System.Collections.Generic.IReadOnlyList<RouteConfig> routes = YarpConfigMapper.Map(snapshot).Routes;
 
         routes.Single().Transforms.Should().BeNull();
     }
@@ -162,8 +164,8 @@ public sealed class YarpConfigMapperTests
             [Cluster("app", LoadBalancingPolicy.RoundRobin)],
             1);
 
-        (System.Collections.Generic.IReadOnlyList<RouteConfig> routes, _) =
-            YarpConfigMapper.Map(snapshot, defaultHost: "app.local");
+        System.Collections.Generic.IReadOnlyList<RouteConfig> routes =
+            YarpConfigMapper.Map(snapshot, defaultHost: "app.local", dataProtection: new DockYarp.Security.DataProtectionOptions()).Routes;
 
         routes.Should().HaveCount(2);
         RouteConfig catchAll = routes.Single(route => route.Match.Hosts is null);
@@ -180,7 +182,7 @@ public sealed class YarpConfigMapperTests
             [Cluster("app", LoadBalancingPolicy.RoundRobin)],
             1);
 
-        (System.Collections.Generic.IReadOnlyList<RouteConfig> routes, _) = YarpConfigMapper.Map(snapshot);
+        System.Collections.Generic.IReadOnlyList<RouteConfig> routes = YarpConfigMapper.Map(snapshot).Routes;
 
         routes.Should().ContainSingle();
         routes.Single().Match.Hosts.Should().NotBeNull();
@@ -198,7 +200,7 @@ public sealed class YarpConfigMapperTests
             [Cluster("app", LoadBalancingPolicy.RoundRobin)],
             1);
 
-        (System.Collections.Generic.IReadOnlyList<RouteConfig> routes, _) = YarpConfigMapper.Map(snapshot);
+        System.Collections.Generic.IReadOnlyList<RouteConfig> routes = YarpConfigMapper.Map(snapshot).Routes;
 
         routes.Single(route => route.RouteId == "high.local|").Order.Should().Be(-5);
         routes.Single(route => route.RouteId == "default.local|").Order.Should().BeNull();
@@ -217,7 +219,7 @@ public sealed class YarpConfigMapperTests
             [withTimeout],
             1);
 
-        (_, System.Collections.Generic.IReadOnlyList<ClusterConfig> clusters) = YarpConfigMapper.Map(snapshot);
+        System.Collections.Generic.IReadOnlyList<ClusterConfig> clusters = YarpConfigMapper.Map(snapshot).Clusters;
 
         clusters.Single().HttpRequest!.ActivityTimeout.Should().Be(System.TimeSpan.FromSeconds(30));
     }
@@ -232,7 +234,7 @@ public sealed class YarpConfigMapperTests
             [withLimit],
             1);
 
-        (_, System.Collections.Generic.IReadOnlyList<ClusterConfig> clusters) = YarpConfigMapper.Map(snapshot);
+        System.Collections.Generic.IReadOnlyList<ClusterConfig> clusters = YarpConfigMapper.Map(snapshot).Clusters;
 
         clusters.Single().HttpClient!.MaxConnectionsPerServer.Should().Be(64);
     }
@@ -246,7 +248,7 @@ public sealed class YarpConfigMapperTests
             [Cluster("app", LoadBalancingPolicy.RoundRobin)],
             1);
 
-        (_, System.Collections.Generic.IReadOnlyList<ClusterConfig> clusters) = YarpConfigMapper.Map(snapshot);
+        System.Collections.Generic.IReadOnlyList<ClusterConfig> clusters = YarpConfigMapper.Map(snapshot).Clusters;
 
         clusters.Single().HttpClient.Should().BeNull();
     }
@@ -261,7 +263,7 @@ public sealed class YarpConfigMapperTests
             [grpc],
             1);
 
-        (_, System.Collections.Generic.IReadOnlyList<ClusterConfig> clusters) = YarpConfigMapper.Map(snapshot);
+        System.Collections.Generic.IReadOnlyList<ClusterConfig> clusters = YarpConfigMapper.Map(snapshot).Clusters;
 
         Yarp.ReverseProxy.Forwarder.ForwarderRequestConfig request = clusters.Single().HttpRequest!;
         request.Version.Should().Be(System.Net.HttpVersion.Version20);
@@ -287,7 +289,7 @@ public sealed class YarpConfigMapperTests
             [Cluster("app", LoadBalancingPolicy.RoundRobin)],
             1);
 
-        (System.Collections.Generic.IReadOnlyList<RouteConfig> routes, _) = YarpConfigMapper.Map(snapshot);
+        System.Collections.Generic.IReadOnlyList<RouteConfig> routes = YarpConfigMapper.Map(snapshot).Routes;
 
         routes.Single().Transforms.Should().ContainSingle(t =>
             t.ContainsKey("ResponseHeader") && t["ResponseHeader"] == "X-Frame-Options"
@@ -312,9 +314,91 @@ public sealed class YarpConfigMapperTests
             [cluster],
             1);
 
-        (_, System.Collections.Generic.IReadOnlyList<ClusterConfig> clusters) = YarpConfigMapper.Map(snapshot);
+        System.Collections.Generic.IReadOnlyList<ClusterConfig> clusters = YarpConfigMapper.Map(snapshot).Clusters;
 
         clusters.Single().Destinations.Should().ContainSingle();
+    }
+
+    /// <summary>ClientIpHash affinity is applied regardless of whether Data Protection is configured.</summary>
+    [Test]
+    public void ClientIpHashAppliesWithoutDataProtection()
+    {
+        Cluster cluster = Cluster("app", LoadBalancingPolicy.RoundRobin) with { SessionAffinityPolicy = SessionAffinityPolicy.ClientIpHash };
+        RouteConfigSnapshot snapshot = new([new RouteRule { HostPattern = "app.local", ClusterId = "app" }], [cluster], 1);
+
+        YarpConfigMapResult result = YarpConfigMapper.Map(snapshot, defaultHost: null, dataProtection: new DataProtectionOptions());
+
+        ClusterConfig mapped = result.Clusters.Single();
+        mapped.SessionAffinity.Should().NotBeNull();
+        mapped.SessionAffinity!.Policy.Should().Be(ClientIpHashSessionAffinityPolicy.PolicyName);
+        result.Diagnostics.Should().BeEmpty();
+    }
+
+    /// <summary>Cookie affinity is applied when Data Protection is configured.</summary>
+    [Test]
+    public void CookieAffinityAppliesWhenDataProtectionConfigured()
+    {
+        Cluster cluster = Cluster("app", LoadBalancingPolicy.RoundRobin) with { SessionAffinityPolicy = SessionAffinityPolicy.Cookie };
+        RouteConfigSnapshot snapshot = new([new RouteRule { HostPattern = "app.local", ClusterId = "app" }], [cluster], 1);
+
+        YarpConfigMapResult result = YarpConfigMapper.Map(
+            snapshot, defaultHost: null, dataProtection: new DataProtectionOptions { CertificatePath = "cert.pfx" });
+
+        ClusterConfig mapped = result.Clusters.Single();
+        mapped.SessionAffinity.Should().NotBeNull();
+        mapped.SessionAffinity!.Policy.Should().Be(SessionAffinityConstants.Policies.Cookie);
+        result.Diagnostics.Should().BeEmpty();
+    }
+
+    /// <summary>Cookie/CustomHeader affinity degrades to no affinity — not an excluded route — when Data
+    /// Protection is not configured, with a diagnostic naming the cluster.</summary>
+    [TestCase(SessionAffinityPolicy.Cookie)]
+    [TestCase(SessionAffinityPolicy.CustomHeader)]
+    public void EncryptedAffinityDegradesWithoutDataProtection(SessionAffinityPolicy policy)
+    {
+        Cluster cluster = Cluster("app", LoadBalancingPolicy.RoundRobin) with { SessionAffinityPolicy = policy };
+        RouteConfigSnapshot snapshot = new([new RouteRule { HostPattern = "app.local", ClusterId = "app" }], [cluster], 1);
+
+        YarpConfigMapResult result = YarpConfigMapper.Map(snapshot, defaultHost: null, dataProtection: new DataProtectionOptions());
+
+        ClusterConfig mapped = result.Clusters.Single();
+        mapped.SessionAffinity.Should().BeNull("the route must still be served normally, just without affinity");
+        result.Diagnostics.Should().ContainSingle(diagnostic => diagnostic.Contains("app", System.StringComparison.Ordinal));
+    }
+
+    /// <summary>A cluster with no affinity is unaffected regardless of Data Protection configuration.</summary>
+    [Test]
+    public void NoAffinityIsUnaffectedByDataProtection()
+    {
+        Cluster cluster = Cluster("app", LoadBalancingPolicy.RoundRobin);
+        RouteConfigSnapshot snapshot = new([new RouteRule { HostPattern = "app.local", ClusterId = "app" }], [cluster], 1);
+
+        YarpConfigMapResult result = YarpConfigMapper.Map(snapshot, defaultHost: null, dataProtection: new DataProtectionOptions());
+
+        result.Clusters.Single().SessionAffinity.Should().BeNull();
+        result.Diagnostics.Should().BeEmpty();
+    }
+
+    /// <summary>One cluster's Cookie-affinity degradation does not affect a sibling cluster's own, independent
+    /// affinity configuration — proving isolation, not a global effect.</summary>
+    [Test]
+    public void DegradedClusterDoesNotAffectSiblingCluster()
+    {
+        Cluster degraded = Cluster("degraded", LoadBalancingPolicy.RoundRobin) with { SessionAffinityPolicy = SessionAffinityPolicy.Cookie };
+        Cluster unaffected = Cluster("unaffected", LoadBalancingPolicy.RoundRobin) with { SessionAffinityPolicy = SessionAffinityPolicy.ClientIpHash };
+        RouteConfigSnapshot snapshot = new(
+            [
+                new RouteRule { HostPattern = "degraded.local", ClusterId = "degraded" },
+                new RouteRule { HostPattern = "unaffected.local", ClusterId = "unaffected" },
+            ],
+            [degraded, unaffected],
+            1);
+
+        YarpConfigMapResult result = YarpConfigMapper.Map(snapshot, defaultHost: null, dataProtection: new DataProtectionOptions());
+
+        result.Clusters.Single(cluster => cluster.ClusterId == "degraded").SessionAffinity.Should().BeNull();
+        result.Clusters.Single(cluster => cluster.ClusterId == "unaffected").SessionAffinity.Should().NotBeNull();
+        result.Diagnostics.Should().ContainSingle(diagnostic => diagnostic.Contains("degraded", System.StringComparison.Ordinal));
     }
 
     private static Cluster Cluster(string id, LoadBalancingPolicy policy) =>

@@ -337,6 +337,58 @@ public sealed class ContainerMapperTests
         result.Warnings.Should().Contain(warning => warning.Contains(DockerLabels.LoadBalancing, System.StringComparison.Ordinal));
     }
 
+    /// <summary>DOCKYARP_AFFINITY is carried onto the cluster (single-port group).</summary>
+    [Test]
+    public void SessionAffinityPolicyIsCarriedOntoTheCluster()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.SessionAffinity, "cookie")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Clusters.Should().ContainSingle()
+            .Which.SessionAffinityPolicy.Should().Be(SessionAffinityPolicy.Cookie);
+    }
+
+    /// <summary>With no DOCKYARP_AFFINITY, the cluster defaults to no affinity.</summary>
+    [Test]
+    public void SessionAffinityDefaultsToNone()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels((DockerLabels.VirtualHost, "app.local"), (DockerLabels.VirtualPort, "8080")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Clusters.Should().ContainSingle()
+            .Which.SessionAffinityPolicy.Should().Be(SessionAffinityPolicy.None);
+    }
+
+    /// <summary>An unrecognized DOCKYARP_AFFINITY is reported and the container still routes (no affinity).</summary>
+    [Test]
+    public void UnknownAffinityIsWarned()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.SessionAffinity, "bogus")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Clusters.Should().ContainSingle()
+            .Which.SessionAffinityPolicy.Should().Be(SessionAffinityPolicy.None);
+        result.Warnings.Should().Contain(warning => warning.Contains(DockerLabels.SessionAffinity, System.StringComparison.Ordinal));
+    }
+
     /// <summary>A host-network container with a host address is routed to that address on its port.</summary>
     [Test]
     public void HostNetworkContainerIsRoutedToHostAddress()
@@ -566,6 +618,30 @@ public sealed class ContainerMapperTests
 
         result.Contribution.Clusters.Single().RequestTimeout.Should().BeNull();
         result.Warnings.Should().Contain(warning => warning.Contains(DockerLabels.ProxyTimeout, System.StringComparison.Ordinal));
+    }
+
+    /// <summary>DOCKYARP_AFFINITY is carried onto the cluster for a multiport container too (the other
+    /// BuildCluster overload).</summary>
+    [Test]
+    public void SessionAffinityPolicyIsCarriedOntoMultiportCluster()
+    {
+        const string Yaml =
+            """
+            app.local:
+              "/":
+                port: 8080
+            """;
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHostMultiports, Yaml),
+                (DockerLabels.SessionAffinity, "ip-hash")));
+
+        ContainerMapResult result = ContainerMapper.Map([container]);
+
+        result.Contribution.Clusters.Should().ContainSingle()
+            .Which.SessionAffinityPolicy.Should().Be(SessionAffinityPolicy.ClientIpHash);
     }
 
     /// <summary>VIRTUAL_HOST_MULTIPORTS maps one host to several paths on different ports.</summary>
