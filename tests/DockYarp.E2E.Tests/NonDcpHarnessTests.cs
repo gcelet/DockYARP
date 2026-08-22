@@ -42,7 +42,7 @@ public sealed class NonDcpHarnessTests : E2ETestBase
             ["VIRTUAL_HOST"] = Host,
             ["VIRTUAL_PORT"] = "80",
         };
-        string containerId = await harness.RunContainerAsync(WhoamiImage, labels, hostConfig: null, token);
+        string containerId = await harness.RunContainerAsync(WhoamiImage, labels, hostConfig: null, token, env: null);
 
         // Discovery only routes a container that shares a network with the proxy's own reachable set (see
         // ConnectToAspireSessionNetworkAsync's remarks) — Docker's default bridge alone isn't enough.

@@ -66,6 +66,13 @@ var dockerproxy = builder.AddContainer("dockerproxy", "tecnativa/docker-socket-p
 var proxy = builder.AddContainer("dockyarp", "dockyarp", "local")
     .WithEnvironment("Docker__Enabled", "true")
     .WithEnvironment("Docker__DockerEndpoint", "tcp://dockerproxy:2375")
+
+    // Host-network e2e scenario (HostNetworkModeTests): BackendAddressResolver.Resolve only reads HostAddress
+    // for a host-mode container, so setting this unconditionally has no effect on any other backend's address
+    // resolution. host.docker.internal resolves natively on Docker Desktop; native Linux Docker (this project's
+    // CI runner) needs the --add-host below (Docker Engine 20.10+'s host-gateway special value).
+    .WithEnvironment("Docker__HostAddress", "host.docker.internal")
+    .WithContainerRuntimeArgs("--add-host", "host.docker.internal:host-gateway")
     .WithEnvironment("AdminApi__ApiKey", apiKey)
     .WithEnvironment("AdminApi__Surface", "Api")
     .WithEnvironment("AdminApi__Host", "localhost")

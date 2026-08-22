@@ -2,6 +2,7 @@ namespace DockYarp.E2E.Tests;
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -74,12 +75,19 @@ internal sealed class NonDcpHarness : IAsyncDisposable
     /// <c>"host"</c> or a network id from <see cref="CreateNetworkAsync"/>); <see langword="null"/> uses
     /// Docker's default bridge network.</param>
     /// <param name="cancellationToken">A token to cancel creation/start.</param>
+    /// <param name="env">Environment variables (e.g. <c>ASPNETCORE_URLS</c>, <c>BACKEND_ID</c>);
+    /// <see langword="null"/> uses the image's own defaults.</param>
     /// <returns>The created container's id.</returns>
     public async Task<string> RunContainerAsync(
-        string image, IDictionary<string, string> labels, HostConfig? hostConfig, CancellationToken cancellationToken)
+        string image,
+        IDictionary<string, string> labels,
+        HostConfig? hostConfig,
+        CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, string>? env)
     {
+        List<string>? envList = env is null ? null : [.. env.Select(pair => $"{pair.Key}={pair.Value}")];
         CreateContainerResponse created = await client.Containers.CreateContainerAsync(
-            new CreateContainerParameters { Image = image, Labels = labels, HostConfig = hostConfig },
+            new CreateContainerParameters { Image = image, Labels = labels, HostConfig = hostConfig, Env = envList },
             cancellationToken);
         containerIds.Add(created.ID);
         await client.Containers.StartContainerAsync(created.ID, new ContainerStartParameters(), cancellationToken);
@@ -95,8 +103,8 @@ internal sealed class NonDcpHarness : IAsyncDisposable
     /// from <c>/api/routes</c> entirely, not merely marked unreachable. Aspire/DCP names its one per-session
     /// network <c>aspire-session-network-&lt;id&gt;-&lt;app&gt;</c> (observed directly from
     /// <c>DiscoveryReconciler</c>'s own "Detected the proxy's own networks" log line); a scenario that needs the
-    /// proxy to actually discover a non-DCP container — as opposed to <c>e2e-multi-network</c>'s deliberately
-    /// unreachable one — connects it here after creation.
+    /// proxy to actually discover a non-DCP container — as opposed to a deliberately unreachable one (see
+    /// <c>e2e-nondcp-network-scenarios</c>) — connects it here after creation.
     /// </remarks>
     public async Task ConnectToAspireSessionNetworkAsync(string containerId, CancellationToken cancellationToken)
     {

@@ -47,6 +47,8 @@ runtime behavior through the real proxy.
 | **RestartPersistenceTests** · `ProvisionedCertificate_IsReusedAfterRestart` | A provisioned certificate survives a proxy restart (persistent store + Data Protection). |
 | **AdminApiTests** · `Routes_ReflectDiscoveredContainers` / `Health_ReportsDiscoveryConnected` / `Routes_RejectMissingApiKey` | The admin API reflects live discovery and enforces the API key. |
 | **ProxyProtocolTests** · `ProxyProtocolV1_…` / `ProxyProtocolV2_…` | A PROXY v1/v2 header on the edge recovers the real client IP into `X-Real-IP` / `X-Forwarded-For` (dedicated `Server:EnableProxyProtocol` instance). |
+| **HostNetworkModeTests** · `HostNetworkBackend_IsReachedThroughDockYarp` | `Docker:HostAddress` reaches a real `--network host` backend created outside DCP (`NonDcpHarness`). **Requires Docker Desktop's "Enable host networking" beta setting on Windows/Mac** — without it, `--network host` doesn't route to the real host and this test fails locally with 502s (not a DockYarp bug); native Linux (this project's CI runner) needs no such setting. |
+| **MultiNetworkTests** · `UnreachableNetworkBackend_FallsThroughToDefault` | `Docker:ProxyNetworks` auto-detection excludes a backend on a network the proxy doesn't share (`NonDcpHarness`); the request falls through to the default backend. |
 
 ## Deliberately **not** covered by e2e (and why)
 - **Pipeline behaviors** (access control `NETWORK_ACCESS`, `SERVER_TOKENS`, response compression, forwarded-SSL
@@ -54,11 +56,6 @@ runtime behavior through the real proxy.
 - **Remote Docker daemon over TLS**: construction/verification unit-tested; a live `tcp://` TLS daemon in the test
   environment is not worth the setup.
 - **Event debounce (reconcile coalescing)**: policy + loop unit-tested; a live timing assertion would be flaky.
-- **Host-network-mode** and **multi-network / unreachable-network** reachability: Aspire/DCP itself blocks these
-  (single managed network) — a non-DCP harness (`NonDcpHarness`, in `DockYarp.E2E.Tests`) now creates
-  containers/networks directly against the Docker daemon to work around that, but the two scenarios themselves are
-  not written yet → parked as [`e2e-host-network-mode`](../openspec/backlog/items/e2e-host-network-mode.md) and
-  [`e2e-multi-network`](../openspec/backlog/items/e2e-multi-network.md).
 - **HTTP/3 (QUIC)**: the feature itself is incomplete (needs MsQuic) → [`finish-http3`](../openspec/backlog/items/finish-http3.md).
 
 ## Keeping this in sync
