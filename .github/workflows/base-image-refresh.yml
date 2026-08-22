@@ -25,7 +25,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          # The Nuke build computes the version via GitVersion, which needs the full history + tags.
+          # The Fallout build computes the version via GitVersion, which needs the full history + tags.
           fetch-depth: 0
 
       # Resolve the target registry/repository. External values flow through env (never interpolated into the
@@ -44,7 +44,7 @@ jobs:
             echo "repository=${repository,,}"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Set up .NET (for the Nuke build)
+      - name: Set up .NET (for the Fallout build)
         uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
@@ -64,12 +64,12 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME || github.actor }}
           password: ${{ secrets.REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}
 
-      # Delegate to the single Nuke image path (no duplicated build logic); rebuild the multi-arch manifest with
+      # Delegate to the single Fallout image path (no duplicated build logic); rebuild the multi-arch manifest with
       # the patched base and republish :latest only. --publish-tag bypasses the computed release/prerelease/edge
       # scheme entirely, so this never touches the immutable X.Y.Z or rolling X.Y/X tags.
       # DockerPublish gates on Test + E2E by default (no --skip-publish-gate here) — a base-image refresh still
       # gets the same safety net before :latest is republished.
-      - name: Rebuild & push :latest (Nuke DockerPublish)
+      - name: Rebuild & push :latest (Fallout DockerPublish)
         env:
           REGISTRY: ${{ steps.cfg.outputs.registry }}
           REPOSITORY: ${{ steps.cfg.outputs.repository }}

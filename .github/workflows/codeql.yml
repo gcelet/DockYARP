@@ -29,9 +29,9 @@ jobs:
           languages: csharp
           build-mode: manual
 
-      # Manual build mode: use the same Nuke path every other workflow uses (no duplicated build logic).
+      # Manual build mode: use the same Fallout path every other workflow uses (no duplicated build logic).
       # The commonly-cited /p:UseSharedCompilation=false workaround is not needed on .NET Core 3.0+.
-      - name: Build (Nuke Compile)
+      - name: Build (Fallout Compile)
         run: ./build.sh Compile
 
       - name: Perform CodeQL analysis

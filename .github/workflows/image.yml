@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   # Release path: a v* tag push (or a manual re-run) — computed tag set (stable: X.Y.Z+X.Y+X+latest;
-  # prerelease: X.Y.Z-<pre> only), decided by the Nuke DockerPublish target from the resolved version.
+  # prerelease: X.Y.Z-<pre> only), decided by the Fallout DockerPublish target from the resolved version.
   publish-release:
     name: Build & push image (release)
     if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
@@ -30,7 +30,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          # GitVersion (run by the Nuke build during DockerPublish) needs the full history + tags.
+          # GitVersion (run by the Fallout build during DockerPublish) needs the full history + tags.
           fetch-depth: 0
 
       # Resolve the target registry/repository/version. External values flow through env (never interpolated
@@ -53,7 +53,7 @@ jobs:
             echo "version=$version"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Set up .NET (for the Nuke build)
+      - name: Set up .NET (for the Fallout build)
         uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
@@ -86,7 +86,7 @@ jobs:
 
       # DockerPublish itself now depends on Test + E2E (build/Build.cs) and never sets --skip-publish-gate here,
       # so this single call gates the release on both before pushing — no orchestration logic in this workflow.
-      - name: Test, E2E, and push (Nuke)
+      - name: Test, E2E, and push (Fallout)
         env:
           REGISTRY: ${{ steps.cfg.outputs.registry }}
           REPOSITORY: ${{ steps.cfg.outputs.repository }}
@@ -131,7 +131,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          # GitVersion (run by the Nuke build during DockerPublish) needs the full history + tags.
+          # GitVersion (run by the Fallout build during DockerPublish) needs the full history + tags.
           fetch-depth: 0
 
       - name: Resolve target
@@ -148,7 +148,7 @@ jobs:
             echo "repository=${repository,,}"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Set up .NET (for the Nuke build)
+      - name: Set up .NET (for the Fallout build)
         uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
@@ -180,7 +180,7 @@ jobs:
       # --skip-publish-gate: edge exists for fast in-development signal on every trunk push; DockerPublish now
       # gates on Test/E2E by default (see the release job below), which would slow every trunk commit for a
       # channel whose whole purpose is speed. Ordinary unit/integration coverage still runs via ci.yml.
-      - name: Build & push (Nuke DockerPublish --edge)
+      - name: Build & push (Fallout DockerPublish --edge)
         env:
           REGISTRY: ${{ steps.cfg.outputs.registry }}
           REPOSITORY: ${{ steps.cfg.outputs.repository }}

@@ -32,7 +32,7 @@ jobs:
           submodules: recursive   # the Docsy theme is a git submodule
           fetch-depth: 0          # Hugo enableGitInfo (git lastmod)
 
-      - name: Set up .NET (for the Nuke build)
+      - name: Set up .NET (for the Fallout build)
         uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
@@ -42,8 +42,8 @@ jobs:
         with:
           node-version: 24
 
-      # Delegate to the single Nuke build path: npm ci (pinned Hugo Extended + PostCSS) then Hugo -> docs-site/public.
-      - name: Build the site (Nuke Docs)
+      # Delegate to the single Fallout build path: npm ci (pinned Hugo Extended + PostCSS) then Hugo -> docs-site/public.
+      - name: Build the site (Fallout Docs)
         run: ./build.sh Docs
 
       - name: Upload the Pages artifact

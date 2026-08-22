@@ -486,10 +486,10 @@ fabric.properties
 ######################
 .build
 
-# Nuke publish/build output
+# Fallout (build orchestrator, migrated from Nuke 2026-08-22) publish/build output
 artifacts/
 
-.nuke/temp
+.fallout/temp
 
 # Claude Code — per-machine local settings (not shared). The shared settings.json is committed.
 .claude/settings.local.json
