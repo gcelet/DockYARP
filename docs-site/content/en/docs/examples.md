@@ -23,7 +23,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
   dockyarp:
-    image: gcelet/dockyarp           # or dockyarp:local for a local build
+    image: ghcr.io/gcelet/dockyarp           # or dockyarp:local for a local build
     ports:
       - "80:8080"
       - "443:8443"
@@ -113,7 +113,7 @@ all, so the container must listen on 80/443 itself:
 
 ```yaml
   dockyarp:
-    image: gcelet/dockyarp   # or dockyarp:local for a local build
+    image: ghcr.io/gcelet/dockyarp   # or dockyarp:local for a local build
     cap_add:
       - NET_BIND_SERVICE   # lets the non-root process bind ports 80/443 directly
     environment:

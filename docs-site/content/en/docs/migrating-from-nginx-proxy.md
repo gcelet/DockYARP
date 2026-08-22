@@ -86,7 +86,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
   dockyarp:
-    image: gcelet/dockyarp           # or dockyarp:local for a local build
+    image: ghcr.io/gcelet/dockyarp           # or dockyarp:local for a local build
     ports: ["80:8080", "443:8443"]
     environment:
       Docker__Enabled: "true"
@@ -232,7 +232,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
   dockyarp:
-    image: gcelet/dockyarp           # or dockyarp:local for a local build
+    image: ghcr.io/gcelet/dockyarp           # or dockyarp:local for a local build
     ports: ["80:8080", "443:8443"]
     environment:
       Docker__Enabled: "true"
