@@ -54,10 +54,11 @@ runtime behavior through the real proxy.
 - **Remote Docker daemon over TLS**: construction/verification unit-tested; a live `tcp://` TLS daemon in the test
   environment is not worth the setup.
 - **Event debounce (reconcile coalescing)**: policy + loop unit-tested; a live timing assertion would be flaky.
-- **Host-network-mode** and **multi-network / unreachable-network** reachability: **blocked under Aspire/DCP** (single
-  managed network) → parked as [`e2e-host-network-mode`](../openspec/backlog/items/e2e-host-network-mode.md) and
-  [`e2e-multi-network`](../openspec/backlog/items/e2e-multi-network.md); need a non-DCP harness
-  ([`add-nondcp-e2e-harness`](../openspec/backlog/items/add-nondcp-e2e-harness.md)).
+- **Host-network-mode** and **multi-network / unreachable-network** reachability: Aspire/DCP itself blocks these
+  (single managed network) — a non-DCP harness (`NonDcpHarness`, in `DockYarp.E2E.Tests`) now creates
+  containers/networks directly against the Docker daemon to work around that, but the two scenarios themselves are
+  not written yet → parked as [`e2e-host-network-mode`](../openspec/backlog/items/e2e-host-network-mode.md) and
+  [`e2e-multi-network`](../openspec/backlog/items/e2e-multi-network.md).
 - **HTTP/3 (QUIC)**: the feature itself is incomplete (needs MsQuic) → [`finish-http3`](../openspec/backlog/items/finish-http3.md).
 
 ## Keeping this in sync
