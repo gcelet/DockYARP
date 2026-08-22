@@ -1,5 +1,11 @@
-<link rel="icon" href="/favicons/favicon.svg" type="image/svg+xml">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicons/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicons/favicon-16x16.png">
-<link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-touch-icon-180x180.png">
+{{/* All hrefs go through relURL so they respect the site's baseURL subpath (GitHub Pages project site,
+     https://gcelet.github.io/DockYARP/) — a hardcoded "/favicons/..." string 404s under that subpath. This
+     was a real, previously-undiscovered bug: verified live that the literal hrefs this file used to emit
+     returned 404 while the /DockYARP/-prefixed path served the file correctly. */ -}}
+<link rel="icon" href="{{ "favicons/favicon.svg" | relURL }}" type="image/svg+xml">
+<link rel="icon" type="image/png" sizes="32x32" href="{{ "favicons/favicon-32x32.png" | relURL }}">
+<link rel="icon" type="image/png" sizes="16x16" href="{{ "favicons/favicon-16x16.png" | relURL }}">
+<link rel="icon" href="{{ "favicons/favicon.ico" | relURL }}">
+<link rel="apple-touch-icon" sizes="180x180" href="{{ "favicons/apple-touch-icon-180x180.png" | relURL }}">
+<link rel="manifest" href="{{ "site.webmanifest" | relURL }}">
 <meta name="theme-color" content="#0F1226">
