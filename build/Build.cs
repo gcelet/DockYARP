@@ -50,8 +50,13 @@ class Build : FalloutBuild
     [Parameter("Base URL for the documentation build (the GitHub Pages project URL by default)")]
     readonly string DocsBaseUrl = "https://gcelet.github.io/DockYARP/";
 
-    // GitVersion resolves the version from git height + v* tags. Resolved lazily, so RestoreTools can install the
-    // gitversion.tool first; NoFetch/NoCache keep it deterministic in CI.
+    // GitVersion resolves the version from git height + v* tags. [Optional]: Fallout injects every attributed
+    // member eagerly at startup regardless of whether any Target actually reads it, and logs a "Could not
+    // inject value" warning on failure unless the member is [Optional] (confirmed via Fallout's own
+    // ValueInjectionAttributeBase source) — the Docker build stage passes --version explicitly and has no
+    // .git, so this always failed there, polluting every image build's log with a harmless warning.
+    // NoFetch/NoCache keep it deterministic in CI.
+    [Optional]
     [GitVersion(NoFetch = true, NoCache = true)]
     readonly GitVersion GitVersion;
 
