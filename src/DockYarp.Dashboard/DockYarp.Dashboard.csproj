@@ -2,11 +2,17 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <!-- Required by RazorSlices itself (not by Razor Pages, which this project no longer uses) — its build
+         target fails without it: the Razor-for-MVC compiler toolchain is what RazorSlices' own source
+         generator piggybacks on at build time. Tag Helpers baked into that toolchain (HeadTagHelper,
+         BodyTagHelper) are disabled per-slice via Slices/_ViewImports.cshtml, per RazorSlices' own
+         documented setup. -->
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
   </PropertyGroup>
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="RazorSlices" />
   </ItemGroup>
 
   <ItemGroup>

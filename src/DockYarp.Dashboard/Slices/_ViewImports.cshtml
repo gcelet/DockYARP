@@ -1,0 +1,12 @@
+@inherits RazorSlices.RazorSlice
+
+@using System.Globalization
+@using Microsoft.AspNetCore.Http
+@using RazorSlices
+
+@* HeadTagHelper/BodyTagHelper are baked into the "AddRazorSupportForMvc" Razor-for-MVC toolchain RazorSlices'
+   own build target requires — this disables them (Tag Helpers aren't supported in Razor Slices), per
+   RazorSlices' own documented setup (https://github.com/DamianEdwards/RazorSlices#getting-started). The
+   tagHelperPrefix is a second-layer safeguard: even a future @@addTagHelper here would need this prefix. *@
+@tagHelperPrefix __disable_tagHelpers__:
+@removeTagHelper *, Microsoft.AspNetCore.Mvc.Razor

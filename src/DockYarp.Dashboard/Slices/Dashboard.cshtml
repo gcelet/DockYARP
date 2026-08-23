@@ -1,5 +1,4 @@
-@page "/dashboard"
-@model DockYarp.Dashboard.Pages.Dashboard.IndexModel
+@inherits RazorSlices.RazorSlice<DockYarp.Dashboard.DashboardViewModel>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -103,7 +102,8 @@
             <td>
               @if (cert.IsPfxBacked)
               {
-                <form method="post" asp-page-handler="Convert" asp-route-host="@cert.Host">
+                <form method="post" action="/dashboard/certs/@Uri.EscapeDataString(cert.Host)/convert">
+                  <input type="hidden" name="__RequestVerificationToken" value="@Model.AntiforgeryToken">
                   <button type="submit">Convert to PEM</button>
                 </form>
               }
@@ -112,7 +112,8 @@
           @if (Model.AllowKeyReencryption)
           {
             <td>
-              <form method="post" asp-page-handler="Reencrypt" asp-route-host="@cert.Host">
+              <form method="post" action="/dashboard/certs/@Uri.EscapeDataString(cert.Host)/reencrypt">
+                <input type="hidden" name="__RequestVerificationToken" value="@Model.AntiforgeryToken">
                 <button type="submit">Re-encrypt key</button>
               </form>
               @if (cert.RequiresKeyReencryption)

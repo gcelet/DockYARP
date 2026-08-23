@@ -206,7 +206,7 @@ public sealed class AdminObservabilityTests
         string token = await GetAntiForgeryTokenAsync(client, "/dashboard");
 
         using HttpResponseMessage response = await client.PostAsync(
-            "/dashboard?handler=Convert&host=app.local",
+            "/dashboard/certs/app.local/convert",
             new FormUrlEncodedContent([new KeyValuePair<string, string>("__RequestVerificationToken", token)]));
 
         response.StatusCode.Should().Be(HttpStatusCode.Redirect, "post-redirect-get back to /dashboard");
@@ -230,7 +230,7 @@ public sealed class AdminObservabilityTests
         await GetAntiForgeryTokenAsync(client, "/dashboard"); // establishes the anti-forgery cookie, token discarded
 
         using HttpResponseMessage response =
-            await client.PostAsync("/dashboard?handler=Convert&host=app.local", new FormUrlEncodedContent([]));
+            await client.PostAsync("/dashboard/certs/app.local/convert", new FormUrlEncodedContent([]));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         converter.ConvertedHosts.Should().BeEmpty();
@@ -258,7 +258,7 @@ public sealed class AdminObservabilityTests
         html.Should().NotContain("Re-encrypt key");
 
         using HttpResponseMessage response = await client.PostAsync(
-            "/dashboard?handler=Reencrypt&host=app.local",
+            "/dashboard/certs/app.local/reencrypt",
             new FormUrlEncodedContent([new KeyValuePair<string, string>("__RequestVerificationToken", token)]));
 
         response.StatusCode.Should().Be(HttpStatusCode.Redirect, "the handler no-ops rather than erroring, matching OnPostConvert's own gating shape");
@@ -284,7 +284,7 @@ public sealed class AdminObservabilityTests
         string token = await GetAntiForgeryTokenAsync(client, "/dashboard");
 
         using HttpResponseMessage response = await client.PostAsync(
-            $"/dashboard?handler=Reencrypt&host={host}",
+            $"/dashboard/certs/{host}/reencrypt",
             new FormUrlEncodedContent([new KeyValuePair<string, string>("__RequestVerificationToken", token)]));
 
         response.StatusCode.Should().Be(HttpStatusCode.Redirect, "post-redirect-get back to /dashboard");
@@ -334,7 +334,7 @@ public sealed class AdminObservabilityTests
         await GetAntiForgeryTokenAsync(client, "/dashboard"); // establishes the anti-forgery cookie, token discarded
 
         using HttpResponseMessage response =
-            await client.PostAsync("/dashboard?handler=Reencrypt&host=app.local", new FormUrlEncodedContent([]));
+            await client.PostAsync("/dashboard/certs/app.local/reencrypt", new FormUrlEncodedContent([]));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         converter.ReencryptedHosts.Should().BeEmpty();

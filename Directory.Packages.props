@@ -18,6 +18,7 @@
     <PackageVersion Include="Certes" Version="3.0.4" />
     <PackageVersion Include="System.IO.Abstractions" Version="22.2.0" />
     <PackageVersion Include="YamlDotNet" Version="18.1.0" />
+    <PackageVersion Include="RazorSlices" Version="0.11.3" />
     <PackageVersion Include="BCrypt.Net-Next" Version="4.0.3" />
     <!-- Certes already pulls this in transitively (its own ACME crypto needs); pinned explicitly at the same
          version so DockYarp.Tls can use its X509Crl/X509CrlParser directly, rather than adding a second,
