@@ -78,7 +78,7 @@ docker-gen exposes both `.Env` and `.Labels` with no precedence — the template
 | `SSL_POLICY` presets — global default | ✅ | `Tls:SslPolicy` Mozilla Modern/Intermediate/Old **and** the classic AWS ELB names → version + ciphers (mapping unit-tested; the per-SNI negotiation is proven live by the per-vhost e2e — same handshake path). ELB names are clamped to DockYarp's TLS 1.2 floor (1.3 for the 1.3-only policy) with best-effort ciphers; FIPS/PQ/RFC 9151 variants are intentionally not mapped. |
 | `SSL_POLICY` per-vhost override (`-e`/label) | ✅ | Recognized per-container + applied per-SNI; live e2e: a `Mozilla-Modern` host refuses a TLS 1.2 handshake while a global-posture host accepts it. |
 | OCSP stapling (`.chain.pem`) | ⛔ | → [`add-ocsp-stapling`](items/add-ocsp-stapling.md). |
-| ACME DNS-01 | ⛔ | HTTP-01 only → [`add-acme-dns01`](items/add-acme-dns01.md). |
+| ACME DNS-01 | ✅ ➕ | `DOCKYARP_ACME_CHALLENGE=dns-01` via RFC 2136 (Dynamic DNS Update) — a self-hosted-DNS provider, not a commercial API, chosen so it needs no third-party account; also unlocks wildcard `LETSENCRYPT_HOST` issuance (HTTP-01 cannot). |
 | DH params (`DHPARAM_*`, per-vhost) | ✅ | Closed by assessment, not by a built feature: no platform (Windows SChannel, Linux/macOS `CipherSuitesPolicy`) exposes DH-group parameters at the application level, and TLS 1.3 (DockYarp's default) doesn't use classic DH at all. See `docs/tls-acme.md`. |
 
 ## mTLS / Auth / Access control
