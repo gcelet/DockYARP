@@ -7,7 +7,7 @@
   ],
   "commitMessagePrefix": ":arrow_up: chore:",
   "commitMessageAction": "upgrade",
-  "schedule": ["before 6am on monday"],
+  "schedule": ["on monday"],
   "labels": ["dependencies"],
   "automerge": true,
   "platformAutomerge": true,
