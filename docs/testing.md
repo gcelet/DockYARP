@@ -36,6 +36,8 @@ runtime behavior through the real proxy.
 | · `HttpRequest_RedirectsToHttps` | HTTP→HTTPS redirect on the edge. |
 | · `Hsts_HeaderIsPresentOverHttps` | Per-host `HSTS` header served over HTTPS. |
 | · `MutualTls_RejectsWithoutClientCertificate` / `MutualTls_AcceptsValidClientCertificate` | mTLS: a valid client cert is required and enforced at the handshake; the verified identity is passed through (`X-SSL-Client-Verify: SUCCESS` + subject). |
+| · `MutualTlsOptional_NoCertificateSucceedsAsNone` / `_UntrustedCertificateSucceedsAsFailed` / `_ValidCertificateSucceedsAsSuccess` | mTLS `optional`: the handshake never fails on the client cert's trust outcome (a real TLS handshake genuinely not dropping an untrusted cert — unprovable below e2e); `X-SSL-Client-Verify` reflects `NONE`/`FAILED`/`SUCCESS`. |
+| · `MutualTlsRequired_RevokedCertificateIsRejected` | A CRL-revoked client certificate fails the TLS handshake on a `required` host, even though it chains to the configured CA. |
 | **SslPolicyNegotiationTests** · `ModernHost_RefusesTls12_AcceptsTls13` | Per-host `SSL_POLICY=Mozilla-Modern` floors the host at TLS 1.3 (a TLS 1.2 handshake is refused). |
 | · `GlobalPostureHost_AcceptsTls12` | A host with no override keeps the global TLS 1.2 floor. |
 | **Http2ToggleTests** · `DefaultHost_NegotiatesHttp2` | A default host negotiates HTTP/2 via ALPN. |

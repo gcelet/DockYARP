@@ -66,7 +66,7 @@ public sealed class SniTlsHandshakeCallbackTests
         callback.BuildOptions("app.local").EnabledSslProtocols.Should().Be(SslProtocols.Tls13);
     }
 
-    /// <summary>When a client CA is configured, mutual TLS is requested and the validation delegate enforces it.</summary>
+    /// <summary>A <c>Required</c> host requests a client certificate and the strict validation delegate enforces it.</summary>
     [Test]
     public void MutualTlsWiredWhenClientCaConfigured()
     {
@@ -81,7 +81,9 @@ public sealed class SniTlsHandshakeCallbackTests
 
         FakeCertificateStore store = new();
         using DefaultCertificateProvider fallback = new(new TlsOptions(), new MockFileSystem());
-        SniTlsHandshakeCallback callback = Callback(store, fallback, new TlsOptions(), validator);
+        SniTlsHandshakeCallback callback = Callback(
+            store, fallback, new TlsOptions(), validator,
+            routes: RoutesWithClientCertificate("app.local", ClientCertificateRequirement.Required));
 
         SslServerAuthenticationOptions options = callback.BuildOptions("app.local");
 
@@ -91,6 +93,57 @@ public sealed class SniTlsHandshakeCallbackTests
         validate(this, null, null, SslPolicyErrors.RemoteCertificateNotAvailable).Should().BeTrue(); // no cert: allowed
         validate(this, client, null, SslPolicyErrors.None).Should().BeTrue(); // chains to the CA
         validate(this, unrelated, null, SslPolicyErrors.None).Should().BeFalse(); // does not chain
+    }
+
+    /// <summary>An <c>Optional</c> host requests a client certificate but never fails the handshake over it,
+    /// even for a certificate that does not chain to the CA — the app decides downstream.</summary>
+    [Test]
+    public void OptionalHostNeverFailsHandshake()
+    {
+        using X509Certificate2 ca = CreateCa();
+        using X509Certificate2 unrelated = DefaultCertificateFactory.CreateSelfSigned("intruder.local");
+
+        MockFileSystem fileSystem = new();
+        string caPath = fileSystem.Path.Combine(fileSystem.Directory.GetCurrentDirectory(), "ca.crt");
+        fileSystem.AddFile(caPath, new MockFileData(ca.ExportCertificatePem()));
+        ClientCertificateValidator validator = new(new TlsOptions { ClientCaCertificatePath = caPath }, fileSystem);
+
+        FakeCertificateStore store = new();
+        using DefaultCertificateProvider fallback = new(new TlsOptions(), new MockFileSystem());
+        SniTlsHandshakeCallback callback = Callback(
+            store, fallback, new TlsOptions(), validator,
+            routes: RoutesWithClientCertificate("optional.local", ClientCertificateRequirement.Optional));
+
+        SslServerAuthenticationOptions options = callback.BuildOptions("optional.local");
+
+        options.ClientCertificateRequired.Should().BeTrue();
+        RemoteCertificateValidationCallback validate = options.RemoteCertificateValidationCallback!;
+        validate.Should().NotBeNull();
+        validate(this, null, null, SslPolicyErrors.RemoteCertificateNotAvailable).Should().BeTrue();
+        validate(this, unrelated, null, SslPolicyErrors.RemoteCertificateChainErrors).Should().BeTrue();
+    }
+
+    /// <summary>A host with no client-certificate requirement is never prompted, even when a client CA is
+    /// configured for other hosts.</summary>
+    [Test]
+    public void NoneHostRequestsNoClientCertificate()
+    {
+        using X509Certificate2 ca = CreateCa();
+        MockFileSystem fileSystem = new();
+        string caPath = fileSystem.Path.Combine(fileSystem.Directory.GetCurrentDirectory(), "ca.crt");
+        fileSystem.AddFile(caPath, new MockFileData(ca.ExportCertificatePem()));
+        ClientCertificateValidator validator = new(new TlsOptions { ClientCaCertificatePath = caPath }, fileSystem);
+
+        FakeCertificateStore store = new();
+        using DefaultCertificateProvider fallback = new(new TlsOptions(), new MockFileSystem());
+        SniTlsHandshakeCallback callback = Callback(
+            store, fallback, new TlsOptions(), validator,
+            routes: RoutesWithClientCertificate("required.local", ClientCertificateRequirement.Required));
+
+        SslServerAuthenticationOptions options = callback.BuildOptions("plain.local");
+
+        options.ClientCertificateRequired.Should().BeFalse();
+        options.RemoteCertificateValidationCallback.Should().BeNull();
     }
 
     /// <summary>A host declaring an SSL_POLICY preset overrides the global posture; other hosts keep it.</summary>
@@ -176,6 +229,15 @@ public sealed class SniTlsHandshakeCallbackTests
         RouteConfigStore store = new();
         store.Apply(
             [new RouteRule { HostPattern = host, ClusterId = host, Tls = new HostTlsMetadata { CertificateHost = host, Http2Enabled = enabled } }],
+            []);
+        return store;
+    }
+
+    private static RouteConfigStore RoutesWithClientCertificate(string host, ClientCertificateRequirement requirement)
+    {
+        RouteConfigStore store = new();
+        store.Apply(
+            [new RouteRule { HostPattern = host, ClusterId = host, ClientCertificate = requirement }],
             []);
         return store;
     }

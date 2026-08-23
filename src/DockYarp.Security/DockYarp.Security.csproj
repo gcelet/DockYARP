@@ -14,6 +14,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DockYarp.Core\DockYarp.Core.csproj" />
+    <!-- ClientCertificateMiddleware reuses ClientCertificateValidator (CA-chain + CRL check) rather than
+         re-implementing chain/CRL validation here; Tls only depends on Core, so this introduces no cycle. -->
+    <ProjectReference Include="..\DockYarp.Tls\DockYarp.Tls.csproj" />
   </ItemGroup>
 
 </Project>

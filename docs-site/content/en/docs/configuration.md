@@ -47,7 +47,7 @@ compatible; DockYARP's own keys use the `DOCKYARP_` prefix.
 | Key | Purpose | Example |
 |-----|---------|---------|
 | `NETWORK_ACCESS` | `internal` restricts the route to internal client ranges (403 otherwise). | `internal` |
-| `DOCKYARP_CLIENT_CERT` | Client-certificate requirement (mutual TLS): `required`, `optional`, `none`/`off`. | `required` |
+| `DOCKYARP_CLIENT_CERT` | Client-certificate requirement (mutual TLS): `required` (rejects a missing/untrusted/revoked certificate with 403, or fails the handshake outright for an untrusted/revoked one), `optional` (never rejects or drops the connection over the certificate's trust outcome — the backend receives `X-SSL-Client-Verify: SUCCESS`/`FAILED`/`NONE` and decides for itself), `none`/`off`. | `required` |
 | `DOCKYARP_AUTH_USER` / `_PASSWORD` / `_REALM` | Route Basic Auth credentials (with an optional realm). | `admin` / `s3cret` |
 | `DOCKYARP_LB` | Load-balancing policy: `round-robin` (default), `least-requests`, `power-of-two-choices`, `random`, `first-alphabetical`. | `least-requests` |
 | `DOCKYARP_AFFINITY` | Session affinity ("sticky sessions"): `ip-hash`/`true` (client-IP hash, first 3 IPv4 octets — matches nginx-proxy's own `ip_hash`, needs no Data Protection), `cookie` or `custom-header` (YARP's encrypted policies — a DockYarp value-add beyond nginx-proxy, since open-source nginx has no cookie-based sticky-session mechanism; both **require** `DataProtection:CertificatePath` and are otherwise served with no affinity, logged as an error). Unset/`false` disables it (default). | `ip-hash` |
@@ -120,6 +120,7 @@ the container must listen on 80/443 directly — see [Examples](/docs/examples/#
 | `CipherSuites` | — | Explicit cipher allow-list (applied on Linux/macOS only). |
 | `HttpProtocols` | `Http1AndHttp2` | Enabled HTTP protocols on the HTTPS endpoint. |
 | `ClientCaCertificatePath` | — | Client CA (PEM) enabling mutual TLS. |
+| `ClientCrlPath` | — | Certificate revocation list (PEM), checked alongside the client CA — a client certificate whose serial is listed is rejected even if it otherwise chains to the CA. Global, matching `ClientCaCertificatePath`'s own scope (not per-host). |
 | `PrivateKeyEncryptionPassphrase` | — (plain) | Opt in to encrypting every stored certificate's private key at rest (`ENCRYPTED PRIVATE KEY` PEM). Plain-vs-encrypted is always decided from the key file's own PEM label, never from this setting, so an operator-provided plain key keeps loading even once set. **Security note:** this protects against someone with filesystem/volume/backup access only — it does **not** defend against `AdminApi:AllowCertificateDownload`, since DockYarp must decrypt the key itself, automatically, at startup, to serve TLS; whoever can reach the dashboard is, in practice, in the same trust domain as whatever holds this passphrase. |
 | `PreviousPrivateKeyEncryptionPassphrase` | — | Fallback passphrase tried when a stored key doesn't decrypt with `PrivateKeyEncryptionPassphrase`. Set this to the outgoing value while rotating `PrivateKeyEncryptionPassphrase` to a new one, so already-encrypted keys keep loading until they are next rewritten (a renewal, or the dashboard's "Re-encrypt key" action — see `AdminApi:AllowCertificateConversion`). |
 

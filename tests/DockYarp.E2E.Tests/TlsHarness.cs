@@ -12,6 +12,13 @@ using DockYarp.E2E.AppHost;
 
 using global::Grpc.Net.Client;
 
+using Org.BouncyCastle.Asn1.X509;
+using Org.BouncyCastle.Crypto.Operators;
+using Org.BouncyCastle.Security;
+using Org.BouncyCastle.X509;
+
+using BigInteger = Org.BouncyCastle.Math.BigInteger;
+
 /// <summary>TLS test material: an ephemeral client CA/leaf for mutual TLS and a TLS-aware HTTPS client factory.</summary>
 /// <remarks>
 /// The client CA is generated in memory and its public certificate is written to <see cref="E2EPaths.ClientCaFile"/>,
@@ -22,11 +29,18 @@ using global::Grpc.Net.Client;
 internal static class TlsHarness
 {
     private static X509Certificate2? clientCertificate;
+    private static X509Certificate2? revokedClientCertificate;
     private static X509Certificate2? mountedChainRoot;
 
     /// <summary>Gets the client certificate (with private key) presented in the mutual-TLS scenario.</summary>
     internal static X509Certificate2 ClientCertificate =>
         clientCertificate ?? throw new InvalidOperationException("The client CA has not been prepared.");
+
+    /// <summary>Gets a client certificate (with private key) chaining to the same client CA, but whose serial
+    /// number is listed in the CRL mounted at <c>Tls__ClientCrlPath</c> — proves live CRL revocation, as
+    /// opposed to <see cref="ClientCertificate"/> which must stay accepted.</summary>
+    internal static X509Certificate2 RevokedClientCertificate =>
+        revokedClientCertificate ?? throw new InvalidOperationException("The client CA has not been prepared.");
 
     /// <summary>Gets the CA that signed the operator-provided <c>pem.local</c> chain mounted by
     /// <see cref="PrepareMountedChain"/> — the sole root a scenario should trust to prove the intermediate was
@@ -86,6 +100,43 @@ internal static class TlsHarness
         // lands in a key set the platform TLS stack accepts (a no-op on Linux/OpenSSL).
         clientCertificate = X509CertificateLoader.LoadPkcs12(
             leafWithKey.Export(X509ContentType.Pkcs12), password: null);
+
+        // A second leaf from the same CA, distinct serial, whose serial is then listed in the CRL below — proves
+        // live CRL revocation as opposed to CA-chain validation alone.
+        using RSA revokedLeafKey = RSA.Create(2048);
+        CertificateRequest revokedLeafRequest = new(
+            "CN=e2e-client-revoked", revokedLeafKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        revokedLeafRequest.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, false));
+        revokedLeafRequest.CertificateExtensions.Add(
+            new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, true));
+        revokedLeafRequest.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(clientAuth, false));
+
+        byte[] revokedSerial = [9, 9, 9, 9, 9, 9, 9, 9];
+        using X509Certificate2 revokedLeaf = revokedLeafRequest.Create(ca, from, to, revokedSerial);
+        using X509Certificate2 revokedLeafWithKey = revokedLeaf.CopyWithPrivateKey(revokedLeafKey);
+        revokedClientCertificate = X509CertificateLoader.LoadPkcs12(
+            revokedLeafWithKey.Export(X509ContentType.Pkcs12), password: null);
+
+        WriteCrl(ca, caKey, from, to, revokedClientCertificate.SerialNumber);
+    }
+
+    // Builds a real, BouncyCastle-signed CRL revoking one serial number, matching ClientCertificateValidatorTests'
+    // own fixture-generation approach (a real CRL, not an opaque pre-baked file).
+    private static void WriteCrl(X509Certificate2 ca, RSA caKey, DateTimeOffset from, DateTimeOffset to, string revokedSerialHex)
+    {
+        Org.BouncyCastle.Crypto.AsymmetricCipherKeyPair caKeyPair = DotNetUtilities.GetRsaKeyPair(caKey);
+        X509V2CrlGenerator generator = new();
+        generator.SetIssuerDN(new X509Name(ca.Subject));
+        generator.SetThisUpdate(from.UtcDateTime);
+        generator.SetNextUpdate(to.UtcDateTime);
+        generator.AddCrlEntry(new BigInteger(revokedSerialHex, 16), DateTime.UtcNow, 0);
+
+        Asn1SignatureFactory signatureFactory = new("SHA256WITHRSA", caKeyPair.Private);
+        Org.BouncyCastle.X509.X509Crl crl = generator.Generate(signatureFactory);
+
+        // Raw DER, not a hand-rolled PEM wrapper: matches ClientCertificateValidatorTests' own fixture (a
+        // ReadCrl(Stream) call proven to parse DER directly) rather than assuming X509CrlParser auto-detects PEM.
+        File.WriteAllBytes(E2EPaths.ClientCrlFile, crl.GetEncoded());
     }
 
     /// <summary>Generates a throwaway leaf + intermediate chain for <c>pem.local</c> and writes the full-chain
@@ -163,11 +214,13 @@ internal static class TlsHarness
         }
     }
 
-    /// <summary>Disposes the generated client certificate and the mounted-chain root.</summary>
+    /// <summary>Disposes the generated client certificates and the mounted-chain root.</summary>
     internal static void Cleanup()
     {
         clientCertificate?.Dispose();
         clientCertificate = null;
+        revokedClientCertificate?.Dispose();
+        revokedClientCertificate = null;
         mountedChainRoot?.Dispose();
         mountedChainRoot = null;
     }
@@ -190,6 +243,15 @@ internal static class TlsHarness
     /// <returns>An HTTP client for absolute <c>https://&lt;vhost&gt;/</c> requests, carrying the client certificate.</returns>
     internal static HttpClient CreateMutualTlsClient(ServerCertificateHolder capture) =>
         Build(capture, ClientCertificate, SslProtocols.None);
+
+    /// <summary>Creates an HTTPS client that presents an arbitrary client certificate — for scenarios needing a
+    /// certificate that does not chain to the configured client CA (an <c>optional</c> host's FAILED case) or a
+    /// certificate that chains but is revoked (<see cref="RevokedClientCertificate"/>).</summary>
+    /// <param name="capture">Holder the presented server certificate is stored into.</param>
+    /// <param name="certificate">The client certificate (with private key) to present.</param>
+    /// <returns>An HTTP client for absolute <c>https://&lt;vhost&gt;/</c> requests, carrying <paramref name="certificate"/>.</returns>
+    internal static HttpClient CreateClientPresentingCertificate(ServerCertificateHolder capture, X509Certificate2 certificate) =>
+        Build(capture, certificate, SslProtocols.None);
 
     /// <summary>Creates an HTTPS client that trusts only <paramref name="trustedRoot"/> — no intermediate, no
     /// system/OS trust store — so the chain can only build if the server actually sends its intermediate

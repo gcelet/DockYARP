@@ -136,6 +136,65 @@ public sealed class ForwardedHeadersIntegrationTests
         }
     }
 
+    /// <summary>A route with an <c>Optional</c> client-certificate requirement reports <c>NONE</c> when no
+    /// certificate is presented, with no subject/issuer headers — the SUCCESS/FAILED cases need a real client
+    /// certificate over a real TLS handshake, which this in-memory test server cannot simulate; those are
+    /// covered end-to-end instead (see docs/testing.md).</summary>
+    [Test]
+    public async Task OptionalRouteWithNoCertificateReportsNone()
+    {
+        await using WebApplication backend = BuildEchoBackend();
+        await backend.StartAsync();
+
+        try
+        {
+            using WebApplicationFactory<Program> factory = new();
+            using HttpClient client = factory.CreateClient();
+            IRouteConfigStore store = factory.Services.GetRequiredService<IRouteConfigStore>();
+            store.Apply(
+                [new RouteRule { HostPattern = "optional.local", ClusterId = "backend", ClientCertificate = ClientCertificateRequirement.Optional }],
+                [new Cluster { Id = "backend", Endpoints = [new ClusterEndpoint("b1", backend.Urls.First())] }]);
+            client.DefaultRequestHeaders.Host = "optional.local";
+
+            string body = await PollForBodyAsync(client);
+
+            body.Should().Contain("sslverify=NONE;");
+            body.Should().Contain("ssldn=;");
+        }
+        finally
+        {
+            await backend.StopAsync();
+        }
+    }
+
+    /// <summary>A route with no client-certificate requirement gets no <c>X-SSL-Client-*</c> header at all —
+    /// distinct from <c>NONE</c>, which only appears on a <c>Required</c>/<c>Optional</c> route.</summary>
+    [Test]
+    public async Task RouteWithoutRequirementGetsNoSslClientHeader()
+    {
+        await using WebApplication backend = BuildEchoBackend();
+        await backend.StartAsync();
+
+        try
+        {
+            using WebApplicationFactory<Program> factory = new();
+            using HttpClient client = factory.CreateClient();
+            IRouteConfigStore store = factory.Services.GetRequiredService<IRouteConfigStore>();
+            store.Apply(
+                [new RouteRule { HostPattern = "backend.local", ClusterId = "backend" }],
+                [new Cluster { Id = "backend", Endpoints = [new ClusterEndpoint("b1", backend.Urls.First())] }]);
+            client.DefaultRequestHeaders.Host = "backend.local";
+
+            string body = await PollForBodyAsync(client);
+
+            body.Should().Contain("sslverify=;");
+        }
+        finally
+        {
+            await backend.StopAsync();
+        }
+    }
+
     private static WebApplication BuildEchoBackend()
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();

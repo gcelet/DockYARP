@@ -10,6 +10,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 
 using DockYarp.Core.Interfaces;
+using DockYarp.Core.Models;
 
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
@@ -36,7 +37,8 @@ public sealed class SniTlsHandshakeCallback
     private readonly PreparedPolicy globalPolicy;
     private readonly IReadOnlyDictionary<string, PreparedPolicy> presetPolicies;
     private readonly bool mutualTls;
-    private readonly RemoteCertificateValidationCallback? validateClientCertificate;
+    private readonly RemoteCertificateValidationCallback? strictValidateClientCertificate;
+    private readonly RemoteCertificateValidationCallback? permissiveValidateClientCertificate;
     private readonly TlsHandshakeCallbackOptions callbackOptions;
     private readonly ConcurrentDictionary<string, byte> warnedUnknownPolicy = new(StringComparer.OrdinalIgnoreCase);
 
@@ -81,10 +83,13 @@ public sealed class SniTlsHandshakeCallback
 
         mutualTls = clientCertificates.HasClientCa;
 
-        // One delegate instance reused across every handshake (captures the validator; no per-connection closure).
-        // AllowCertificate semantics: a client presenting no certificate is accepted at the TLS layer; a
-        // presented certificate must chain to the configured CA.
-        validateClientCertificate = mutualTls
+        // Two delegate instances reused across every handshake (capture the validator; no per-connection
+        // closure). Strict (Required hosts): a client presenting no certificate is accepted at the TLS layer; a
+        // presented certificate must chain to the configured CA and not be revoked, or the handshake fails.
+        // Permissive (Optional hosts): the handshake never fails on the certificate's trust outcome — an
+        // untrusted/revoked/absent certificate all proceed, deferring the verification decision to
+        // ClientCertificateMiddleware (see design.md's Decisions: computed once there, not re-validated here).
+        strictValidateClientCertificate = mutualTls
             ? (_, certificate, _, _) => certificate switch
             {
                 null => true,
@@ -92,6 +97,8 @@ public sealed class SniTlsHandshakeCallback
                 _ => false,
             }
             : null;
+
+        permissiveValidateClientCertificate = mutualTls ? (_, _, _, _) => true : null;
 
         callbackOptions = new TlsHandshakeCallbackOptions { OnConnection = OnConnectionAsync };
     }
@@ -127,8 +134,19 @@ public sealed class SniTlsHandshakeCallback
 
         if (mutualTls)
         {
-            authentication.ClientCertificateRequired = true;
-            authentication.RemoteCertificateValidationCallback = validateClientCertificate;
+            // No SNI: which host's policy would apply is unknowable, so fall back to the pre-host-aware
+            // behavior (always request + strictly validate) rather than silently disabling mTLS for the
+            // connection — matches ResolvePolicy's own no-SNI-falls-back-to-global precedent.
+            ClientCertificateRequirement requirement = host is { Length: > 0 } sniHost
+                ? HostClientCertificateResolver.Resolve(routes.Current, sniHost)
+                : ClientCertificateRequirement.Required;
+            if (requirement != ClientCertificateRequirement.None)
+            {
+                authentication.ClientCertificateRequired = true;
+                authentication.RemoteCertificateValidationCallback = requirement == ClientCertificateRequirement.Required
+                    ? strictValidateClientCertificate
+                    : permissiveValidateClientCertificate;
+            }
         }
 
         return authentication;

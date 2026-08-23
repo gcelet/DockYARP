@@ -201,6 +201,22 @@ internal static class BackendCatalog
         },
         new BackendSpec
         {
+            // mutual TLS, optional: the handshake never fails on the client cert's trust outcome; the backend
+            // sees X-SSL-Client-Verify = SUCCESS/FAILED/NONE depending on what was presented.
+            Name = "echo-mtls-optional",
+            Image = EchoImage,
+            Tag = EchoTag,
+            Labels =
+            [
+                Kv(VirtualHost, "mtls-optional.local"),
+                Kv(VirtualPort, EchoPort),
+                Kv(LetsEncryptHost, "mtls-optional.local"),
+                Kv(ClientCert, "optional"),
+            ],
+            Environment = EchoEnv(EchoPort, id: "mtls-optional"),
+        },
+        new BackendSpec
+        {
             // per-vhost HTTP/2 disable: DOCKYARP_HTTP2=false restricts ALPN so this host negotiates HTTP/1.1 only.
             Name = "echo-http1",
             Image = EchoImage,

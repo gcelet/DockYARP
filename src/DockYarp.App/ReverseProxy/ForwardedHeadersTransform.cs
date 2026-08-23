@@ -8,6 +8,9 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 
+using DockYarp.Core.Models;
+using DockYarp.Security;
+
 using Microsoft.AspNetCore.Http;
 
 using Yarp.ReverseProxy.Transforms;
@@ -63,19 +66,33 @@ public static class ForwardedHeadersTransform
             transformContext.ProxyRequest.Headers.TryAddWithoutValidation(
                 "X-Original-URI", $"{request.PathBase}{request.Path}{request.QueryString}");
 
-            // mTLS passthrough: strip any client-supplied client-cert headers (anti-spoof), then forward the verified
-            // client identity when a certificate is present. A present cert is verified (untrusted certs are rejected
-            // at the handshake), so the status is SUCCESS; its absence means "no verified client certificate".
+            // mTLS passthrough: strip any client-supplied client-cert headers (anti-spoof), then forward the
+            // verification status ClientCertificateMiddleware already computed for a Required/Optional route
+            // (SUCCESS/FAILED/NONE) — a route with no client-certificate requirement never has the item set, so
+            // gets no header at all. DN headers are forwarded only for SUCCESS: an untrusted/revoked cert's
+            // claimed subject/issuer is attacker-controlled and must never look verified to the backend.
             foreach (string header in ClientCertificateHeaders)
             {
                 transformContext.ProxyRequest.Headers.Remove(header);
             }
 
-            if (transformContext.HttpContext.Connection.ClientCertificate is { } clientCertificate)
+            if (transformContext.HttpContext.Items.TryGetValue(ClientCertificateMiddleware.VerificationStatusKey, out object? statusValue)
+                && statusValue is ClientCertificateVerificationStatus status)
             {
-                transformContext.ProxyRequest.Headers.TryAddWithoutValidation("X-SSL-Client-Verify", "SUCCESS");
-                transformContext.ProxyRequest.Headers.TryAddWithoutValidation("X-SSL-Client-S-DN", clientCertificate.Subject);
-                transformContext.ProxyRequest.Headers.TryAddWithoutValidation("X-SSL-Client-I-DN", clientCertificate.Issuer);
+                string verify = status switch
+                {
+                    ClientCertificateVerificationStatus.Verified => "SUCCESS",
+                    ClientCertificateVerificationStatus.Failed => "FAILED",
+                    _ => "NONE",
+                };
+                transformContext.ProxyRequest.Headers.TryAddWithoutValidation("X-SSL-Client-Verify", verify);
+
+                if (status == ClientCertificateVerificationStatus.Verified
+                    && transformContext.HttpContext.Connection.ClientCertificate is { } clientCertificate)
+                {
+                    transformContext.ProxyRequest.Headers.TryAddWithoutValidation("X-SSL-Client-S-DN", clientCertificate.Subject);
+                    transformContext.ProxyRequest.Headers.TryAddWithoutValidation("X-SSL-Client-I-DN", clientCertificate.Issuer);
+                }
             }
 
             return ValueTask.CompletedTask;

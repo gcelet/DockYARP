@@ -70,10 +70,17 @@ A host whose `HTTPS_METHOD` is `nohttps` is **not** provisioned (it is served ov
 
 ### Mutual TLS
 
-`ClientCaCertificatePath` points to a PEM CA bundle. When set, Kestrel requests a client certificate and
-accepts only those chaining to the CA (`ClientCertificateValidator`, loaded via `System.IO.Abstractions`).
-The per-route requirement (`DOCKYARP_CLIENT_CERT` → `RouteRule.ClientCertificate`) is enforced by the
-security layer: a `required` route with no client certificate is rejected with 403.
+`ClientCaCertificatePath` points to a PEM CA bundle; `ClientCrlPath` an optional CRL checked alongside it
+(`ClientCertificateValidator`, loaded via `System.IO.Abstractions`). Kestrel's request for a client certificate
+is **per host** (`HostClientCertificateResolver`, resolved at handshake time from `RouteRule.ClientCertificate`
+— `DOCKYARP_CLIENT_CERT`): a `required` host uses a strict callback that fails the handshake for a
+missing-and-required, untrusted, or revoked certificate; an `optional` host uses a permissive callback that
+never fails the handshake on the certificate's trust outcome; a `none` host is not prompted at all.
+`ClientCertificateMiddleware` (re-)computes the verification status (`NotPresented`/`Verified`/`Failed`) for
+`required`/`optional` routes and stores it on `HttpContext.Items` — a `required` route with a non-`Verified`
+status is rejected with 403 (unreachable in practice for an invalid/revoked cert, already stopped at the
+handshake); `ForwardedHeadersTransform` forwards it to the backend as `X-SSL-Client-Verify:
+SUCCESS`/`FAILED`/`NONE` (subject/issuer only for `SUCCESS`).
 
 ## Deferred
 

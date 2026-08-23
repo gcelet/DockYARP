@@ -94,6 +94,7 @@ proxy
     .WithEnvironment("Tls__AcceptTermsOfService", "true")
     .WithEnvironment("Tls__ContactEmail", "e2e@dockyarp.local")
     .WithEnvironment("Tls__ClientCaCertificatePath", "/clientca/client-ca.crt")
+    .WithEnvironment("Tls__ClientCrlPath", "/clientca/client-ca.crl")
     .WithEnvironment("Tls__CheckInterval", "00:00:05") // retry provisioning after discovery (startup pass races it; default 12h)
 
     // DockYarp runs with its realistic default renewal margin (30 days): step-ca is configured to issue certs

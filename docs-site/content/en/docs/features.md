@@ -47,10 +47,13 @@ DockYARP terminates TLS and can obtain certificates automatically.
 - **Per-connection policy**: the certificate, TLS version, and ciphers are selected per SNI host — a per-host
   `SSL_POLICY` overrides the global posture. Presets are the Mozilla ones (`Modern`/`Intermediate`/`Old`) and the
   classic AWS ELB policy names (clamped to DockYARP's TLS 1.2 floor, best-effort ciphers).
-- **Mutual TLS**: configure a client CA (`Tls:ClientCaCertificatePath`) and require client certificates per
-  route with `DOCKYARP_CLIENT_CERT`. When a verified client certificate is presented, its identity is passed to the
-  backend as `X-SSL-Client-Verify: SUCCESS`, `X-SSL-Client-S-DN` (subject), and `X-SSL-Client-I-DN` (issuer);
-  client-supplied `X-SSL-Client-*` headers are always stripped (anti-spoof).
+- **Mutual TLS**: configure a client CA (`Tls:ClientCaCertificatePath`) and optionally a revocation list
+  (`Tls:ClientCrlPath`), then set a per-route requirement with `DOCKYARP_CLIENT_CERT`. `required` rejects a
+  missing/untrusted/revoked certificate (403, or the handshake itself fails for an untrusted/revoked one);
+  `optional` never rejects or drops the connection on the certificate's trust outcome — the backend receives
+  `X-SSL-Client-Verify: SUCCESS`/`FAILED`/`NONE` and decides for itself. A verified (`SUCCESS`) certificate's
+  identity is also passed as `X-SSL-Client-S-DN` (subject) and `X-SSL-Client-I-DN` (issuer); client-supplied
+  `X-SSL-Client-*` headers are always stripped (anti-spoof).
 - **Enforcement**: `HTTPS_METHOD` controls HTTP↔HTTPS behavior per host (see [Configuration](../configuration/)).
 
 ## Access control

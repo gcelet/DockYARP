@@ -30,7 +30,7 @@ DockYarp-specific keys use the `DOCKYARP_` prefix.
 | `SERVER_TOKENS` | No | `off` suppresses the `Server` response header for the host (overrides the global value). | `off` |
 | `DOCKYARP_LB` | No | Load-balancing policy: `round-robin` (default), `least-requests`, `power-of-two-choices`, `random`, `first-alphabetical`. | `least-requests` |
 | `DOCKYARP_PRIORITY` | No | Route priority (DockYarp extension); orders same-host routes, higher wins (default `0`). | `10` |
-| `DOCKYARP_CLIENT_CERT` | No | Client-certificate (mTLS) requirement: `required`, `optional`, or `none`/`off` (default). | `required` |
+| `DOCKYARP_CLIENT_CERT` | No | Client-certificate (mTLS) requirement: `required` (403/handshake failure on a missing/untrusted/revoked cert), `optional` (never rejects on the cert's trust outcome — `X-SSL-Client-Verify: SUCCESS`/`FAILED`/`NONE` lets the backend decide), or `none`/`off` (default). | `required` |
 | `DOCKYARP_PROXY_TIMEOUT` | No | Proxy request timeout in seconds (cluster activity timeout). | `30` |
 | `DOCKYARP_MAX_BODY_SIZE` | No | Maximum request body size in bytes for the route. | `1048576` |
 | `DOCKYARP_MAX_CONNECTIONS` | No | Max concurrent connections to the cluster's backend (YARP `MaxConnectionsPerServer`); unset uses YARP's default pooling. | `64` |

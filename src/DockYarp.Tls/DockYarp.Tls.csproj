@@ -11,6 +11,7 @@
   <ItemGroup>
     <PackageReference Include="Certes" />
     <PackageReference Include="System.IO.Abstractions" />
+    <PackageReference Include="Portable.BouncyCastle" />
   </ItemGroup>
 
   <ItemGroup>

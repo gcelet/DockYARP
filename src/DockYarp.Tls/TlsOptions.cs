@@ -46,6 +46,12 @@ public sealed class TlsOptions
     /// <summary>Gets or sets the path to a client CA certificate (PEM) enabling mutual TLS; <see langword="null"/> disables it.</summary>
     public string? ClientCaCertificatePath { get; set; }
 
+    /// <summary>Gets or sets the path to a certificate revocation list (PEM) checked alongside the client CA.</summary>
+    /// <remarks>Opt-in (default <see langword="null"/> — no revocation check, unchanged prior behavior). Global,
+    /// matching <see cref="ClientCaCertificatePath"/>'s own scope — DockYarp has no per-host client-CA mechanism
+    /// to extend with a per-host CRL.</remarks>
+    public string? ClientCrlPath { get; set; }
+
     /// <summary>Gets or sets a passphrase that encrypts every stored certificate's private key at rest.</summary>
     /// <remarks>Opt-in (default <see langword="null"/> — unchanged plain PEM behavior). Protects the key against
     /// someone with filesystem/volume/backup access only; it does <b>not</b> defend against the admin

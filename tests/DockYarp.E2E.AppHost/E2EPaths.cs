@@ -25,6 +25,10 @@ public static class E2EPaths
     /// <summary>The client CA certificate file (PEM) mounted as <c>Tls__ClientCaCertificatePath</c>.</summary>
     public static string ClientCaFile { get; } = Path.Combine(ClientCaDirectory, "client-ca.crt");
 
+    /// <summary>The client CRL file (PEM) mounted as <c>Tls__ClientCrlPath</c>, revoking one client leaf issued
+    /// by <see cref="ClientCaFile"/>'s CA — same directory as the CA, so no separate bind mount is needed.</summary>
+    public static string ClientCrlFile { get; } = Path.Combine(ClientCaDirectory, "client-ca.crl");
+
     /// <summary>The (writable) directory DockYarp persists certificates and Data Protection keys into,
     /// bind-mounted at the container's <c>/certs</c>.</summary>
     public static string CertsDirectory { get; } = Path.Combine(Path.GetTempPath(), "dockyarp-e2e", "certs");
