@@ -13,7 +13,7 @@ using OpenTelemetry.Metrics;
 internal static class ObservabilityServiceCollectionExtensions
 {
     /// <summary>Registers the metrics meter/exporter, the access-log options and middleware, and (when enabled)
-    /// the admin dashboard's Razor Pages services.</summary>
+    /// the admin dashboard's RazorSlices services.</summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">Configuration source for the <c>AccessLog</c> section.</param>
     /// <returns>The same service collection for chaining.</returns>
@@ -32,6 +32,8 @@ internal static class ObservabilityServiceCollectionExtensions
         }
 
         services.AddSingleton(adminApiOptions);
+        services.ConfigureHttpJsonOptions(
+            options => options.SerializerOptions.TypeInfoResolverChain.Insert(0, AdminApiJsonContext.Default));
         services.AddSingleton<ICertificateInventory, CertificateInventoryAdapter>();
         services.AddSingleton<ICertificateExporter, CertificateExporterAdapter>();
         services.AddSingleton<ICertificateConverter, CertificateConverterAdapter>();

@@ -33,10 +33,14 @@ public static class AdminEndpoints
             group.RequireHost(adminHost);
         }
 
-        group.MapGet("/version", static () => Results.Json(new AdminApiModels.VersionView(ResolveVersion())));
-        group.MapGet("/routes", static (IRouteConfigStore store) => Results.Json(AdminMapper.Routes(store.Current)));
-        group.MapGet("/clusters", static (IRouteConfigStore store) => Results.Json(AdminMapper.Clusters(store.Current)));
-        group.MapGet("/certs", static (ICertificateInventory inventory) => Results.Json(inventory.List()));
+        group.MapGet("/version", static () =>
+            Results.Json(new AdminApiModels.VersionView(ResolveVersion()), AdminApiJsonContext.Default));
+        group.MapGet("/routes", static (IRouteConfigStore store) =>
+            Results.Json(AdminMapper.Routes(store.Current), AdminApiJsonContext.Default));
+        group.MapGet("/clusters", static (IRouteConfigStore store) =>
+            Results.Json(AdminMapper.Clusters(store.Current), AdminApiJsonContext.Default));
+        group.MapGet("/certs", static (ICertificateInventory inventory) =>
+            Results.Json(inventory.List(), AdminApiJsonContext.Default));
 
         // The DockYarp analog of nginx-proxy's DEBUG_ENDPOINT: resolve a host/path to its effective config,
         // using the same route matcher as the request pipeline.
@@ -44,29 +48,31 @@ public static class AdminEndpoints
         {
             if (host is not { Length: > 0 })
             {
-                return Results.BadRequest(new { error = "host is required" });
+                return Results.BadRequest(new AdminApiModels.ErrorView("host is required"));
             }
 
             RouteConfigSnapshot snapshot = store.Current;
             RouteMatcher matcher = new(snapshot.Routes, routing.DefaultHost);
             if (!matcher.TryMatch(host, path is { Length: > 0 } ? path : "/", out RouteRule? route))
             {
-                return Results.NotFound(new { host, path, matched = false });
+                return Results.NotFound(new AdminApiModels.ResolveNotFoundView { Host = host, Path = path });
             }
 
             Cluster? cluster = snapshot.Clusters.FirstOrDefault(candidate => candidate.Id == route.ClusterId);
-            return Results.Json(AdminMapper.Resolve(route, cluster));
+            return Results.Json(AdminMapper.Resolve(route, cluster), AdminApiJsonContext.Default);
         });
         group.MapGet("/health", static (IRouteConfigStore store, ICertificateInventory inventory, IDiscoveryHealth discovery) =>
         {
             RouteConfigSnapshot snapshot = store.Current;
             (string status, string discoveryStatus) = AdminMapper.ResolveHealth(discovery);
-            return Results.Json(new AdminApiModels.HealthView(
-                status,
-                snapshot.Routes.Length,
-                snapshot.Clusters.Length,
-                inventory.List().Count,
-                discoveryStatus));
+            return Results.Json(
+                new AdminApiModels.HealthView(
+                    status,
+                    snapshot.Routes.Length,
+                    snapshot.Clusters.Length,
+                    inventory.List().Count,
+                    discoveryStatus),
+                AdminApiJsonContext.Default);
         });
 
         return endpoints;

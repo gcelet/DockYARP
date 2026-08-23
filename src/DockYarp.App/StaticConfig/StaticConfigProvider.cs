@@ -19,8 +19,6 @@ public sealed class StaticConfigProvider : IStaticConfigProvider
 {
     private const string DefaultHost = "default";
 
-    private static readonly JsonSerializerOptions SerializerOptions = new() { PropertyNameCaseInsensitive = true };
-
     private readonly ConfigContribution contribution;
     private readonly ConfigOverrides overrides;
 
@@ -57,8 +55,8 @@ public sealed class StaticConfigProvider : IStaticConfigProvider
 
         try
         {
-            StaticConfigFile? file = JsonSerializer.Deserialize<StaticConfigFile>(
-                fileSystem.File.ReadAllText(path), SerializerOptions);
+            StaticConfigFile? file = JsonSerializer.Deserialize(
+                fileSystem.File.ReadAllText(path), StaticConfigJsonContext.Default.StaticConfigFile);
             if (file is null)
             {
                 return null;

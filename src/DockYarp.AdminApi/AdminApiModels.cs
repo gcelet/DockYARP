@@ -92,4 +92,22 @@ public static class AdminApiModels
     /// <param name="Cluster">The resolved target cluster, if present.</param>
     public sealed record ResolveView(
         RouteView Route, TransformsView? Transforms, SecurityView Security, ClusterView? Cluster);
+
+    /// <summary>A generic error response body.</summary>
+    /// <param name="Error">A human-readable description of what went wrong.</param>
+    public sealed record ErrorView(string Error);
+
+    /// <summary>The response body when <c>/api/resolve</c> finds no matching route.</summary>
+    public sealed record ResolveNotFoundView
+    {
+        /// <summary>Gets the host that was looked up.</summary>
+        public required string Host { get; init; }
+
+        /// <summary>Gets the path that was looked up, if given.</summary>
+        public string? Path { get; init; }
+
+        /// <summary>Gets a value that is always <see langword="false"/> — present for a stable,
+        /// self-describing response shape.</summary>
+        public bool Matched { get; init; }
+    }
 }
