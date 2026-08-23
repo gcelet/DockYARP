@@ -120,6 +120,10 @@ SonarAnalyzer, StyleCop). A warning is a red build.
 - **Bounded complexity** (already enforced by .editorconfig): ~40 statements max per method,
   ≤ 5 parameters (≤ 8 for a constructor). If you get stuck, refactor.
 - **Immutability**: prefer immutable types and `readonly` fields.
+- **AOT/trim warning budget**: a change must not increase the Native AOT/trim warning count, even though
+  DockYarp doesn't publish via AOT today. See `docs/aot-readiness.md` for the current baseline, the exact
+  spike command, and real gotchas already hit (a `JsonSerializerContext` registered only via DI does **not**
+  silence the analyzer — it must be passed explicitly at the call site).
 
 ## Comments & XML documentation
 
