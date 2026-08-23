@@ -16,7 +16,7 @@ using YamlDotNet.Serialization.NamingConventions;
 /// <remarks>Pure and side-effect free so it can be unit tested without a Docker daemon.</remarks>
 public static class MultiportParser
 {
-    private static readonly IDeserializer Deserializer = new DeserializerBuilder()
+    private static readonly IDeserializer Deserializer = new StaticDeserializerBuilder(new MultiportYamlContext())
         .WithNamingConvention(CamelCaseNamingConvention.Instance)
         .IgnoreUnmatchedProperties()
         .Build();
@@ -73,15 +73,9 @@ public static class MultiportParser
     private static BackendScheme ParseScheme(string? proto) =>
         string.Equals(proto, "https", StringComparison.OrdinalIgnoreCase) ? BackendScheme.Https : BackendScheme.Http;
 
-    [SuppressMessage(
-        "SonarAnalyzer",
-        "S1144:Unused private types or members should be removed",
-        Justification = "Property accessors are invoked by YamlDotNet via reflection during deserialization.")]
-    [SuppressMessage(
-        "SonarAnalyzer",
-        "S3459:Unassigned members should be removed",
-        Justification = "Property values are assigned by YamlDotNet via reflection during deserialization.")]
-    private sealed class PathSpec
+    // internal, not private: MultiportYamlContext (a required top-level class, see its own remarks)
+    // references this type from outside MultiportParser.
+    internal sealed class PathSpec
     {
         public int Port { get; set; }
 
