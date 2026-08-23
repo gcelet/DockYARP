@@ -27,9 +27,10 @@ npm run serve     # http://localhost:1313/  (Hugo from node_modules/.bin)
 npm run build     # production build into public/
 ```
 
-**Reproducible build / CI:** from the repo root, `./build.ps1 Docs` (or `./build.sh Docs`) runs the Nuke **`Docs`**
-target — `npm ci`, then vendors Docsy's theme SCSS deps (the command above), then Hugo → `docs-site/public`. So a
-one-shot `nuke Docs` also prepares a clean checkout for `npm run serve`. The `Docs` workflow
+**Reproducible build / CI:** from the repo root, `./build.ps1 Docs` (or `./build.sh Docs`) runs the Fallout
+**`Docs`** target — `npm ci`, then vendors Docsy's theme SCSS deps (the command above), then Hugo →
+`docs-site/public`. So a one-shot `./build.ps1 Docs` also prepares a clean checkout for `npm run serve`. The
+`Docs` workflow
 (`.github/workflows/docs.yml`) builds on every PR and publishes to **GitHub Pages** on push to `develop`. One-time
 repo setup: **Settings → Pages → Source = GitHub Actions**.
 
@@ -53,7 +54,7 @@ repo setup: **Settings → Pages → Source = GitHub Actions**.
 - **Domain / `baseURL`**: defaults to the GitHub Pages project URL `https://gcelet.github.io/DockYARP/` (note
   the `/DockYARP/` subpath). Swap to `https://dockyarp.com/` once the domain is reserved, or override per build
   with `hugo --baseURL`.
-- **Docker Hub link** (`hugo.toml` → `params.links.user`): confirm the published image namespace (the Nuke
+- **Docker Hub link** (`hugo.toml` → `params.links.user`): confirm the published image namespace (the Fallout
   build tags the image `dockyarp`).
 - **Fonts**: currently Google Fonts (Space Grotesk + JetBrains Mono); consider self-hosting for GitHub Pages /
   offline (tracked with `add-doc-brand-theme`).

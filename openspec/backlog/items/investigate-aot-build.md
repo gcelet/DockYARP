@@ -33,8 +33,8 @@ key dependencies are **not** AOT-annotated:
    - **Trimming analysis only** (measure, likely can't fully trim due to the same deps).
    - **InvariantGlobalization**, **single-file**, tiered-PGO — small startup/size wins.
    - A smaller base image (already tracked via `add-base-image-rebuild`).
-3. Capture the decision (AOT / R2R / status quo) and, if R2R is chosen, wire it into the single Nuke publish path
-   ([[nuke-single-build-path]]) behind a flag.
+3. Capture the decision (AOT / R2R / status quo) and, if R2R is chosen, wire it into the single Fallout publish
+   path ([[nuke-single-build-path]]) behind a flag.
 
 ## Acceptance criteria (→ scenarios)
 - **WHEN** the spike runs **THEN** the AOT feasibility verdict is recorded (which deps block it, with the warning list).

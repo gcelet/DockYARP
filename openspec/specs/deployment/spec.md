@@ -4,7 +4,7 @@
 TBD - created by archiving change add-deployment. Update Purpose after archive.
 ## Requirements
 ### Requirement: Docker image
-The system SHALL be packaged as a minimal multi-stage Docker image whose build stage runs the Nuke build
+The system SHALL be packaged as a minimal multi-stage Docker image whose build stage runs the Fallout build
 pipeline and whose runtime stage is a chiseled .NET runtime, running as a non-root user, exposing the proxy
 ports and supporting mounted `/certs` and `/config` volumes.
 
@@ -37,7 +37,7 @@ background workers (discovery, provisioning) cleanly within a bounded timeout.
 
 ### Requirement: Image publishing
 The build pipeline SHALL publish the Docker image to a configurable container registry, defaulting to
-Docker Hub, tagged with a configurable tag (default `latest`). The image SHALL be built through the Nuke
+Docker Hub, tagged with a configurable tag (default `latest`). The image SHALL be built through the Fallout
 pipeline (the Docker build stage runs the build), and publishing SHALL assume the environment is already
 authenticated to the registry.
 
@@ -56,7 +56,7 @@ other registry, including a private, non-Docker-Hub registry** (for example a se
 Container Registry, GitLab, or Nexus) — identified by a configurable registry host and repository,
 authenticating with credentials supplied as secrets (defaulting to the GitHub token for GHCR). The published
 image SHALL be a **multi-architecture** manifest (at least `linux/amd64` and `linux/arm64`), built from the
-repository `Dockerfile` (whose build stage runs the Nuke build). The published **tag set** SHALL depend on the
+repository `Dockerfile` (whose build stage runs the Fallout build). The published **tag set** SHALL depend on the
 release channel: a **stable** release (no pre-release suffix) SHALL push the exact version, its `Major.Minor`,
 its `Major`, and `latest`; a **prerelease** (a `v*` tag with a pre-release suffix) SHALL push only its exact
 version, leaving `latest` and the rolling `Major.Minor`/`Major` tags untouched; a push to the trunk branch (no
@@ -100,13 +100,13 @@ the trunk-branch (edge) publish is not subject to this gate.
 ### Requirement: Continuous integration
 The project SHALL run its build-and-test gate automatically on every pull request and on every push to the
 default branch, via a GitHub Actions workflow that checks out the repository, sets up the .NET SDK pinned by
-`global.json`, restores and compiles the whole solution, and runs the Nuke `Test` gate (unit + integration
+`global.json`, restores and compiles the whole solution, and runs the Fallout `Test` gate (unit + integration
 tests, warnings treated as errors). A build warning or a test failure SHALL fail the check. The end-to-end
 suite (which requires a Docker daemon) is out of scope of this gate.
 
 #### Scenario: CI runs on a pull request
 - **WHEN** a pull request is opened or updated
-- **THEN** the workflow restores, compiles the solution, and runs the Nuke `Test` gate, failing the check on any
+- **THEN** the workflow restores, compiles the solution, and runs the Fallout `Test` gate, failing the check on any
   build warning or test failure
 
 #### Scenario: CI runs on push to the default branch
@@ -131,7 +131,7 @@ re-pinned by Renovate.
 ### Requirement: Build versioning
 The build SHALL derive its version from git (base version + commit height + `v*` tags) using GitVersion — declared
 as the local .NET tool `gitversion.tool` in `.config/dotnet-tools.json` and configured by a root `GitVersion.yml` —
-computing the version **once on the host** in the Nuke build and stamping the assemblies
+computing the version **once on the host** in the Fallout build and stamping the assemblies
 (`AssemblyVersion`/`FileVersion`/`InformationalVersion`, the latter including the commit id). The running build's
 version SHALL be exposed by the Admin API. Because the Docker build context excludes `.git`, the image SHALL be
 stamped with the **same** host-computed version, passed to the build as a build argument, without running GitVersion
@@ -153,7 +153,7 @@ inside the container.
 
 ### Requirement: Base image refresh
 When the base image referenced by the `Dockerfile` changes, the system SHALL rebuild and republish the `:latest`
-application image with the patched base, via CI delegating to the single Nuke image-publish path, so the published
+application image with the patched base, via CI delegating to the single Fallout image-publish path, so the published
 `:latest` does not accumulate unpatched base CVEs. Released version tags (`v*`) SHALL remain immutable — a base
 patch updates `:latest`, and a tagged release picks up the patched base at publish time.
 

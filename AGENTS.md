@@ -41,7 +41,7 @@ between work sessions. The entry point is the parity backlog `openspec/backlog/`
    item's `id` is the future change id; its *Why* + *Acceptance criteria* seed the proposal.
 2. **Propose** — `/opsx:propose <id>` → author `proposal.md` / `design.md` / `tasks.md` /
    `specs/<capability>/spec.md`.
-3. **Apply** — `/opsx:apply` → implement; Nuke `Test` gate green. **For a user-facing change** (a new or changed
+3. **Apply** — `/opsx:apply` → implement; Fallout `Test` gate green. **For a user-facing change** (a new or changed
    container label / env var, an application-config key, a runtime behavior, or a common workflow), **update the
    docs site in the same change** — `docs-site/content/en/docs/` (`configuration.md` / `features.md` /
    `examples.md` as relevant) — and keep `docs/labels-reference.md` in sync, so the site never lags. Verify names
@@ -76,7 +76,7 @@ src/
   DockYarp.AdminApi/  # admin/observability endpoints              -> Core
   DockYarp.App/       # ASP.NET host (Web SDK): YARP, DI, pipeline -> everything
 tests/                   # one *.Tests project per src project (NUnit)
-build/                   # Nuke build project — DO NOT touch the Directory.Build.* stop-files
+build/                   # Fallout build project — DO NOT touch the Directory.Build.* stop-files
 docs/                    # architecture documentation
 specs/                   # specs driving the implementation
 ```
@@ -89,7 +89,7 @@ Do not introduce cycles and do not make `Core` depend on a module.
 | Action | Command |
 |---|---|
 | Restore | `dotnet restore DockYarp.slnx` |
-| Build | `dotnet build DockYarp.slnx` (or `./build.ps1` / `./build.sh` — Nuke) |
+| Build | `dotnet build DockYarp.slnx` (or `./build.ps1` / `./build.sh` — Fallout) |
 | Tests | `dotnet test DockYarp.slnx` |
 | Run the app | `dotnet run --project src/DockYarp.App` |
 | Format | `dotnet format DockYarp.slnx` |
@@ -156,17 +156,17 @@ CPM is **enabled**. Versions live **only** in `Directory.Packages.props`.
 - Do not edit `.editorconfig` / `Directory.*.props` to make a build pass: fix the code instead.
 - Do not touch the stop-files `build/Directory.Build.props` / `build/Directory.Build.targets`.
 - Respect the `DockYarp.slnx` solution structure and CPM.
-- **The Nuke build (`build/Build.cs`) is the single source of truth for build/image/publish/release logic.**
-  When a CI workflow needs a build/package/publish step, extend or parameterize the relevant Nuke target and
+- **The Fallout build (`build/Build.cs`) is the single source of truth for build/image/publish/release logic.**
+  When a CI workflow needs a build/package/publish step, extend or parameterize the relevant Fallout target and
   call it — the workflow only orchestrates (checkout, login, buildx setup); never duplicate build steps in YAML.
-- **Never reach for `ProcessTasks.StartProcess` in the Nuke build as a first move.** Before writing any Nuke
-  target/step, actively identify whether a typed Nuke tool task already covers it (`DotNetTasks`, `NpmTasks`,
+- **Never reach for `ProcessTasks.StartProcess` in the Fallout build as a first move.** Before writing any
+  target/step, actively identify whether a typed Fallout tool task already covers it (`DotNetTasks`, `NpmTasks`,
   `DockerTasks`, `GitVersion`, …) — a "missing" API is almost always just a missing `using`, not a real gap.
   Manual string-built commands lose the typed settings API (`.AddTag(...)`, `.SetPlatform(...)`, …) and can fail
   in ways a compiler can't catch — e.g. a hand-built `-t {value}` argument string once broke a live registry
   push because `ProcessTasks`' `ArgumentStringHandler` auto-quoted a value containing a space as one argv token,
-  merging the flag and its value. **If no existing Nuke API covers the tool/command you need, stop and ask the
-  user before falling back to `ProcessTasks`** — do not guess or silently default to a raw process call.
+  merging the flag and its value. **If no existing Fallout API covers the tool/command you need, stop and ask
+  the user before falling back to `ProcessTasks`** — do not guess or silently default to a raw process call.
 
 ## Available MCP servers
 

@@ -13,7 +13,7 @@ security middleware, and an admin API — an `nginx-proxy`-style experience, in 
 [![Documentation](https://img.shields.io/badge/docs-gcelet.github.io-2A7AE2)](https://gcelet.github.io/DockYARP/)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4)
 ![Reverse proxy](https://img.shields.io/badge/proxy-YARP-0078D4)
-![Build](https://img.shields.io/badge/build-Nuke-yellow)
+[![CI](https://github.com/gcelet/DockYARP/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/gcelet/DockYARP/actions/workflows/ci.yml)
 ![Spec-driven](https://img.shields.io/badge/spec--driven-OpenSpec-6E56CF)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -130,7 +130,7 @@ See [`docs/admin-api.md`](docs/admin-api.md).
 
 ## Build & test
 
-The build is driven by [Nuke](https://nuke.build); `build.ps1` / `build.sh` bootstrap it anywhere .NET is installed.
+The build is driven by [Fallout](https://github.com/Fallout-build/Fallout) (a community fork of Nuke); `build.ps1` / `build.sh` bootstrap it anywhere .NET is installed.
 
 ```bash
 ./build.ps1 Test          # restore, build, and test (Windows)
@@ -165,7 +165,7 @@ src/
   DockYarp.AdminApi/  # admin/observability endpoints
   DockYarp.App/       # ASP.NET host: YARP, DI, pipeline
 tests/                   # one *.Tests project per src project (NUnit)
-build/                   # Nuke build project
+build/                   # Fallout build project
 docs/                    # architecture & capability documentation
 openspec/                # spec-driven development (specs + changes)
 ```

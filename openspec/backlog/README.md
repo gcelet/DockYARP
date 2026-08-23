@@ -27,7 +27,7 @@ backlog item ──/opsx:propose <id>──▶ change ──/opsx:apply──▶
 1. **Backlog** — ensure the work has an item `items/<id>.md` (add one if it is new).
 2. **Propose** — `/opsx:propose <id>`; author `proposal.md` / `design.md` / `tasks.md` / `specs/<capability>/spec.md`
    from the stub's *Why* + *Acceptance criteria*.
-3. **Apply** — `/opsx:apply`; implement with the Nuke gate green (`build.ps1 Test` / `build.sh Test`).
+3. **Apply** — `/opsx:apply`; implement with the Fallout gate green (`build.ps1 Test` / `build.sh Test`).
 4. **Commit + archive** — present the commit (the user commits), then `/opsx:archive <id>` (syncs
    `openspec/specs/`); present the archive commit.
 5. **Close the loop** — **remove** the item file `items/<id>.md` from the backlog (a completed item does not

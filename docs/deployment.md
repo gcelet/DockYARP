@@ -101,7 +101,7 @@ wrong password) fails startup rather than silently falling back to unencrypted k
 depends on Data Protection (e.g. session affinity) is added, it will *require* this certificate and fail fast if
 it is absent.
 
-## CI/CD with Nuke
+## CI/CD with Fallout
 
 [`build/Build.cs`](../build/Build.cs) defines the pipeline:
 
@@ -109,7 +109,7 @@ it is absent.
 |---|---|
 | `Restore` / `Compile` / `Test` | Restore, build, and test `DockYarp.slnx`. `Test` runs the unit/integration test projects and **excludes** the end-to-end project (by project, so it needs no Docker and runs deterministically). |
 | `Publish` | Publish `DockYarp.App` to `artifacts/publish`. |
-| `DockerImage` | `docker build` the image (depends on `Test`; the build stage runs the Nuke build). |
+| `DockerImage` | `docker build` the image (depends on `Test`; the build stage runs the Fallout build). |
 | `DockerPublish` | Build then `docker push` to the configured registry (depends on `DockerImage`). |
 | `E2E` | Build the `dockyarp:local` and echo-backend images, then run the **Aspire** end-to-end suite (`TestCategory=EndToEnd`). Opt-in; never a dependency of the default flow. |
 | `Smoke` | Bring up the reference Compose stack, probe the sample service by its `VIRTUAL_HOST`, then tear it down. Opt-in; never a dependency of the default flow. |
@@ -143,7 +143,7 @@ failure the `E2E` target prints the directory and a tail of `dockyarp.log`. Runn
 
 ### Publishing to a registry
 
-`DockerPublish` builds the image (the Docker build stage runs the Nuke build) and pushes it. The image
+`DockerPublish` builds the image (the Docker build stage runs the Fallout build) and pushes it. The image
 reference is `{Registry}/{ImageRepository}:{ImageTag}`, or `{ImageRepository}:{ImageTag}` on Docker Hub.
 
 | Parameter | Default | Meaning |

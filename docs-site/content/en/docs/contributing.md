@@ -12,7 +12,7 @@ feature, fix, or refinement — follows the same loop.
 Required for any contribution:
 
 - **[.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)** — or skip installing it: `build.ps1` /
-  `build.sh` (Nuke) fetch the SDK pinned by `global.json` automatically if it's missing.
+  `build.sh` (Fallout) fetch the SDK pinned by `global.json` automatically if it's missing.
 - **[Node.js](https://nodejs.org/)** — needed to run the **OpenSpec CLI**
   (`npx @fission-ai/openspec@latest`), the tool every change goes through (propose / apply / archive). This repo
   has no other Node dependency outside the docs site.
@@ -53,7 +53,7 @@ Without direct push access, run the same loop on a fork:
 
 ```bash
 dotnet build DockYarp.slnx
-dotnet test DockYarp.slnx      # or ./build.ps1 Test (Nuke)
+dotnet test DockYarp.slnx      # or ./build.ps1 Test (Fallout)
 ```
 
 Quality is enforced at compile time (warnings are errors, strict analyzers, XML docs). See `AGENTS.md` for the
@@ -74,7 +74,7 @@ Add an e2e **only** for behavior unit and integration cannot prove. The full map
 is deliberately *not* — lives in [`docs/testing.md`]({{< repo-file "docs/testing.md" >}}); keep it in sync when you
 add or remove an e2e.
 
-Run the gates with Nuke:
+Run the gates with Fallout:
 
 ```bash
 ./build.ps1 Test   # unit + integration (the CI gate)

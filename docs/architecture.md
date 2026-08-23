@@ -43,7 +43,7 @@ flowchart TD
 | `security` | Security | HTTPS method enforcement, Basic Auth, HSTS, client-certificate enforcement, headers. |
 | `tls-acme` | Tls | ACME HTTP-01, renewal, provided certs, SNI selection, Kestrel TLS hardening + mTLS. |
 | `admin-api` | AdminApi (+ App) | Read-only `/api/*`, Prometheus `/metrics`, structured access logging. |
-| `deployment` | build/ + App | Nuke build, chiseled image, compose, HTTPS endpoint, configuration binding. |
+| `deployment` | build/ + App | Fallout build, chiseled image, compose, HTTPS endpoint, configuration binding. |
 
 ## Configuration flow
 
