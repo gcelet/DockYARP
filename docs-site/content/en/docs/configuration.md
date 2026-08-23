@@ -33,6 +33,7 @@ compatible; DockYARP's own keys use the `DOCKYARP_` prefix.
 |-----|---------|---------|---------|
 | `LETSENCRYPT_HOST` | Host to provision an ACME certificate for (enables TLS metadata). | — | `app.local` |
 | `LETSENCRYPT_EMAIL` | Contact email for the ACME account. | global | `admin@example.com` |
+| `DOCKYARP_ACME_CHALLENGE` | ACME challenge type: `http-01` (default) or `dns-01`. A wildcard `LETSENCRYPT_HOST` (`*.example.com`) requires `dns-01` — needs `Tls:DnsUpdate*` configured (RFC 2136; see the `Tls` section below). | `http-01` | `dns-01` |
 | `CERT_NAME` | Pin the host to a named shared (SAN/wildcard) certificate; the host is not ACME-provisioned. | — | `wildcard` |
 | `SSL_POLICY` | Per-host TLS preset: `Mozilla-Modern`/`Mozilla-Intermediate`/`Mozilla-Old`, or a classic AWS ELB policy name (e.g. `ELBSecurityPolicy-TLS13-1-2-2021-06`). | global | `Mozilla-Modern` |
 | `HTTPS_METHOD` | HTTP↔HTTPS behavior: `redirect` (default), `noredirect`, `nohttp`, `nohttps`. | `redirect` | `noredirect` |
@@ -115,6 +116,11 @@ the container must listen on 80/443 directly — see [Examples](/docs/examples/#
 | `RenewBeforeExpiry` | `30.00:00:00` | Renew a certificate this long before it expires. |
 | `CheckInterval` | `12:00:00` | Provisioning / renewal check interval. |
 | `Http01ChallengeEnabled` | `true` | Serve the ACME HTTP-01 challenge path. Challenges are answered by token regardless of host (a not-yet-routed host is served). `false` returns 404 on the challenge path. |
+| `DnsUpdateServer` | — | RFC 2136 DNS server (`host` or `host:port`, default port 53) for a host using `DOCKYARP_ACME_CHALLENGE=dns-01`. All four `DnsUpdateServer`/`DnsUpdateZone`/`DnsUpdateTsigKeyName`/`DnsUpdateTsigKeySecret` are required for DNS-01; an incomplete set fails only the affected host, not others. |
+| `DnsUpdateZone` | — | Zone apex the RFC 2136 update targets (e.g. `example.com`). |
+| `DnsUpdateTsigKeyName` | — | TSIG key name configured on the DNS server. |
+| `DnsUpdateTsigKeySecret` | — | TSIG key secret, base64-encoded. |
+| `DnsUpdateTsigAlgorithm` | `hmac-sha256` | TSIG algorithm (`hmac-sha1`/`hmac-sha256`/`hmac-sha384`/`hmac-sha512`). |
 | `MinimumTlsVersion` | `Tls12` | Global TLS floor (a per-host `SSL_POLICY` overrides it). |
 | `SslPolicy` | — | Global preset: `Mozilla-Modern`/`Mozilla-Intermediate`/`Mozilla-Old`, or a classic AWS ELB policy name. ELB names are clamped to the TLS 1.2 floor (TLS 1.3 for the 1.3-only policy) with best-effort ciphers; FIPS/PQ/RFC 9151 variants are not recognized. |
 | `CipherSuites` | — | Explicit cipher allow-list (applied on Linux/macOS only). |

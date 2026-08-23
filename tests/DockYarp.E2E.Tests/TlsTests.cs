@@ -44,6 +44,29 @@ public sealed class TlsTests : E2ETestBase
         capture.ServerCertificate!.Issuer.Should().Contain(CaIssuerMarker);
     }
 
+    /// <summary>A DNS-01 host with a wildcard <c>LETSENCRYPT_HOST</c> (<c>*.dns01.example</c>) gets a real
+    /// wildcard certificate via RFC 2136 against a throwaway BIND9 authority — proving the hand-rolled DNS
+    /// UPDATE/TSIG code, the DNS-01 challenge flow, and SniCertificateSelector's existing wildcard
+    /// parent-domain fallback (the cert is stored under <c>dns01.example</c>, matched here to the specific
+    /// <c>sub.dns01.example</c> route) all work together for real — no mocking anywhere in this test.</summary>
+    [Test]
+    public async Task AcmeWildcardCertificate_IsProvisionedViaDns01()
+    {
+        TlsHarness.ServerCertificateHolder capture = new();
+        using HttpClient client = TlsHarness.CreateClient(capture);
+
+        using HttpResponseMessage response = await PollAsync(
+            client,
+            static () => new HttpRequestMessage(HttpMethod.Get, "https://sub.dns01.example/"),
+            _ => capture.ServerCertificate?.Issuer.Contains(CaIssuerMarker, StringComparison.Ordinal) == true,
+            TlsPollSeconds);
+
+        capture.ServerCertificate.Should().NotBeNull();
+        capture.ServerCertificate!.Issuer.Should().Contain(CaIssuerMarker);
+        capture.ServerCertificate!.Subject.Should().Contain(
+            "dns01.example", "the wildcard order's CN is *.dns01.example, stored under the parent domain");
+    }
+
     /// <summary>The intermediate is actually sent during the handshake for an ACME-issued certificate: a client
     /// trusting only the step-ca root — no intermediate, no system/OS trust store — still builds a complete
     /// chain. This is the regression test for the bare-ServerCertificate bug: pre-fix, SslStream built its own

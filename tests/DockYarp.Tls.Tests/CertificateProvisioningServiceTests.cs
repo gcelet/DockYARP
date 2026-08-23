@@ -33,6 +33,38 @@ public sealed class CertificateProvisioningServiceTests
         acme.RequestCount("app.local").Should().Be(1);
     }
 
+    /// <summary>A wildcard host (*.example.com) is stored under its parent domain, matching
+    /// SniCertificateSelector's existing wildcard-fallback lookup — not under the literal "*.example.com" key.</summary>
+    [Test]
+    public async Task WildcardHostIsStoredUnderParentDomain()
+    {
+        RouteConfigStore routes = new();
+        routes.Apply(
+            [
+                new RouteRule
+                {
+                    HostPattern = "*.example.com",
+                    ClusterId = "wild",
+                    Tls = new HostTlsMetadata
+                    {
+                        CertificateHost = "*.example.com",
+                        ContactEmail = "a@example.com",
+                        ChallengeType = AcmeChallengeType.Dns01,
+                    },
+                },
+            ],
+            []);
+        FakeCertificateStore certificates = new();
+        FakeAcmeClient acme = new();
+        CertificateProvisioningService service = Service(routes, certificates, acme, new TlsOptions());
+
+        await service.ReconcileAsync(CancellationToken.None);
+
+        certificates.Find("example.com").Should().NotBeNull("the wildcard identifier is stored under its parent domain");
+        certificates.Find("*.example.com").Should().BeNull("never under the literal wildcard string");
+        acme.RequestCount("*.example.com").Should().Be(1, "the ACME order still requests the literal wildcard identifier");
+    }
+
     /// <summary>A certificate within the renewal margin is renewed.</summary>
     [Test]
     public async Task RenewsCertificateNearExpiry()
@@ -80,6 +112,48 @@ public sealed class CertificateProvisioningServiceTests
 
         certificates.Find("a.local").Should().NotBeNull();
         certificates.Find("b.local").Should().NotBeNull();
+    }
+
+    /// <summary>A DNS-01 host whose RFC 2136 configuration is missing fails on its own — real behavior:
+    /// <see cref="Rfc2136DnsChallengeProvider"/> validates configuration lazily, on first use, so only the
+    /// host that actually requests DNS-01 is affected — while an unrelated HTTP-01 host in the same pass
+    /// still provisions normally.</summary>
+    [Test]
+    public async Task MisconfiguredDns01HostFailsAloneWhileOthersProvisionNormally()
+    {
+        RouteConfigStore routes = new();
+        routes.Apply(
+            [
+                new RouteRule
+                {
+                    HostPattern = "dns01.local",
+                    ClusterId = "dns01",
+                    Tls = new HostTlsMetadata
+                    {
+                        CertificateHost = "dns01.local",
+                        ContactEmail = "a@example.com",
+                        ChallengeType = AcmeChallengeType.Dns01,
+                    },
+                },
+                new RouteRule
+                {
+                    HostPattern = "http01.local",
+                    ClusterId = "http01",
+                    Tls = new HostTlsMetadata { CertificateHost = "http01.local", ContactEmail = "a@example.com" },
+                },
+            ],
+            []);
+        FakeCertificateStore certificates = new();
+
+        // Mirrors Rfc2136DnsChallengeProvider's real behavior: it only throws for a host that actually
+        // reaches the DNS-01 branch — an HTTP-01 host never touches it.
+        PerHostFailureAcmeClient acme = new(failingHost: "dns01.local");
+        CertificateProvisioningService service = Service(routes, certificates, acme, new TlsOptions());
+
+        await service.ReconcileAsync(CancellationToken.None);
+
+        certificates.Find("dns01.local").Should().BeNull("misconfigured DNS-01 must fail, not silently succeed");
+        certificates.Find("http01.local").Should().NotBeNull("an unrelated HTTP-01 host must be unaffected");
     }
 
     /// <summary>A host that fails once then succeeds logs the transient failure at Warning (not Error) and is provisioned.</summary>
@@ -210,7 +284,8 @@ public sealed class CertificateProvisioningServiceTests
         private readonly HashSet<int> failing = [.. failingAttempts];
         private int attempts;
 
-        public Task<LoadedCertificate> RequestCertificateAsync(string host, string? email, CancellationToken cancellationToken)
+        public Task<LoadedCertificate> RequestCertificateAsync(
+            string host, string? email, AcmeChallengeType challengeType, CancellationToken cancellationToken)
         {
             int attempt = Interlocked.Increment(ref attempts);
             return failing.Contains(attempt)
@@ -219,10 +294,23 @@ public sealed class CertificateProvisioningServiceTests
         }
     }
 
+    /// <summary>An ACME client that fails only for one named host (an <see cref="InvalidOperationException"/>,
+    /// matching what a misconfigured <see cref="Rfc2136DnsChallengeProvider"/> throws) and succeeds for every
+    /// other host.</summary>
+    private sealed class PerHostFailureAcmeClient(string failingHost) : IAcmeClient
+    {
+        public Task<LoadedCertificate> RequestCertificateAsync(
+            string host, string? email, AcmeChallengeType challengeType, CancellationToken cancellationToken) =>
+            string.Equals(host, failingHost, StringComparison.OrdinalIgnoreCase)
+                ? Task.FromException<LoadedCertificate>(new InvalidOperationException("DNS-01 requires Tls:DnsUpdateServer..."))
+                : Task.FromResult(new LoadedCertificate(DefaultCertificateFactory.CreateSelfSigned(host), []));
+    }
+
     /// <summary>An ACME client that always fails with a transient-looking timeout.</summary>
     private sealed class FailingAcmeClient : IAcmeClient
     {
-        public Task<LoadedCertificate> RequestCertificateAsync(string host, string? email, CancellationToken cancellationToken) =>
+        public Task<LoadedCertificate> RequestCertificateAsync(
+            string host, string? email, AcmeChallengeType challengeType, CancellationToken cancellationToken) =>
             Task.FromException<LoadedCertificate>(new TimeoutException("Timed out waiting for ACME authorization."));
     }
 
@@ -233,7 +321,8 @@ public sealed class CertificateProvisioningServiceTests
         private readonly TaskCompletionSource firstStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly TaskCompletionSource secondStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        public async Task<LoadedCertificate> RequestCertificateAsync(string host, string? email, CancellationToken cancellationToken)
+        public async Task<LoadedCertificate> RequestCertificateAsync(
+            string host, string? email, AcmeChallengeType challengeType, CancellationToken cancellationToken)
         {
             // Each host signals its arrival and waits for the other's; a generous timeout keeps a sequential
             // regression from hanging the test (the blocked host times out and fails instead of both passing).

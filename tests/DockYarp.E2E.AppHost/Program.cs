@@ -9,6 +9,23 @@ IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(ar
 // Shared with the test harness (X-Api-Key for the admin API); a literal on both sides on purpose.
 const string apiKey = "e2e-secret-key";
 
+// DNS-01 test authority: a throwaway BIND9 server, authoritative for the "dns01.example" test zone (accepting
+// RFC 2136 dynamic updates gated by a TSIG key) and forwarding every other query to Docker's embedded DNS
+// (127.0.0.11) — so pointing step-ca's own resolver at it below does not break its existing HTTP-01 container-
+// alias resolution. Config is staged host-side by TlsHarness.PrepareDnsZone() (mirroring PrepareClientCa) and
+// copied into the container's own writable layer at startup (not written directly to the bind-mounted files),
+// avoiding the exact bind-mount write-permission class of problem step-ca's own PKI directory needed a
+// dedicated fix for (see the ca-bundle container's comment below).
+const string bindCommand =
+    "cp /bind-config/named.conf /etc/bind/named.conf && " +
+    "cp /bind-config/db.dns01.example /var/cache/bind/db.dns01.example && " +
+    "chown bind:bind /var/cache/bind/db.dns01.example && " +
+    "exec /usr/sbin/named -u bind -f -c /etc/bind/named.conf -L /var/log/bind/default.log";
+var bind9 = builder.AddContainer("bind9", "internetsystemsconsortium/bind9", "9.20")
+    .WithBindMount(E2EPaths.Bind9Directory, "/bind-config", isReadOnly: true)
+    .WithEntrypoint("sh")
+    .WithArgs("-c", bindCommand);
+
 // Local ACME certificate authority. step-ca initialises its PKI (root + intermediate + an ACME provisioner)
 // on first boot into the bind-mounted directory; DockYarp and the tests read the root from there.
 // DockYarp is deliberately NOT gated on step-ca (its provisioning retries in the background), because the
@@ -17,10 +34,15 @@ const string apiKey = "e2e-secret-key";
 // We override that CMD: after init has created the ACME provisioner, widen its certificate durations to 60 days
 // (offline ca.json edit — remote management is off) so DockYarp, running its realistic default 30-day renewal
 // margin, never renews during a run (a stable served thumbprint for RestartPersistenceTests). `;` (not `&&`) so
-// a patch hiccup only affects that one test rather than blocking the whole ACME chain. Then serve as the image's
-// default CMD does. This replaces the former Tls__RenewBeforeExpiry test override on the proxy.
+// a patch hiccup only affects that one test rather than blocking the whole ACME chain. Then point step-ca's own
+// DNS resolver at the bind9 container above — needed so step-ca's DNS-01 validation lookup actually reaches the
+// test zone (bind9's own name is resolved via Docker's still-default embedded DNS at this point, confirmed
+// available in this image: getent/nslookup/bash all present, verified live against smallstep/step-ca:latest) —
+// before serving as the image's default CMD does. This replaces the former Tls__RenewBeforeExpiry test override
+// on the proxy.
 const string stepCaCommand =
     "step ca provisioner update acme --x509-default-dur=1440h --x509-max-dur=1440h ; " +
+    "echo \"nameserver $(getent hosts bind9 | awk '{print $1}')\" > /etc/resolv.conf ; " +
     "exec step-ca --password-file /home/step/secrets/password /home/step/config/ca.json";
 builder.AddContainer("stepca", "smallstep/step-ca")
     .WithBindMount(E2EPaths.StepCaDirectory, "/home/step")
@@ -29,7 +51,13 @@ builder.AddContainer("stepca", "smallstep/step-ca")
     .WithEnvironment("DOCKER_STEPCA_INIT_ACME", "true")
     .WithEnvironment("DOCKER_STEPCA_INIT_REMOTE_MANAGEMENT", "false")
     .WithArgs("sh", "-c", stepCaCommand)
-    .WithHttpsEndpoint(targetPort: 9000, name: "acme");
+
+    // The image's own Dockerfile sets USER step (uid 1000) — confirmed live, the resolver-redirect above
+    // needs root to overwrite /etc/resolv.conf (owned root:root, mode 0644). Root here only affects this
+    // throwaway e2e container, not any production image or real security boundary.
+    .WithContainerRuntimeArgs("--user", "root")
+    .WithHttpsEndpoint(targetPort: 9000, name: "acme")
+    .WaitFor(bind9);
 
 // step-ca serves a leaf signed by its intermediate but does not send the intermediate, so trusting the root
 // alone gives a PartialChain error. This one-shot container waits for step-ca's PKI, writes a root+intermediate
@@ -96,6 +124,15 @@ proxy
     .WithEnvironment("Tls__ClientCaCertificatePath", "/clientca/client-ca.crt")
     .WithEnvironment("Tls__ClientCrlPath", "/clientca/client-ca.crl")
     .WithEnvironment("Tls__CheckInterval", "00:00:05") // retry provisioning after discovery (startup pass races it; default 12h)
+
+    // RFC 2136 config for the DNS-01/wildcard scenario (echo-dns01, BackendCatalog.cs), pointed at the bind9
+    // container above. TSIG key name/secret/zone are literals matching TlsHarness.PrepareDnsZone() exactly —
+    // no shared-code path between the AppHost and the test project (same convention as apiKey above).
+    .WithEnvironment("Tls__DnsUpdateServer", "bind9:53")
+    .WithEnvironment("Tls__DnsUpdateZone", "dns01.example.")
+    .WithEnvironment("Tls__DnsUpdateTsigKeyName", "e2e-tsig-key.")
+    .WithEnvironment("Tls__DnsUpdateTsigKeySecret", "iwcvFibjth/bZ2O25ffWn1wGoXyAgRh72pGmWuCP0a8=")
+    .WaitFor(bind9)
 
     // DockYarp runs with its realistic default renewal margin (30 days): step-ca is configured to issue certs
     // far longer than that (60 days, see the stepca container), so no renewal is due during a run and the served

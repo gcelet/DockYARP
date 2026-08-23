@@ -32,4 +32,9 @@ public static class E2EPaths
     /// <summary>The (writable) directory DockYarp persists certificates and Data Protection keys into,
     /// bind-mounted at the container's <c>/certs</c>.</summary>
     public static string CertsDirectory { get; } = Path.Combine(Path.GetTempPath(), "dockyarp-e2e", "certs");
+
+    /// <summary>The directory holding the BIND9 config staged for the DNS-01 e2e scenario (bind-mounted
+    /// read-only; the <c>bind9</c> container copies these into its own writable layer at startup, so no
+    /// host-bind-mount write permission is ever needed — see the <c>bind9</c> resource in Program.cs).</summary>
+    public static string Bind9Directory { get; } = Path.Combine(Path.GetTempPath(), "dockyarp-e2e", "bind9");
 }

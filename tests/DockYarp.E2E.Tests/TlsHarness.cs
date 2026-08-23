@@ -120,6 +120,55 @@ internal static class TlsHarness
         WriteCrl(ca, caKey, from, to, revokedClientCertificate.SerialNumber);
     }
 
+    /// <summary>Writes the BIND9 config staged for the DNS-01 e2e scenario: a <c>named.conf</c> authoritative
+    /// for the test zone (and forwarding everything else to Docker's embedded DNS, 127.0.0.11, so step-ca
+    /// keeps resolving the HTTP-01 container aliases too) plus the zone's initial content.</summary>
+    /// <remarks>
+    /// The TSIG key name/secret and zone name are literal, matching values in Program.cs on purpose — the two
+    /// projects have no shared-code path (AppHost cannot reference the test project), the same convention
+    /// already used for the admin API key. The <c>bind9</c> container copies these into its own writable layer
+    /// before starting <c>named</c> (see Program.cs) — this directory itself is only ever mounted read-only, no
+    /// host-bind-mount write-permission dance needed (unlike step-ca's PKI directory).
+    /// </remarks>
+    internal static void PrepareDnsZone()
+    {
+        Directory.CreateDirectory(E2EPaths.Bind9Directory);
+
+        const string namedConf = """
+            options {
+                directory "/var/cache/bind";
+                listen-on { any; };
+                listen-on-v6 { any; };
+                forwarders { 127.0.0.11; };
+                allow-query { any; };
+                recursion yes;
+                dnssec-validation no;
+            };
+
+            key "e2e-tsig-key." {
+                algorithm hmac-sha256;
+                secret "iwcvFibjth/bZ2O25ffWn1wGoXyAgRh72pGmWuCP0a8=";
+            };
+
+            zone "dns01.example" {
+                type master;
+                file "/var/cache/bind/db.dns01.example";
+                allow-update { key "e2e-tsig-key."; };
+            };
+
+            """;
+        File.WriteAllText(Path.Combine(E2EPaths.Bind9Directory, "named.conf"), namedConf);
+
+        const string zoneFile = """
+            $TTL 300
+            @   IN  SOA  ns.dns01.example. admin.dns01.example. ( 2026082301 3600 900 604800 300 )
+            @   IN  NS   ns.dns01.example.
+            ns  IN  A    127.0.0.1
+
+            """;
+        File.WriteAllText(Path.Combine(E2EPaths.Bind9Directory, "db.dns01.example"), zoneFile);
+    }
+
     // Builds a real, BouncyCastle-signed CRL revoking one serial number, matching ClientCertificateValidatorTests'
     // own fixture-generation approach (a real CRL, not an opaque pre-baked file).
     private static void WriteCrl(X509Certificate2 ca, RSA caKey, DateTimeOffset from, DateTimeOffset to, string revokedSerialHex)

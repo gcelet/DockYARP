@@ -18,6 +18,7 @@ DockYarp-specific keys use the `DOCKYARP_` prefix.
 | `VIRTUAL_DEST` | No | Rewrites the matched path before forwarding; `/` strips the `VIRTUAL_PATH` prefix. | `/` |
 | `LETSENCRYPT_HOST` | No | Host a certificate should be obtained for (enables TLS metadata). | `app.local` |
 | `LETSENCRYPT_EMAIL` | No | Contact email used when requesting the certificate. | `admin@example.com` |
+| `DOCKYARP_ACME_CHALLENGE` | No | ACME challenge type: `http-01` (default) or `dns-01` (required for a wildcard `LETSENCRYPT_HOST`; needs `Tls:DnsUpdate*` configured — see `docs/tls-acme.md`). | `dns-01` |
 | `CERT_NAME` | No | Pin the host to a named shared (SAN/wildcard) certificate; the host is not ACME-provisioned. | `wildcard` |
 | `SSL_POLICY` | No | Per-host TLS preset overriding the global posture: `Mozilla-Modern`/`Mozilla-Intermediate`/`Mozilla-Old`, or a classic AWS ELB policy name (e.g. `ELBSecurityPolicy-TLS13-1-2-2021-06`; clamped to the TLS 1.2 floor, best-effort ciphers, FIPS/PQ/RFC 9151 variants not recognized). | `Mozilla-Modern` |
 | `HTTPS_METHOD` | No | HTTP↔HTTPS behavior: `redirect` (default), `noredirect`, `nohttp`, `nohttps`. | `noredirect` |

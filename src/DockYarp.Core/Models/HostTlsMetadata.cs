@@ -13,6 +13,9 @@ public sealed record HostTlsMetadata
     /// <summary>Gets the contact email used when requesting the certificate.</summary>
     public string? ContactEmail { get; init; }
 
+    /// <summary>Gets the ACME challenge type used to provision this host (<c>DOCKYARP_ACME_CHALLENGE</c>).</summary>
+    public AcmeChallengeType ChallengeType { get; init; } = AcmeChallengeType.Http01;
+
     /// <summary>Gets the HTTPS method controlling HTTP↔HTTPS behavior for this host.</summary>
     public HttpsMethod Method { get; init; } = HttpsMethod.Redirect;
 

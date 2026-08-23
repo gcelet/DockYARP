@@ -75,6 +75,9 @@ public sealed record ContainerLabelConfig
     /// <summary>Gets the client-certificate requirement (<c>DOCKYARP_CLIENT_CERT</c>); defaults to none.</summary>
     public ClientCertificateRequirement ClientCertificate { get; init; } = ClientCertificateRequirement.None;
 
+    /// <summary>Gets the ACME challenge type (<c>DOCKYARP_ACME_CHALLENGE</c>); defaults to HTTP-01.</summary>
+    public AcmeChallengeType ChallengeType { get; init; } = AcmeChallengeType.Http01;
+
     /// <summary>Gets the optional proxy request timeout (<c>DOCKYARP_PROXY_TIMEOUT</c>).</summary>
     public TimeSpan? ProxyTimeout { get; init; }
 

@@ -92,6 +92,7 @@ public static class LabelParser
             SessionAffinityPolicy = ResolveAffinity(labels),
             Priority = ParsePriority(GetOrNull(labels, DockerLabels.Priority)),
             ClientCertificate = ResolveClientCertificate(labels),
+            ChallengeType = ParseAcmeChallenge(GetOrNull(labels, DockerLabels.AcmeChallenge)),
             ProxyTimeout = ParseTimeoutSeconds(GetOrNull(labels, DockerLabels.ProxyTimeout)),
             MaxRequestBodySize = ParsePositiveLong(GetOrNull(labels, DockerLabels.MaxBodySize)),
             MaxConnectionsPerServer = ParsePositiveInt(GetOrNull(labels, DockerLabels.MaxConnections)),
@@ -126,6 +127,7 @@ public static class LabelParser
             SessionAffinityPolicy = ResolveAffinity(labels),
             Priority = ParsePriority(GetOrNull(labels, DockerLabels.Priority)),
             ClientCertificate = ResolveClientCertificate(labels),
+            ChallengeType = ParseAcmeChallenge(GetOrNull(labels, DockerLabels.AcmeChallenge)),
             ProxyTimeout = ParseTimeoutSeconds(GetOrNull(labels, DockerLabels.ProxyTimeout)),
             MaxRequestBodySize = ParsePositiveLong(GetOrNull(labels, DockerLabels.MaxBodySize)),
             MaxConnectionsPerServer = ParsePositiveInt(GetOrNull(labels, DockerLabels.MaxConnections)),
@@ -180,6 +182,23 @@ public static class LabelParser
         string? value = GetOrNull(labels, DockerLabels.ClientCert);
         return value is not null && value.ToUpperInvariant() is not ("REQUIRED" or "OPTIONAL" or "NONE" or "OFF");
     }
+
+    /// <summary>Reports whether <c>DOCKYARP_ACME_CHALLENGE</c> is present but not a recognized value.</summary>
+    /// <param name="labels">The container labels.</param>
+    /// <returns><see langword="true"/> when the value is not http-01/dns-01.</returns>
+    public static bool HasUnsupportedAcmeChallenge(IReadOnlyDictionary<string, string> labels)
+    {
+        ArgumentNullException.ThrowIfNull(labels);
+        string? value = GetOrNull(labels, DockerLabels.AcmeChallenge);
+        return value is not null && value.ToUpperInvariant() is not ("HTTP-01" or "DNS-01");
+    }
+
+    private static AcmeChallengeType ParseAcmeChallenge(string? value) =>
+        value?.ToUpperInvariant() switch
+        {
+            "DNS-01" => AcmeChallengeType.Dns01,
+            _ => AcmeChallengeType.Http01,
+        };
 
     private static ClientCertificateRequirement ParseClientCertificate(string? value) =>
         value?.ToUpperInvariant() switch

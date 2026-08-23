@@ -11,14 +11,18 @@ using Certes;
 using Certes.Acme;
 using Certes.Acme.Resource;
 
-/// <summary>ACME client backed by Certes, using the HTTP-01 challenge.</summary>
+using DockYarp.Core.Models;
+
+/// <summary>ACME client backed by Certes, supporting the HTTP-01 and DNS-01 challenges.</summary>
 /// <remarks>Performs the real network exchange with the CA; exercised via integration only, not unit tests.</remarks>
 /// <param name="options">TLS options (ACME directory, contact email, ToS).</param>
 /// <param name="challenges">The HTTP-01 challenge store.</param>
-public sealed class CertesAcmeClient(TlsOptions options, IHttp01ChallengeStore challenges) : IAcmeClient
+/// <param name="dnsChallenges">The DNS-01 challenge provider (RFC 2136).</param>
+public sealed class CertesAcmeClient(TlsOptions options, IHttp01ChallengeStore challenges, IDnsChallengeProvider dnsChallenges) : IAcmeClient
 {
     /// <inheritdoc />
-    public async Task<LoadedCertificate> RequestCertificateAsync(string host, string? email, CancellationToken cancellationToken)
+    public async Task<LoadedCertificate> RequestCertificateAsync(
+        string host, string? email, AcmeChallengeType challengeType, CancellationToken cancellationToken)
     {
         string contact = email ?? options.ContactEmail
             ?? throw new InvalidOperationException("An ACME contact email is required.");
@@ -28,21 +32,49 @@ public sealed class CertesAcmeClient(TlsOptions options, IHttp01ChallengeStore c
 
         IOrderContext order = await acme.NewOrder([host]).ConfigureAwait(false);
         IAuthorizationContext authorization = (await order.Authorizations().ConfigureAwait(false)).First();
-        IChallengeContext challenge = await authorization.Http().ConfigureAwait(false);
 
+        IKey privateKey = challengeType == AcmeChallengeType.Dns01
+            ? await CompleteDnsChallengeAsync(acme, authorization, host, cancellationToken).ConfigureAwait(false)
+            : await CompleteHttpChallengeAsync(authorization, cancellationToken).ConfigureAwait(false);
+
+        CertificateChain chain = await order.Generate(new CsrInfo { CommonName = host }, privateKey).ConfigureAwait(false);
+        return BuildLoadedCertificate(chain, privateKey);
+    }
+
+    private async Task<IKey> CompleteHttpChallengeAsync(IAuthorizationContext authorization, CancellationToken cancellationToken)
+    {
+        IChallengeContext challenge = await authorization.Http().ConfigureAwait(false);
         challenges.Set(challenge.Token, challenge.KeyAuthz);
         try
         {
             await challenge.Validate().ConfigureAwait(false);
             await WaitForValidationAsync(authorization, cancellationToken).ConfigureAwait(false);
-
-            IKey privateKey = KeyFactory.NewKey(KeyAlgorithm.ES256);
-            CertificateChain chain = await order.Generate(new CsrInfo { CommonName = host }, privateKey).ConfigureAwait(false);
-            return BuildLoadedCertificate(chain, privateKey);
+            return KeyFactory.NewKey(KeyAlgorithm.ES256);
         }
         finally
         {
             challenges.Remove(challenge.Token);
+        }
+    }
+
+    private async Task<IKey> CompleteDnsChallengeAsync(
+        AcmeContext acme, IAuthorizationContext authorization, string host, CancellationToken cancellationToken)
+    {
+        IChallengeContext challenge = await authorization.Dns().ConfigureAwait(false);
+        string baseDomain = host.StartsWith("*.", StringComparison.Ordinal) ? host[2..] : host;
+        string fqdn = $"_acme-challenge.{baseDomain}";
+        string txtValue = acme.AccountKey.DnsTxt(challenge.Token);
+
+        await dnsChallenges.PublishTxtRecordAsync(fqdn, txtValue, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await challenge.Validate().ConfigureAwait(false);
+            await WaitForValidationAsync(authorization, cancellationToken).ConfigureAwait(false);
+            return KeyFactory.NewKey(KeyAlgorithm.ES256);
+        }
+        finally
+        {
+            await dnsChallenges.RemoveTxtRecordAsync(fqdn, txtValue, cancellationToken).ConfigureAwait(false);
         }
     }
 

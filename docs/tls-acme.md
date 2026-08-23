@@ -12,7 +12,8 @@ DockYarp obtains and serves HTTPS certificates automatically for hosts that decl
 | `SniCertificateSelector` | Picks the exact host certificate, then a wildcard parent, else the fallback. |
 | `KestrelTlsConfigurator` | Wires the selector into Kestrel's HTTPS defaults. |
 | `IHttp01ChallengeStore` / `Http01ChallengeMiddleware` | Serves `/.well-known/acme-challenge/{token}`. |
-| `IAcmeClient` / `CertesAcmeClient` | Obtains a certificate via ACME HTTP-01 (Certes). |
+| `IAcmeClient` / `CertesAcmeClient` | Obtains a certificate via ACME HTTP-01 or DNS-01 (Certes). |
+| `IDnsChallengeProvider` / `Rfc2136DnsChallengeProvider` | Publishes/removes the `_acme-challenge` TXT record for DNS-01, via RFC 2136 (Dynamic DNS Update). |
 | `CertificateProvisioningService` | Acquires missing certificates and renews near-expiry ones. |
 
 ## Flow
@@ -21,9 +22,14 @@ DockYarp obtains and serves HTTPS certificates automatically for hosts that decl
 proxy-routing (HostTlsMetadata) ──> TlsDomains.Desired ──> CertificateProvisioningService
                                                                 │  (missing or near expiry)
                                                                 ▼
-                                                          IAcmeClient (HTTP-01)
-                                                                │  ┌── Http01ChallengeMiddleware answers the token
-                                                                ▼  ┘
+                                                    IAcmeClient (HTTP-01 default, DNS-01 opt-in)
+                                                     │ HTTP-01                    │ DNS-01
+                                                     ▼                            ▼
+                                        Http01ChallengeMiddleware        IDnsChallengeProvider
+                                          answers the token             publishes the TXT record
+                                                     │                            │
+                                                     └──────────────┬─────────────┘
+                                                                     ▼
                                                           ICertificateStore.Save ──> SniCertificateSelector (hot reload)
 ```
 
@@ -48,6 +54,10 @@ host in the file name. For a **wildcard** certificate (`*.example.com`), provide
 (`example.com.crt`/`example.com.key`): SNI selection tries the exact host, then the parent domain (leftmost
 label stripped), then the self-signed fallback. Filesystem access goes through `System.IO.Abstractions`,
 so loading is unit-tested against a mock filesystem.
+
+A wildcard `LETSENCRYPT_HOST` can also be **ACME-issued**, not just operator-provided — see
+[DNS-01 & wildcard certificates](#dns-01--wildcard-certificates) below. A wildcard order is stored under its
+base domain exactly like a mounted wildcard certificate, so the same SNI lookup serves either.
 
 ## Testing boundary
 
@@ -74,6 +84,35 @@ DH-group parameters. TLS 1.3 (DockYarp's default) doesn't use classic DH paramet
 
 A host whose `HTTPS_METHOD` is `nohttps` is **not** provisioned (it is served over HTTP only).
 
+### DNS-01 & wildcard certificates
+
+`DOCKYARP_ACME_CHALLENGE` selects the challenge type per host: `http-01` (default) or `dns-01` (case
+insensitive; an unrecognized value falls back to `http-01` with a logged warning). DNS-01 is the **only**
+way to issue a **wildcard** certificate (`LETSENCRYPT_HOST=*.example.com`) — this is an ACME protocol
+constraint (a wildcard identifier is never valid for HTTP-01), not a DockYarp-specific restriction. A
+wildcard order requests exactly that one identifier; the issued certificate is stored under the parent
+domain (`example.com`), so it serves any subdomain via the existing wildcard SNI fallback — there is no
+implicit certificate for the bare parent domain itself (declare a separate host for that if needed).
+
+DockYarp's only DNS-01 provider today is **RFC 2136** (Dynamic DNS Update) — the generic mechanism most
+ACME clients (cert-manager, Traefik, Certbot, Posh-ACME) use to talk to a self-hosted authoritative DNS
+server (BIND, PowerDNS, CoreDNS, Technitium, ...) over a TSIG-authenticated update, not a commercial API.
+It was chosen specifically because it needs no third-party account of any kind. Configure it globally
+(`TlsOptions`, not per-host — DNS infrastructure is an operator-level concern):
+
+- `DnsUpdateServer` — the RFC 2136 server, `host` or `host:port` (default port 53).
+- `DnsUpdateZone` — the zone apex the update targets (e.g. `example.com`).
+- `DnsUpdateTsigKeyName` — the TSIG key name configured on the DNS server.
+- `DnsUpdateTsigKeySecret` — the TSIG key secret, base64-encoded.
+- `DnsUpdateTsigAlgorithm` — the TSIG algorithm (default `hmac-sha256`; also `hmac-sha1`/`hmac-sha384`/`hmac-sha512`).
+
+All four `DnsUpdateServer`/`DnsUpdateZone`/`DnsUpdateTsigKeyName`/`DnsUpdateTsigKeySecret` are required for
+any `dns-01` host — if incomplete, provisioning fails for that host alone (a clear, actionable error) while
+every other host (HTTP-01 or a correctly-configured DNS-01 one) is unaffected. The DNS UPDATE (RFC 2136 §2)
+and TSIG (RFC 8945) wire formats are implemented directly against the BCL (no third-party DNS library) —
+the one candidate NuGet package pulls in a `BouncyCastle.Cryptography` dependency that conflicts with
+`Portable.BouncyCastle`, already used for CRL parsing.
+
 ### Mutual TLS
 
 `ClientCaCertificatePath` points to a PEM CA bundle; `ClientCrlPath` an optional CRL checked alongside it
@@ -90,5 +129,7 @@ SUCCESS`/`FAILED`/`NONE` (subject/issuer only for `SUCCESS`).
 
 ## Deferred
 
-DNS-01 challenges; wiring the store into `/api/certs`; switching HTTPS enforcement from the `EnforceHttps`
-flag to a real cert-availability check.
+A commercial DNS-01 provider (Cloudflare, Route53, ...) behind `IDnsChallengeProvider` — the abstraction is
+designed to accept one without disruption, none ships today (RFC 2136 is the only provider); wiring the
+store into `/api/certs`; switching HTTPS enforcement from the `EnforceHttps` flag to a real
+cert-availability check.

@@ -87,7 +87,7 @@ an admin API, and a container-native image — plus the `DOCKYARP_PRIORITY` exte
 
 The **full, authoritative parity matrix** (implemented / partial / deferred, with a backlog item per gap) is
 the single source of truth and lives in **[`openspec/backlog/parity.md`](../openspec/backlog/parity.md)**.
-Known gaps — multi-level/regex hosts, arbitrary `VIRTUAL_DEST` rewrite, `CERT_NAME`/DNS-01/OCSP, gzip, PROXY
+Known gaps — multi-level/regex hosts, arbitrary `VIRTUAL_DEST` rewrite, OCSP stapling, gzip, PROXY
 protocol, `NETWORK_ACCESS=internal`, htpasswd files, `vhost.d` overrides, IPv6, Docker Swarm, … — are each
 tracked as a promotable stub under [`openspec/backlog/items/`](../openspec/backlog/items/), and architectural
 non-goals (fastcgi/uwsgi, L4 stream, split docker-gen mode) are documented there too. See

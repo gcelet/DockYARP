@@ -60,16 +60,24 @@ public sealed class CertificateProvisioningService(
         // others. Per-host failures stay isolated; cancellation propagates so a shutdown stops the pass.
         return Parallel.ForEachAsync(TlsDomains.Desired(snapshot, reserved.Reserved), parallelOptions, async (desired, token) =>
         {
-            if (!NeedsCertificate(desired.Host))
+            // A wildcard identifier (*.example.com) is stored under its parent domain (example.com),
+            // matching SniCertificateSelector's existing wildcard-fallback lookup.
+            string storageKey = desired.Host.StartsWith("*.", StringComparison.Ordinal)
+                ? desired.Host[2..]
+                : desired.Host;
+
+            if (!NeedsCertificate(storageKey))
             {
                 return;
             }
 
             try
             {
-                LoadedCertificate certificate =
-                    await acme.RequestCertificateAsync(desired.Host, desired.Email, token).ConfigureAwait(false);
-                certificates.Save(desired.Host, certificate);
+                LoadedCertificate certificate = await acme
+                    .RequestCertificateAsync(desired.Host, desired.Email, desired.ChallengeType, token)
+                    .ConfigureAwait(false);
+
+                certificates.Save(storageKey, certificate);
                 consecutiveFailures.TryRemove(desired.Host, out _);
                 TlsLog.CertificateProvisioned(logger, desired.Host);
             }

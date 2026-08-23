@@ -60,6 +60,7 @@ public static class AspireAppHostFixture
         // startup (FileCertificateStore has no live reload).
         TlsHarness.PrepareClientCa();
         TlsHarness.PrepareMountedChain();
+        TlsHarness.PrepareDnsZone();
 
         using CancellationTokenSource cts = new(TimeSpan.FromSeconds(StartupTimeoutSeconds));
         CancellationToken token = cts.Token;

@@ -40,6 +40,7 @@ internal static class BackendCatalog
     private const string LetsEncryptHost = "LETSENCRYPT_HOST";
     private const string Hsts = "HSTS";
     private const string ClientCert = "DOCKYARP_CLIENT_CERT";
+    private const string AcmeChallenge = "DOCKYARP_ACME_CHALLENGE";
     private const string SslPolicy = "SSL_POLICY";
     private const string DockYarpHttp2 = "DOCKYARP_HTTP2";
     private const string DockYarpAffinity = "DOCKYARP_AFFINITY";
@@ -229,6 +230,24 @@ internal static class BackendCatalog
                 Kv(DockYarpHttp2, "false"),
             ],
             Environment = EchoEnv(EchoPort, id: "http1"),
+        },
+        new BackendSpec
+        {
+            // DNS-01 + wildcard: LETSENCRYPT_HOST is *.dns01.example (DNS-01 only — HTTP-01 cannot issue a
+            // wildcard), routed via a specific subdomain to exercise SniCertificateSelector's existing
+            // parent-domain fallback (the wildcard cert is stored under dns01.example, matched to
+            // sub.dns01.example at handshake time).
+            Name = "echo-dns01",
+            Image = EchoImage,
+            Tag = EchoTag,
+            Labels =
+            [
+                Kv(VirtualHost, "sub.dns01.example"),
+                Kv(VirtualPort, EchoPort),
+                Kv(LetsEncryptHost, "*.dns01.example"),
+                Kv(AcmeChallenge, "dns-01"),
+            ],
+            Environment = EchoEnv(EchoPort, id: "dns01"),
         },
         new BackendSpec
         {

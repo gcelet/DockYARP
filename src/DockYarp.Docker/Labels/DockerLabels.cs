@@ -75,6 +75,9 @@ public static class DockerLabels
     /// <summary>Client-certificate (mutual TLS) requirement: <c>required</c>, <c>optional</c>, or <c>none</c>/<c>off</c>.</summary>
     public const string ClientCert = "DOCKYARP_CLIENT_CERT";
 
+    /// <summary>ACME challenge type for this host: <c>http-01</c> (default) or <c>dns-01</c> (required for a wildcard <see cref="LetsEncryptHost"/>).</summary>
+    public const string AcmeChallenge = "DOCKYARP_ACME_CHALLENGE";
+
     /// <summary>Proxy request timeout in seconds applied to the cluster's outgoing requests.</summary>
     public const string ProxyTimeout = "DOCKYARP_PROXY_TIMEOUT";
 

@@ -764,6 +764,30 @@ public sealed class LabelParserTests
             .Should().Be(ClientCertificateRequirement.None);
     }
 
+    /// <summary>DOCKYARP_ACME_CHALLENGE selects the ACME challenge type; absent/unrecognized default to HTTP-01.</summary>
+    [Test]
+    public void AcmeChallengeLabelSelectsChallengeType()
+    {
+        ParseConfig(DockerLabels.AcmeChallenge, "dns-01").ChallengeType.Should().Be(AcmeChallengeType.Dns01);
+        ParseConfig(DockerLabels.AcmeChallenge, "http-01").ChallengeType.Should().Be(AcmeChallengeType.Http01);
+        ParseConfig(DockerLabels.AcmeChallenge, "bogus").ChallengeType.Should().Be(AcmeChallengeType.Http01);
+    }
+
+    /// <summary>An unrecognized DOCKYARP_ACME_CHALLENGE value is flagged so it surfaces as a discovery warning.</summary>
+    [Test]
+    public void UnsupportedAcmeChallengeIsFlagged()
+    {
+        ContainerInfo container = DiscoveryTestData.Container(
+            "c1",
+            "10.0.0.1",
+            DiscoveryTestData.Labels(
+                (DockerLabels.VirtualHost, "app.local"),
+                (DockerLabels.VirtualPort, "8080"),
+                (DockerLabels.AcmeChallenge, "bogus")));
+
+        LabelParser.HasUnsupportedAcmeChallenge(container.Labels).Should().BeTrue();
+    }
+
     /// <summary>The nginx-proxy loadbalance label aliases DOCKYARP_LB (nginx directives + DockYarp names).</summary>
     [Test]
     public void NginxLoadBalanceAliasMapsToPolicy()

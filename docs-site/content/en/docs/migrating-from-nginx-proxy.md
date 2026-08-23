@@ -289,8 +289,9 @@ instance) rather than public Let's Encrypt, two things need pointing at it:
    DockYARP's exact container image on an isolated Docker network — the connection failed without
    `SSL_CERT_FILE` set (confirming no certificate is trusted by default) and succeeded once it was set.
 
-A private CA reached via HTTP-01 challenge (the default for both `acme-companion` and DockYARP — DNS-01 is not
-currently supported) needs no further configuration beyond the two points above.
+A private CA reached via HTTP-01 challenge (the default for both `acme-companion` and DockYARP) needs no
+further configuration beyond the two points above. DNS-01 (`DOCKYARP_ACME_CHALLENGE=dns-01`, required for a
+wildcard `LETSENCRYPT_HOST`) is also supported — see [TLS & ACME](/docs/features/#tls--acme).
 
 ### DNS carried over from a split proxy/ACME setup
 

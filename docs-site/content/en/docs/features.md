@@ -40,8 +40,13 @@ reconciling live as containers start and stop.
 
 DockYARP terminates TLS and can obtain certificates automatically.
 
-- **Automatic certificates**: a host with `LETSENCRYPT_HOST` is provisioned over ACME (HTTP-01) and renewed
-  before expiry; a host with no certificate gets a self-signed fallback.
+- **Automatic certificates**: a host with `LETSENCRYPT_HOST` is provisioned over ACME (HTTP-01 by default) and
+  renewed before expiry; a host with no certificate gets a self-signed fallback.
+- **Wildcard certificates via DNS-01**: set `DOCKYARP_ACME_CHALLENGE=dns-01` and a wildcard `LETSENCRYPT_HOST`
+  (`*.example.com`) to get a real ACME-issued wildcard certificate — HTTP-01 cannot issue one, DNS-01 is the
+  only way. DockYarp talks RFC 2136 (Dynamic DNS Update) to a self-hosted authoritative DNS server (BIND,
+  PowerDNS, CoreDNS, ...); configure `Tls:DnsUpdateServer`/`DnsUpdateZone`/`DnsUpdateTsigKeyName`/
+  `DnsUpdateTsigKeySecret`.
 - **Provided & shared certs**: drop PEM/PFX files in the certificate directory; `CERT_NAME` pins a host to a
   shared SAN/wildcard certificate (not ACME-provisioned).
 - **Per-connection policy**: the certificate, TLS version, and ciphers are selected per SNI host — a per-host

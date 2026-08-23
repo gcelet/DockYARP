@@ -30,6 +30,7 @@ public static class TlsServiceCollectionExtensions
         services.AddSingleton<SniTlsHandshakeCallback>();
         services.AddSingleton<IHttp01ChallengeStore, Http01ChallengeStore>();
         services.AddSingleton<Http01ChallengeMiddleware>();
+        services.AddSingleton<IDnsChallengeProvider, Rfc2136DnsChallengeProvider>();
         services.AddSingleton<IAcmeClient, CertesAcmeClient>();
 
         // Default: no reserved (non-route) hosts. A host application (e.g. the ASP.NET host, for the admin host)

@@ -178,6 +178,11 @@ public static class ContainerMapper
             warnings.Add($"{container.Name} ({id}): unrecognized {DockerLabels.ClientCert}; requiring no client certificate.");
         }
 
+        if (LabelParser.HasUnsupportedAcmeChallenge(config))
+        {
+            warnings.Add($"{container.Name} ({id}): unrecognized {DockerLabels.AcmeChallenge}; using http-01.");
+        }
+
         if (LabelParser.HasInvalidProxyTimeout(config))
         {
             warnings.Add($"{container.Name} ({id}): invalid {DockerLabels.ProxyTimeout}; no timeout applied.");
@@ -224,6 +229,7 @@ public static class ContainerMapper
                 {
                     CertificateHost = letsEncryptHost ?? host,
                     ContactEmail = first.LetsEncryptEmail,
+                    ChallengeType = first.ChallengeType,
                     Method = first.HttpsMethod,
                     Hsts = first.Hsts,
                     CertificateName = first.CertName,
@@ -288,6 +294,7 @@ public static class ContainerMapper
                 {
                     CertificateHost = host,
                     ContactEmail = common.LetsEncryptEmail,
+                    ChallengeType = common.ChallengeType,
                     Method = common.HttpsMethod,
                     Hsts = common.Hsts,
                     CertificateName = common.CertName,

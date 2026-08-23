@@ -67,4 +67,23 @@ public sealed class TlsOptions
     /// <see cref="PrivateKeyEncryptionPassphrase"/> to a new one, so already-encrypted keys keep loading until
     /// they are next rewritten (a renewal, or the dashboard's explicit re-encryption action).</remarks>
     public string? PreviousPrivateKeyEncryptionPassphrase { get; set; }
+
+    /// <summary>Gets or sets the RFC 2136 DNS server (<c>host</c> or <c>host:port</c>, default port 53) that
+    /// accepts dynamic updates for ACME DNS-01 challenges.</summary>
+    /// <remarks>Opt-in (default <see langword="null"/>) — required only for a host using
+    /// <c>DOCKYARP_ACME_CHALLENGE=dns-01</c>. Global, not per-host: DNS infrastructure is an operator-level
+    /// concern, matching <see cref="ClientCaCertificatePath"/>'s existing global scope.</remarks>
+    public string? DnsUpdateServer { get; set; }
+
+    /// <summary>Gets or sets the zone apex (e.g. <c>example.com</c>) the RFC 2136 dynamic update targets.</summary>
+    public string? DnsUpdateZone { get; set; }
+
+    /// <summary>Gets or sets the TSIG key name authenticating the RFC 2136 update.</summary>
+    public string? DnsUpdateTsigKeyName { get; set; }
+
+    /// <summary>Gets or sets the TSIG key secret (base64-encoded) authenticating the RFC 2136 update.</summary>
+    public string? DnsUpdateTsigKeySecret { get; set; }
+
+    /// <summary>Gets or sets the TSIG algorithm (default <c>hmac-sha256</c>).</summary>
+    public string DnsUpdateTsigAlgorithm { get; set; } = "hmac-sha256";
 }

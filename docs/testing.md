@@ -32,6 +32,7 @@ runtime behavior through the real proxy.
 | **EnvVarConfigTests** · `EnvOnlyBackend_IsDiscoveredAndProxied` | Config via environment variables (no labels). |
 | · `EnvVar_OverridesSameNamedLabel` | Env value wins over a same-named label. |
 | **TlsTests** · `AcmeCertificate_IsProvisionedForHost` | ACME (step-ca) provisions a cert for `LETSENCRYPT_HOST`. |
+| · `AcmeWildcardCertificate_IsProvisionedViaDns01` | `DOCKYARP_ACME_CHALLENGE=dns-01` provisions a real wildcard certificate via RFC 2136 against a throwaway BIND9 authority — proves the hand-rolled DNS UPDATE/TSIG code, the DNS-01 challenge flow, and the wildcard parent-domain SNI fallback together, end to end. |
 | · `UnknownHost_UsesSelfSignedFallback` | Unknown SNI host → the self-signed fallback certificate. |
 | · `HttpRequest_RedirectsToHttps` | HTTP→HTTPS redirect on the edge. |
 | · `Hsts_HeaderIsPresentOverHttps` | Per-host `HSTS` header served over HTTPS. |
