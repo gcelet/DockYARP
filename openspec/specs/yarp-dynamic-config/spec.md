@@ -52,11 +52,14 @@ original request URI: path base + path + query), and SHALL forward an appropriat
 `X-Forwarded-Ssl` SHALL mirror `X-Forwarded-Proto` (respecting downstream-proxy trust); `X-Original-URI` SHALL
 always be the real original URI (a client-supplied value is replaced).
 
-When a client certificate is present on the connection (verified mutual TLS), the system SHALL forward the client's
-identity to the backend: `X-SSL-Client-Verify: SUCCESS`, `X-SSL-Client-S-DN` (the certificate subject), and
-`X-SSL-Client-I-DN` (the certificate issuer). The system SHALL always strip any client-supplied `X-SSL-Client-*`
-headers first, so the backend only ever receives DockYarp-set values; when no client certificate is present, no
-`X-SSL-Client-*` header SHALL reach the backend.
+For a route with a `required` or `optional` client-certificate requirement, the system SHALL forward the
+connection's client-certificate verification outcome to the backend as `X-SSL-Client-Verify`: `SUCCESS` when a
+presented certificate chains to the configured CA and is not revoked, `FAILED` when a certificate was presented
+but does not chain to the CA or is revoked, or `NONE` when no certificate was presented. `X-SSL-Client-S-DN`
+(the certificate subject) and `X-SSL-Client-I-DN` (the certificate issuer) SHALL be forwarded only alongside
+`SUCCESS`. For a route with no client-certificate requirement, no `X-SSL-Client-*` header SHALL reach the
+backend. The system SHALL always strip any client-supplied `X-SSL-Client-*` headers first, so the backend only
+ever receives DockYarp-set values.
 
 #### Scenario: Forwarded headers reach the backend
 - **WHEN** a request is proxied to a backend
@@ -68,13 +71,27 @@ headers first, so the backend only ever receives DockYarp-set values; when no cl
   carrying the original request path and query
 
 #### Scenario: Verified client certificate is forwarded
-- **WHEN** a request is proxied over a connection carrying a verified client certificate
+- **WHEN** a request is proxied over a connection carrying a verified client certificate on a `required` or
+  `optional` route
 - **THEN** the backend receives `X-SSL-Client-Verify: SUCCESS` with the certificate's subject and issuer
 
+#### Scenario: Untrusted or revoked client certificate is reported as FAILED
+- **WHEN** a request is proxied over a connection carrying a client certificate that does not chain to the
+  configured CA, or is revoked, on an `optional` route
+- **THEN** the backend receives `X-SSL-Client-Verify: FAILED` with no subject/issuer headers, and the request is
+  not rejected
+
+#### Scenario: Missing client certificate is reported as NONE
+- **WHEN** a request is proxied over a connection with no client certificate on an `optional` route
+- **THEN** the backend receives `X-SSL-Client-Verify: NONE` with no subject/issuer headers
+
+#### Scenario: Route without a client-certificate requirement gets no SSL-client headers
+- **WHEN** a request is proxied to a route with no client-certificate requirement
+- **THEN** the backend receives no `X-SSL-Client-*` header
+
 #### Scenario: Client-supplied client-cert headers are stripped
-- **WHEN** a client sends its own `X-SSL-Client-Verify`/`X-SSL-Client-S-DN` header and the connection has no verified
-  client certificate
-- **THEN** those headers are stripped and do not reach the backend
+- **WHEN** a client sends its own `X-SSL-Client-Verify`/`X-SSL-Client-S-DN` header
+- **THEN** those headers are stripped from the proxied request before any DockYarp-set value is applied
 
 ### Requirement: Downstream proxy trust
 The system SHALL provide a configurable trust setting that determines whether client-supplied
