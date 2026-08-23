@@ -155,7 +155,7 @@
         },
         "SkipPublishGate": {
           "type": "boolean",
-          "description": "DockerPublish: skip the Test/E2E gate before pushing — for a quick manual/local push only; CI never sets this"
+          "description": "DockerPublish: skip the Test/E2E gate before pushing (used by the edge channel for speed)"
         },
         "Version": {
           "type": "string",

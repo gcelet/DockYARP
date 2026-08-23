@@ -38,7 +38,7 @@ class Build : FalloutBuild
     [Parameter("DockerPublish: also tag the image 'edge' (in-development builds off the trunk branch)")]
     readonly bool Edge;
 
-    [Parameter("DockerPublish: skip the Test/E2E gate before pushing — for a quick manual/local push only; CI never sets this")]
+    [Parameter("DockerPublish: skip the Test/E2E gate before pushing (used by the edge channel for speed)")]
     readonly bool SkipPublishGate;
 
     [Parameter("Target platform(s) for the image, comma-separated (multi-arch requires DockerPublish/--push, not a local --load)")]
@@ -166,8 +166,11 @@ class Build : FalloutBuild
     // Unit/integration suite. The end-to-end project is excluded by project (not by a filter that would match
     // no tests, which makes a solution-wide `dotnet test` flake on the exit code), so the default build is
     // deterministic and needs no Docker daemon.
+    //
+    // OnlyWhenDynamic (not a condition on DockerPublish's own DependsOn — see that target's comment).
     Target Test => _ => _
         .DependsOn(Compile)
+        .OnlyWhenDynamic(() => !SkipPublishGate)
         .Executes(() => DotNetTest(s => s
             .SetConfiguration(Configuration)
             .EnableNoBuild()
@@ -219,15 +222,14 @@ class Build : FalloutBuild
     // ONE argv token — docker received "-t <value>" glued together (with the space baked into the tag), not
     // two separate arguments, and rejected it as an invalid reference. Caught by a live registry push, not by
     // this file's own tests. The typed settings API sidesteps the whole class of bug.
-    // Gated on Test + E2E directly on this target (not just co-listed under a wrapper) — Nuke's DependsOn
-    // guarantees a target's own dependencies run, and must succeed, before its own Executes body starts;
-    // listing unrelated targets side by side (e.g. on a CI command line) does NOT give that guarantee, since
-    // nothing then constrains their relative order or blocks this target's push on their failure. Matches the
-    // precedent already set by DockerImage.DependsOn(Test). --skip-publish-gate opts out for a quick
-    // manual/local push only; CI never sets it, so a release publish is always gated by default.
+    // Gated on Test + E2E directly on this target (not just co-listed under a wrapper) — matches the
+    // precedent already set by DockerImage.DependsOn(Test). The list is always [Test, E2E]: a prior version
+    // made it `SkipPublishGate ? [] : [Test, E2E]`, which never actually worked — a Target's DependsOn is
+    // evaluated while Fallout builds the whole graph, before parameter binding is guaranteed done, so
+    // real edge CI runs always ran Test+E2E regardless of the flag. --skip-publish-gate now gates via
+    // OnlyWhenDynamic on Test/E2E themselves (see their own comment) instead.
     Target DockerPublish => _ => _
-        .DependsOn(GenerateVersionDetails)
-        .DependsOn(SkipPublishGate ? [] : [Test, E2E])
+        .DependsOn(GenerateVersionDetails, Test, E2E)
         .Executes(() => DockerBuildxBuild(s => s
             .SetProcessWorkingDirectory(RootDirectory)
             .SetPath(".")
@@ -267,8 +269,10 @@ class Build : FalloutBuild
     // Opt-in end-to-end suite: builds the images the Aspire AppHost consumes (the proxy image and the echo
     // backend image), then runs the EndToEnd-categorized tests, which boot the distributed system on a real
     // Docker daemon. Requires Docker reachable by Aspire's DCP. Never a dependency of the default flow.
+    // OnlyWhenDynamic — see Test's own comment.
     Target E2E => _ => _
         .DependsOn(Compile)
+        .OnlyWhenDynamic(() => !SkipPublishGate)
         .Executes(() =>
         {
             DockerImageBuild(s => s

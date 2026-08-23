@@ -186,10 +186,8 @@ jobs:
           REPOSITORY: ${{ steps.cfg.outputs.repository }}
         run: ./build.sh DockerPublish --registry "$REGISTRY" --image-repository "$REPOSITORY" --edge --skip-publish-gate --platforms linux/amd64,linux/arm64
 
-      # Mirrors the release job's own step below — --skip-publish-gate is meant to skip Test/E2E here (see the
-      # comment above), but a real 2026-08-23 CI failure showed E2E running and failing on this job anyway
-      # (root cause not yet confirmed — this step exists so the next failure is diagnosable at all, since
-      # per-resource logs were previously only ever visible in the runner's own torn-down filesystem).
+      # Mirrors the release job's own step below. Even with --skip-publish-gate, E2E can still run here (see
+      # Build.cs's own comment on Test/E2E) — this makes any such failure diagnosable.
       - name: Upload E2E diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
