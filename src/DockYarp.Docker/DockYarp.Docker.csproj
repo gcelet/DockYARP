@@ -5,7 +5,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Docker.DotNet" />
+    <PackageReference Include="Docker.DotNet.Enhanced" />
+    <PackageReference Include="Docker.DotNet.Enhanced.NativeHttp" />
+    <PackageReference Include="Docker.DotNet.Enhanced.Unix" />
+    <PackageReference Include="Docker.DotNet.Enhanced.NPipe" />
+    <PackageReference Include="Docker.DotNet.Enhanced.X509" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />

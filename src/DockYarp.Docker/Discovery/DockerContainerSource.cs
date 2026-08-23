@@ -13,7 +13,9 @@ using System.Threading.Tasks;
 using DockYarp.Docker.Models;
 
 using global::Docker.DotNet;
+using global::Docker.DotNet.Handler.Abstractions;
 using global::Docker.DotNet.Models;
+using global::Docker.DotNet.NativeHttp;
 
 using Microsoft.Extensions.Logging;
 
@@ -24,6 +26,7 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
         new Dictionary<string, string>(StringComparer.Ordinal);
 
     private readonly IDockerClient client;
+    private readonly IDisposable? credentials;
     private readonly ILogger<DockerContainerSource> logger;
     private readonly string? preferredNetwork;
     private readonly string? hostAddress;
@@ -44,7 +47,7 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(logger);
         this.logger = logger;
-        client = CreateClient(options);
+        (client, credentials) = CreateClient(options);
         preferredNetwork = options.PreferredNetwork;
         hostAddress = options.HostAddress;
         addressFamilyPreference = options.PreferIpv6 ? AddressFamilyPreference.Ipv6 : AddressFamilyPreference.Ipv4;
@@ -161,6 +164,7 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
     public void Dispose()
     {
         client.Dispose();
+        credentials?.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -181,23 +185,28 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
         }
     }
 
-    private static IDockerClient CreateClient(DockerDiscoveryOptions options)
+    private static (IDockerClient Client, IDisposable? Credentials) CreateClient(DockerDiscoveryOptions options)
     {
         Uri? endpoint = options.DockerEndpoint is { Length: > 0 } uri ? new Uri(uri) : null;
-        Credentials? credentials = BuildTlsCredentials(options, endpoint);
-        DockerClientConfiguration configuration = (endpoint, credentials) switch
+        IAuthProvider? tlsCredentials = BuildTlsCredentials(options, endpoint);
+        DockerClientBuilder builder = new();
+        if (endpoint is not null)
         {
-            (not null, not null) => new DockerClientConfiguration(endpoint, credentials),
-            (not null, null) => new DockerClientConfiguration(endpoint),
-            _ => new DockerClientConfiguration(),
-        };
-        return configuration.CreateClient();
+            builder = builder.WithEndpoint(endpoint);
+        }
+
+        if (tlsCredentials is not null)
+        {
+            builder = builder.WithAuthProvider(tlsCredentials).WithTransportOptions(new NativeHttpTransportOptions());
+        }
+
+        return (builder.Build(), tlsCredentials as IDisposable);
     }
 
     // Reads the TLS material from CertPath (real IO) and builds credentials for a tcp:// endpoint; a socket
     // endpoint or a missing CertPath yields null (unchanged connection). The construction itself is unit-tested
     // via DockerTlsCredentials.
-    private static Credentials? BuildTlsCredentials(DockerDiscoveryOptions options, Uri? endpoint)
+    private static IAuthProvider? BuildTlsCredentials(DockerDiscoveryOptions options, Uri? endpoint)
     {
         if (endpoint is null || options.CertPath is not { Length: > 0 } directory)
         {
@@ -263,7 +272,7 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
             networks, hostAddress, ip, ResolveName(response.Names), proxyNetworks);
     }
 
-    private static ImmutableArray<int> ResolvePorts(IList<Port>? ports)
+    private static ImmutableArray<int> ResolvePorts(IList<PortSummary>? ports)
     {
         if (ports is null || ports.Count == 0)
         {
@@ -271,7 +280,7 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
         }
 
         HashSet<int> distinct = [];
-        foreach (Port port in ports)
+        foreach (PortSummary port in ports)
         {
             distinct.Add(port.PrivatePort);
         }
@@ -293,7 +302,7 @@ public sealed class DockerContainerSource : IContainerSource, IDisposable
             return false;
         }
 
-        lifecycleEvent = new ContainerLifecycleEvent(kind.Value, message.Actor?.ID ?? message.ID);
+        lifecycleEvent = new ContainerLifecycleEvent(kind.Value, message.Actor.ID);
         return true;
     }
 }

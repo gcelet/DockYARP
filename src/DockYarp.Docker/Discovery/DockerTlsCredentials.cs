@@ -1,19 +1,18 @@
 namespace DockYarp.Docker.Discovery;
 
 using System;
-using System.Net.Http;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 
-using global::Docker.DotNet;
-
-using Microsoft.Net.Http.Client;
+using global::Docker.DotNet.Handler.Abstractions;
+using global::Docker.DotNet.X509;
 
 /// <summary>Builds Docker.DotNet credentials for a TLS daemon connection (client certificate + CA verification).</summary>
 /// <remarks>
-/// The pinned Docker.DotNet has no <c>CertificateCredentials</c>, so a small custom <see cref="Credentials"/>
-/// wires the client certificate and validation callback onto Docker.DotNet's public <see cref="ManagedHandler"/>.
-/// Inputs are PEM strings (not paths), so the factory is testable without touching the filesystem.
+/// Wraps <see cref="CertificateCredentials"/> (from <c>Docker.DotNet.Enhanced.X509</c>), which attaches the
+/// client certificate and validation callback onto whichever transport handler the client resolves
+/// (<see cref="System.Net.Http.SocketsHttpHandler"/> for the native HTTP transport DockYarp uses). Inputs are
+/// PEM strings (not paths), so the factory is testable without touching the filesystem.
 /// </remarks>
 public static class DockerTlsCredentials
 {
@@ -24,7 +23,7 @@ public static class DockerTlsCredentials
     /// <param name="certPem">The client certificate (PEM).</param>
     /// <param name="keyPem">The client private key (PEM).</param>
     /// <returns>TLS credentials, or <see langword="null"/> to connect unchanged (socket / no client certificate).</returns>
-    public static Credentials? Create(
+    public static IAuthProvider? Create(
         Uri? endpoint, DaemonTlsVerification verification, string? caPem, string? certPem, string? keyPem)
     {
         if (!UsesTls(endpoint) || string.IsNullOrEmpty(certPem) || string.IsNullOrEmpty(keyPem))
@@ -33,7 +32,7 @@ public static class DockerTlsCredentials
         }
 
         X509Certificate2 clientCertificate = LoadClientCertificate(certPem, keyPem);
-        return new ClientCertificateCredentials(clientCertificate, BuildServerValidation(verification, caPem));
+        return new DisposableCertificateCredentials(clientCertificate, BuildServerValidation(verification, caPem));
     }
 
     private static bool UsesTls(Uri? endpoint) =>
@@ -79,27 +78,26 @@ public static class DockerTlsCredentials
         return chain.Build(server);
     }
 
-    // Docker.DotNet builds a ManagedHandler and calls GetHandler(it), so casting wires the live handler.
-    private sealed class ClientCertificateCredentials(
-        X509Certificate2 clientCertificate, RemoteCertificateValidationCallback serverValidation) : Credentials
+    // CertificateCredentials itself does not own or dispose the certificate it wraps (confirmed: it has no
+    // IDisposable, and DockerClient.Dispose only disposes the HTTP handler) — this wrapper adds that ownership
+    // so DockerContainerSource can dispose the credentials alongside the client.
+    private sealed class DisposableCertificateCredentials : IAuthProvider, IDisposable
     {
-        public override bool IsTlsCredentials() => true;
+        private readonly X509Certificate2 clientCertificate;
+        private readonly CertificateCredentials inner;
 
-        public override HttpMessageHandler GetHandler(HttpMessageHandler innerHandler)
+        public DisposableCertificateCredentials(
+            X509Certificate2 clientCertificate, RemoteCertificateValidationCallback serverValidation)
         {
-            if (innerHandler is ManagedHandler managed)
-            {
-                managed.ClientCertificates = new X509CertificateCollection { clientCertificate };
-                managed.ServerCertificateValidationCallback = serverValidation;
-            }
-
-            return innerHandler;
+            this.clientCertificate = clientCertificate;
+            inner = new CertificateCredentials(clientCertificate) { ServerCertificateValidationCallback = serverValidation };
         }
 
-        public override void Dispose()
-        {
-            clientCertificate.Dispose();
-            base.Dispose();
-        }
+        public bool TlsEnabled => inner.TlsEnabled;
+
+        public System.Net.Http.HttpMessageHandler ConfigureHandler(System.Net.Http.HttpMessageHandler handler) =>
+            inner.ConfigureHandler(handler);
+
+        public void Dispose() => clientCertificate.Dispose();
     }
 }

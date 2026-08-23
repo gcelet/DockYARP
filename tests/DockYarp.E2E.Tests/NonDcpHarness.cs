@@ -22,7 +22,7 @@ internal sealed class NonDcpHarness : IAsyncDisposable
 {
     // No explicit endpoint: the same default resolution DockerContainerSource.cs falls back to when
     // Docker:DockerEndpoint is unset, which targets the same daemon Aspire/DCP itself resolves in this process.
-    private readonly DockerClient client = new DockerClientConfiguration().CreateClient();
+    private readonly DockerClient client = new DockerClientBuilder().Build();
     private readonly List<string> containerIds = [];
     private readonly List<string> networkIds = [];
 
@@ -85,7 +85,7 @@ internal sealed class NonDcpHarness : IAsyncDisposable
         CancellationToken cancellationToken,
         IReadOnlyDictionary<string, string>? env)
     {
-        List<string>? envList = env is null ? null : [.. env.Select(pair => $"{pair.Key}={pair.Value}")];
+        List<string> envList = env is null ? [] : [.. env.Select(pair => $"{pair.Key}={pair.Value}")];
         CreateContainerResponse created = await client.Containers.CreateContainerAsync(
             new CreateContainerParameters { Image = image, Labels = labels, HostConfig = hostConfig, Env = envList },
             cancellationToken);

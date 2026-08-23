@@ -1,6 +1,7 @@
 namespace DockYarp.Docker.Tests;
 
 using System;
+using System.Net.Http;
 using System.Net.Security;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -9,9 +10,7 @@ using AwesomeAssertions;
 
 using DockYarp.Docker.Discovery;
 
-using global::Docker.DotNet;
-
-using Microsoft.Net.Http.Client;
+using global::Docker.DotNet.Handler.Abstractions;
 
 /// <summary>Tests for <see cref="DockerTlsCredentials"/> (client cert wiring + daemon verification).</summary>
 public sealed class DockerTlsCredentialsTests
@@ -48,20 +47,21 @@ public sealed class DockerTlsCredentialsTests
     public void TlsEndpointWiresClientCertificateAndAcceptsAnyDaemon()
     {
         (string certPem, string keyPem) = SelfSignedPem("client");
-        Credentials? credentials =
+        IAuthProvider? credentials =
             DockerTlsCredentials.Create(TcpEndpoint, DaemonTlsVerification.AcceptAny, null, certPem, keyPem);
 
         credentials.Should().NotBeNull();
-        credentials!.IsTlsCredentials().Should().BeTrue();
+        credentials!.TlsEnabled.Should().BeTrue();
 
-        using ManagedHandler handler = new();
-        credentials.GetHandler(handler);
+        using SocketsHttpHandler handler = new();
+        credentials.ConfigureHandler(handler);
 
-        handler.ClientCertificates.Count.Should().Be(1);
-        handler.ServerCertificateValidationCallback.Should().NotBeNull();
+        handler.SslOptions.ClientCertificates.Should().NotBeNull();
+        handler.SslOptions.ClientCertificates!.Count.Should().Be(1);
+        handler.SslOptions.RemoteCertificateValidationCallback.Should().NotBeNull();
 
         using X509Certificate2 anyDaemon = SelfSignedCert("rogue");
-        handler.ServerCertificateValidationCallback!(this, anyDaemon, null, SslPolicyErrors.RemoteCertificateChainErrors)
+        handler.SslOptions.RemoteCertificateValidationCallback!(this, anyDaemon, null, SslPolicyErrors.RemoteCertificateChainErrors)
             .Should().BeTrue();
     }
 
@@ -74,12 +74,12 @@ public sealed class DockerTlsCredentialsTests
         using X509Certificate2 daemon = LeafCert(ca, "daemon");
         using X509Certificate2 unrelated = SelfSignedCert("rogue");
 
-        Credentials? credentials = DockerTlsCredentials.Create(
+        IAuthProvider? credentials = DockerTlsCredentials.Create(
             TcpEndpoint, DaemonTlsVerification.VerifyAgainstCa, ca.ExportCertificatePem(), clientCertPem, clientKeyPem);
 
-        using ManagedHandler handler = new();
-        credentials!.GetHandler(handler);
-        RemoteCertificateValidationCallback callback = handler.ServerCertificateValidationCallback!;
+        using SocketsHttpHandler handler = new();
+        credentials!.ConfigureHandler(handler);
+        RemoteCertificateValidationCallback callback = handler.SslOptions.RemoteCertificateValidationCallback!;
 
         callback(this, daemon, null, SslPolicyErrors.None).Should().BeTrue();
         callback(this, unrelated, null, SslPolicyErrors.None).Should().BeFalse();
