@@ -1,0 +1,53 @@
+name: Renovate full gate
+
+# Renovate PRs get the full quality gate (unit + integration + end-to-end + a local Docker image build) before
+# platformAutomerge is allowed to merge them — the regular `CI` workflow only runs the fast Test gate for every
+# PR. Scoped to renovate[bot] via step-level `if:` (not a job-level `if:`), not the workflow's own `pull_request`
+# trigger: a job skipped by a job-level `if:` never reports a check status at all, which would leave this check
+# permanently "Expected — waiting for status" on every non-Renovate PR if it were ever marked required in branch
+# protection — a well-known GitHub Actions gotcha. Keeping the job itself always running (skipping only its
+# steps) means it always reports success/failure, fast for a human PR (every step skipped) and real for a
+# Renovate one.
+on:
+  pull_request:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renovate-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  full-gate:
+    name: Full gate (Test + E2E + DockerImage)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        if: github.event.pull_request.user.login == 'renovate[bot]'
+        uses: actions/checkout@v7
+        with:
+          # GitVersion (run by the Fallout build) needs the full history + tags to compute the version.
+          fetch-depth: 0
+
+      - name: Set up .NET (pinned by global.json)
+        if: github.event.pull_request.user.login == 'renovate[bot]'
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        if: github.event.pull_request.user.login == 'renovate[bot]'
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', 'global.json') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      # The full Fallout Release gate: Test -> E2E -> DockerImage. DockerImage only loads the image locally
+      # (no push/registry credentials needed) — this validates the build end to end without publishing anything.
+      - name: Full gate
+        if: github.event.pull_request.user.login == 'renovate[bot]'
+        run: ./build.sh Release

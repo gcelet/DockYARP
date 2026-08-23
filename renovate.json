@@ -9,6 +9,8 @@
   "commitMessageAction": "upgrade",
   "schedule": ["before 6am on monday"],
   "labels": ["dependencies"],
+  "automerge": true,
+  "platformAutomerge": true,
   "major": { "automerge": false },
   "nuget": { "enabled": true },
   "github-actions": { "enabled": true },
