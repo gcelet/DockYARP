@@ -79,7 +79,7 @@ docker-gen exposes both `.Env` and `.Labels` with no precedence — the template
 | `SSL_POLICY` per-vhost override (`-e`/label) | ✅ | Recognized per-container + applied per-SNI; live e2e: a `Mozilla-Modern` host refuses a TLS 1.2 handshake while a global-posture host accepts it. |
 | OCSP stapling (`.chain.pem`) | ⛔ | → [`add-ocsp-stapling`](items/add-ocsp-stapling.md). |
 | ACME DNS-01 | ⛔ | HTTP-01 only → [`add-acme-dns01`](items/add-acme-dns01.md). |
-| DH params (`DHPARAM_*`, per-vhost) | ⛔ | → [`add-dhparam-config`](items/add-dhparam-config.md). |
+| DH params (`DHPARAM_*`, per-vhost) | ✅ | Closed by assessment, not by a built feature: no platform (Windows SChannel, Linux/macOS `CipherSuitesPolicy`) exposes DH-group parameters at the application level, and TLS 1.3 (DockYarp's default) doesn't use classic DH at all. See `docs/tls-acme.md`. |
 
 ## mTLS / Auth / Access control
 

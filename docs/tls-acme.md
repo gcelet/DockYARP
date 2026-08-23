@@ -66,6 +66,12 @@ Certes↔CA network exchange is untested (validate manually against Let's Encryp
 - `CipherSuites` — optional cipher-suite allow-list, applied on Linux/macOS (ignored where the platform
   manages ciphers, e.g. Windows).
 
+There is deliberately no DH-parameter (`DHPARAM_*`) equivalent: DH-group selection isn't exposed at the
+application level by `SslServerAuthenticationOptions`/`CipherSuitesPolicy` on any platform — on Windows it's
+entirely OS-managed (SChannel, via Group Policy/the `TLS` PowerShell module), and on Linux/macOS
+`CipherSuitesPolicy` restricts which negotiated cipher suites are allowed without exposing the underlying
+DH-group parameters. TLS 1.3 (DockYarp's default) doesn't use classic DH parameters at all.
+
 A host whose `HTTPS_METHOD` is `nohttps` is **not** provisioned (it is served over HTTP only).
 
 ### Mutual TLS
