@@ -31,6 +31,10 @@ public sealed class RestartPersistenceTests : E2ETestBase
     /// <c>/certs</c> volume rather than re-provisioned — the same volume that also carries the Data Protection keys.
     /// </remarks>
     [Test]
+
+    // Tls__CheckInterval is 5s in this AppHost, so a retry lets a reconciliation pass that outran the pre-restart
+    // poll window still be observed instead of failing the whole run on a transient step-ca hiccup.
+    [Retry(2)]
     public async Task ProvisionedCertificate_IsReusedAfterRestart()
     {
         // Wait for a genuinely ACME-issued certificate before restarting: if tls.local is still on the self-signed

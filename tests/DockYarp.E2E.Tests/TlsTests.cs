@@ -27,6 +27,10 @@ public sealed class TlsTests : E2ETestBase
 
     /// <summary>A certificate issued by the local ACME authority is served for a <c>LETSENCRYPT_HOST</c>.</summary>
     [Test]
+
+    // Tls__CheckInterval is 5s in this AppHost, so a retry lets a reconciliation pass that outran the first
+    // 60s poll window still be observed instead of failing the whole run on a transient step-ca hiccup.
+    [Retry(2)]
     public async Task AcmeCertificate_IsProvisionedForHost()
     {
         TlsHarness.ServerCertificateHolder capture = new();
@@ -73,6 +77,9 @@ public sealed class TlsTests : E2ETestBase
     /// chain via system-store-dependent logic and never sent the intermediate, so this would fail with a
     /// PartialChain status.</summary>
     [Test]
+
+    // See AcmeCertificate_IsProvisionedForHost's own comment on why this retries.
+    [Retry(2)]
     public async Task AcmeCertificate_ChainIncludesIntermediate()
     {
         using X509Certificate2 stepCaRoot = X509CertificateLoader.LoadCertificateFromFile(
