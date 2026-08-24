@@ -51,17 +51,17 @@ public sealed class DockerTlsCredentialsTests
             DockerTlsCredentials.Create(TcpEndpoint, DaemonTlsVerification.AcceptAny, null, certPem, keyPem);
 
         credentials.Should().NotBeNull();
-        credentials!.TlsEnabled.Should().BeTrue();
+        credentials.TlsEnabled.Should().BeTrue();
 
         using SocketsHttpHandler handler = new();
         credentials.ConfigureHandler(handler);
 
         handler.SslOptions.ClientCertificates.Should().NotBeNull();
-        handler.SslOptions.ClientCertificates!.Count.Should().Be(1);
+        handler.SslOptions.ClientCertificates.Count.Should().Be(1);
         handler.SslOptions.RemoteCertificateValidationCallback.Should().NotBeNull();
 
         using X509Certificate2 anyDaemon = SelfSignedCert("rogue");
-        handler.SslOptions.RemoteCertificateValidationCallback!(this, anyDaemon, null, SslPolicyErrors.RemoteCertificateChainErrors)
+        handler.SslOptions.RemoteCertificateValidationCallback(this, anyDaemon, null, SslPolicyErrors.RemoteCertificateChainErrors)
             .Should().BeTrue();
     }
 

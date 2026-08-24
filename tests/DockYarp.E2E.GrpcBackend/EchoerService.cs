@@ -28,7 +28,7 @@ public sealed class EchoerService : Echoer.EchoerBase
         for (int index = 0; index < request.Count; index++)
         {
             string message = string.Create(CultureInfo.InvariantCulture, $"{request.Message}-{index}");
-            await responseStream.WriteAsync(new EchoReply { Message = message }).ConfigureAwait(false);
+            await responseStream.WriteAsync(new EchoReply { Message = message }, context.CancellationToken).ConfigureAwait(false);
         }
     }
 }

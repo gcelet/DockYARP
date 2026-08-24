@@ -159,7 +159,7 @@ public sealed class ContainerMapperTests
 
         HostTlsMetadata? tls = result.Contribution.Routes.Single().Tls;
         tls.Should().NotBeNull();
-        tls!.CertificateName.Should().Be("shared");
+        tls.CertificateName.Should().Be("shared");
         tls.CertificateHost.Should().Be("app.local");
     }
 

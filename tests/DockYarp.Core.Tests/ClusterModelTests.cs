@@ -77,7 +77,7 @@ public sealed class ClusterModelTests
         RouteRule openRoute = new() { HostPattern = "open.local", ClusterId = "open" };
 
         protectedRoute.Auth.Should().NotBeNull();
-        protectedRoute.Auth!.Username.Should().Be("admin");
+        protectedRoute.Auth.Username.Should().Be("admin");
         openRoute.Auth.Should().BeNull();
     }
 
@@ -93,7 +93,7 @@ public sealed class ClusterModelTests
         };
 
         route.Tls.Should().NotBeNull();
-        route.Tls!.CertificateHost.Should().Be("app.local");
+        route.Tls.CertificateHost.Should().Be("app.local");
         route.Tls.ContactEmail.Should().Be("admin@example.com");
     }
 }

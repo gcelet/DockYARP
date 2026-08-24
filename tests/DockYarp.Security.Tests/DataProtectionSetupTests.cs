@@ -54,7 +54,7 @@ public sealed class DataProtectionSetupTests
         using X509Certificate2? certificate = DataProtectionSetup.LoadEncryptionCertificate(options);
 
         certificate.Should().NotBeNull();
-        certificate!.Thumbprint.Should().Be(expectedThumbprint);
+        certificate.Thumbprint.Should().Be(expectedThumbprint);
         certificate.HasPrivateKey.Should().BeTrue();
     }
 

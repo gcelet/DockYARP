@@ -23,7 +23,7 @@ public sealed class ErrorPageMiddleware(ErrorPageProvider provider) : IMiddlewar
             && provider.TryGetPage(response.StatusCode, out string? html))
         {
             response.ContentType = HtmlContentType;
-            await response.WriteAsync(html).ConfigureAwait(false);
+            await response.WriteAsync(html, context.RequestAborted).ConfigureAwait(false);
         }
     }
 }

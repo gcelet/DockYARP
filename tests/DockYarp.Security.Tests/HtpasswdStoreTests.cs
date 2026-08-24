@@ -36,7 +36,7 @@ public sealed class HtpasswdStoreTests
         IReadOnlyDictionary<string, string>? entries = store.Find("app.local", pathPrefix: null);
 
         entries.Should().NotBeNull();
-        entries!.Should().HaveCount(2);
+        entries.Should().HaveCount(2);
         entries["alice"].Should().Be("hashA");
         entries["bob"].Should().Be("hashB");
     }
@@ -73,7 +73,7 @@ public sealed class HtpasswdStoreTests
 
         IReadOnlyDictionary<string, string>? entries = store.Find("app.local", pathPrefix: null);
         entries.Should().NotBeNull();
-        entries!.Should().ContainKey("bob");
+        entries.Should().ContainKey("bob");
         entries.Should().NotContainKey("alice");
     }
 

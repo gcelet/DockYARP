@@ -66,7 +66,7 @@ public sealed class RestartPersistenceTests : E2ETestBase
             timeoutSeconds);
 
         capture.ServerCertificate.Should().NotBeNull();
-        capture.ServerCertificate!.Issuer.Should().Contain(
+        capture.ServerCertificate.Issuer.Should().Contain(
             CaIssuerMarker,
             "the restart-persistence assertion needs a real ACME certificate, not the self-signed fallback");
         return capture.ServerCertificate.Thumbprint;

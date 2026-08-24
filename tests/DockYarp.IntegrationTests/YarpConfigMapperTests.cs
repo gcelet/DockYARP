@@ -330,7 +330,7 @@ public sealed class YarpConfigMapperTests
 
         ClusterConfig mapped = result.Clusters.Single();
         mapped.SessionAffinity.Should().NotBeNull();
-        mapped.SessionAffinity!.Policy.Should().Be(ClientIpHashSessionAffinityPolicy.PolicyName);
+        mapped.SessionAffinity.Policy.Should().Be(ClientIpHashSessionAffinityPolicy.PolicyName);
         result.Diagnostics.Should().BeEmpty();
     }
 
@@ -346,7 +346,7 @@ public sealed class YarpConfigMapperTests
 
         ClusterConfig mapped = result.Clusters.Single();
         mapped.SessionAffinity.Should().NotBeNull();
-        mapped.SessionAffinity!.Policy.Should().Be(SessionAffinityConstants.Policies.Cookie);
+        mapped.SessionAffinity.Policy.Should().Be(SessionAffinityConstants.Policies.Cookie);
         result.Diagnostics.Should().BeEmpty();
     }
 

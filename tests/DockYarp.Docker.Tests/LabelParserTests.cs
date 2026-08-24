@@ -425,7 +425,7 @@ public sealed class LabelParserTests
         LabelParser.TryParse(container, out ContainerLabelConfig? config, out _).Should().BeTrue();
 
         config!.Auth.Should().NotBeNull();
-        config.Auth!.Username.Should().Be("admin");
+        config.Auth.Username.Should().Be("admin");
         config.Auth.Realm.Should().Be("app");
     }
 

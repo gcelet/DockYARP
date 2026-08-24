@@ -30,7 +30,7 @@ public sealed class DockerFiltersTests
         IDictionary<string, IDictionary<string, bool>>? result = DockerFilters.Build(filters);
 
         result.Should().NotBeNull();
-        result!.Should().ContainKey("label");
+        result.Should().ContainKey("label");
         result["label"].Should().ContainKey("dockyarp.enable=true").WhoseValue.Should().BeTrue();
     }
 

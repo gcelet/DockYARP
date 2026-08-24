@@ -32,7 +32,7 @@ public sealed class ClientIpHashSessionAffinityPolicyTests
 
         first.Status.Should().Be(AffinityStatus.OK);
         first.Destinations.Should().HaveCount(1);
-        second.Destinations!.Single().DestinationId.Should().Be(first.Destinations![0].DestinationId);
+        second.Destinations!.Single().DestinationId.Should().Be(first.Destinations[0].DestinationId);
     }
 
     /// <summary>Clients sharing the first 3 octets of an IPv4 address (nginx's own ip_hash grouping) select the

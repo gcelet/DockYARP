@@ -45,7 +45,7 @@ public sealed class TlsTests : E2ETestBase
             TlsPollSeconds);
 
         capture.ServerCertificate.Should().NotBeNull();
-        capture.ServerCertificate!.Issuer.Should().Contain(CaIssuerMarker);
+        capture.ServerCertificate.Issuer.Should().Contain(CaIssuerMarker);
     }
 
     /// <summary>A DNS-01 host with a wildcard <c>LETSENCRYPT_HOST</c> (<c>*.dns01.example</c>) gets a real
@@ -66,8 +66,8 @@ public sealed class TlsTests : E2ETestBase
             TlsPollSeconds);
 
         capture.ServerCertificate.Should().NotBeNull();
-        capture.ServerCertificate!.Issuer.Should().Contain(CaIssuerMarker);
-        capture.ServerCertificate!.Subject.Should().Contain(
+        capture.ServerCertificate.Issuer.Should().Contain(CaIssuerMarker);
+        capture.ServerCertificate.Subject.Should().Contain(
             "dns01.example", "the wildcard order's CN is *.dns01.example, stored under the parent domain");
     }
 
@@ -136,7 +136,7 @@ public sealed class TlsTests : E2ETestBase
 
         response.IsSuccessStatusCode.Should().BeTrue();
         capture.ServerCertificate.Should().NotBeNull();
-        capture.ServerCertificate!.Issuer.Should().NotContain(CaIssuerMarker);
+        capture.ServerCertificate.Issuer.Should().NotContain(CaIssuerMarker);
     }
 
     /// <summary>Once a certificate is available, an HTTP request for the host is redirected to HTTPS.</summary>
@@ -153,7 +153,7 @@ public sealed class TlsTests : E2ETestBase
 
         response.StatusCode.Should().Be(HttpStatusCode.PermanentRedirect);
         response.Headers.Location.Should().NotBeNull();
-        response.Headers.Location!.Scheme.Should().Be("https");
+        response.Headers.Location.Scheme.Should().Be("https");
     }
 
     /// <summary>A host with an <c>HSTS</c> policy returns the Strict-Transport-Security header over HTTPS.</summary>

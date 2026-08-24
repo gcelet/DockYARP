@@ -22,7 +22,7 @@ public static class TlsDomains
             .. snapshot.Routes
                 .Where(route => route.Tls is { CertificateHost.Length: > 0, CertificateName: null or "" } tls
                     && tls.Method != HttpsMethod.NoHttps)
-                .Select(route => new DesiredCertificate(route.Tls!.CertificateHost, route.Tls!.ContactEmail, route.Tls!.ChallengeType))
+                .Select(route => new DesiredCertificate(route.Tls!.CertificateHost, route.Tls.ContactEmail, route.Tls.ChallengeType))
                 .DistinctBy(desired => desired.Host, StringComparer.OrdinalIgnoreCase),
         ];
     }

@@ -33,7 +33,7 @@ public sealed class Http01ChallengeMiddleware(IHttp01ChallengeStore store, TlsOp
             if (store.TryGet(token, out string? keyAuthorization))
             {
                 context.Response.ContentType = "text/plain";
-                await context.Response.WriteAsync(keyAuthorization).ConfigureAwait(false);
+                await context.Response.WriteAsync(keyAuthorization, context.RequestAborted).ConfigureAwait(false);
             }
             else
             {

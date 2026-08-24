@@ -128,7 +128,7 @@ public sealed class CertificateStoreTests
         using FileCertificateStore reloaded = new(options, fileSystem);
         LoadedCertificate? loaded = reloaded.Find("encrypted-write.local");
         loaded.Should().NotBeNull();
-        loaded!.Leaf.Thumbprint.Should().Be(expectedThumbprint);
+        loaded.Leaf.Thumbprint.Should().Be(expectedThumbprint);
         loaded.Leaf.HasPrivateKey.Should().BeTrue();
     }
 
@@ -153,7 +153,7 @@ public sealed class CertificateStoreTests
 
         LoadedCertificate? loaded = store.Find("plain-with-passphrase.local");
         loaded.Should().NotBeNull();
-        loaded!.Leaf.HasPrivateKey.Should().BeTrue();
+        loaded.Leaf.HasPrivateKey.Should().BeTrue();
     }
 
     /// <summary>A key encrypted with the previous passphrase still loads via the rotation fallback.</summary>
@@ -183,7 +183,7 @@ public sealed class CertificateStoreTests
 
         LoadedCertificate? loaded = store.Find("rotated.local");
         loaded.Should().NotBeNull();
-        loaded!.Leaf.HasPrivateKey.Should().BeTrue();
+        loaded.Leaf.HasPrivateKey.Should().BeTrue();
     }
 
     /// <summary>An encrypted key that neither the current nor previous configured passphrase decrypts fails
@@ -376,7 +376,7 @@ public sealed class CertificateStoreTests
 
         LoadedCertificate? loaded = store.Find("precedence.local");
         loaded.Should().NotBeNull();
-        loaded!.Leaf.Thumbprint.Should().Be(pemCertificate.Thumbprint, "the PEM pair must win over a same-host legacy PFX");
+        loaded.Leaf.Thumbprint.Should().Be(pemCertificate.Thumbprint, "the PEM pair must win over a same-host legacy PFX");
     }
 
     /// <summary>A mounted PEM pair is loaded and served with a usable private key.</summary>
@@ -397,7 +397,7 @@ public sealed class CertificateStoreTests
 
         LoadedCertificate? loaded = store.Find("app.local");
         loaded.Should().NotBeNull();
-        loaded!.Leaf.HasPrivateKey.Should().BeTrue();
+        loaded.Leaf.HasPrivateKey.Should().BeTrue();
     }
 
     /// <summary>A mounted PFX file is loaded.</summary>
@@ -470,7 +470,7 @@ public sealed class CertificateStoreTests
         ReferenceEquals(afterConversion, beforeConversion).Should().BeTrue(
             "ConvertToPem must not replace/dispose the in-memory certificate via Save()'s remove-then-dispose " +
             "path — the exact same object must still be served afterward");
-        afterConversion!.Leaf.Thumbprint.Should().Be(source.Thumbprint);
+        afterConversion.Leaf.Thumbprint.Should().Be(source.Thumbprint);
         afterConversion.Leaf.HasPrivateKey.Should().BeTrue();
     }
 
@@ -523,7 +523,7 @@ public sealed class CertificateStoreTests
 
         LoadedCertificate? loaded = store.Find("chain.local");
         loaded.Should().NotBeNull();
-        loaded!.Leaf.HasPrivateKey.Should().BeTrue();
+        loaded.Leaf.HasPrivateKey.Should().BeTrue();
         loaded.Additional.Should().HaveCount(1, "the intermediate must be exposed explicitly, not just loadable");
         ChainBuildsAgainst(loaded, intermediate).Should().BeTrue("the intermediate must travel with the loaded certificate");
     }
@@ -549,7 +549,7 @@ public sealed class CertificateStoreTests
 
         LoadedCertificate? loaded = store.Find("chain-reversed.local");
         loaded.Should().NotBeNull();
-        loaded!.Leaf.HasPrivateKey.Should().BeTrue();
+        loaded.Leaf.HasPrivateKey.Should().BeTrue();
         ChainBuildsAgainst(loaded, intermediate).Should().BeTrue("order in the file must not matter");
     }
 
