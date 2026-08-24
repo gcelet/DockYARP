@@ -10,9 +10,9 @@
     <PackageVersion Include="Docker.DotNet.Enhanced.Unix" Version="4.3.3" />
     <PackageVersion Include="Docker.DotNet.Enhanced.NPipe" Version="4.3.3" />
     <PackageVersion Include="Docker.DotNet.Enhanced.X509" Version="4.3.3" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.10" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.10" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.17.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.17.0-beta.1" />
     <PackageVersion Include="Certes" Version="3.0.4" />
@@ -57,9 +57,9 @@
   </ItemGroup>
   <!-- Build dependencies -->
   <ItemGroup>
-    <PackageVersion Include="Microsoft.Build" Version="18.4.0" />
-    <PackageVersion Include="Microsoft.Build.Tasks.Core" Version="18.4.0" />
-    <PackageVersion Include="Microsoft.Build.Utilities.Core" Version="18.4.0" />
+    <PackageVersion Include="Microsoft.Build" Version="18.9.6" />
+    <PackageVersion Include="Microsoft.Build.Tasks.Core" Version="18.9.6" />
+    <PackageVersion Include="Microsoft.Build.Utilities.Core" Version="18.9.6" />
     <PackageVersion Include="Fallout.Common" Version="10.4.0" />
   </ItemGroup>
 </Project>
