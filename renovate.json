@@ -40,6 +40,30 @@
       "enabled": false
     },
     {
+      "description": "Catch-all: app-facing nuget dependencies not already claimed by a more specific group below (rules later in this list override groupName for their own packages) or by the build-tooling rule further down.",
+      "groupName": "nuget dependencies",
+      "matchManagers": ["nuget"],
+      "matchUpdateTypes": ["minor", "patch", "digest"]
+    },
+    {
+      "description": "Catch-all: docs-site npm tooling.",
+      "groupName": "npm dependencies",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch", "digest"]
+    },
+    {
+      "description": "Catch-all: CI workflow actions.",
+      "groupName": "github-actions dependencies",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch", "digest"]
+    },
+    {
+      "description": "Build-time tooling (the Fallout build project and the dotnet-tools manifest), not app runtime dependencies — overrides the nuget catch-all above for these files.",
+      "groupName": "build tooling",
+      "matchFileNames": ["build/_build.csproj", ".config/dotnet-tools.json"],
+      "matchUpdateTypes": ["minor", "patch", "digest"]
+    },
+    {
       "description": "Group the strict code-quality analyzers.",
       "groupName": "code-quality analyzers",
       "matchManagers": ["nuget"],
