@@ -37,6 +37,12 @@ between work sessions. The entry point is the parity backlog `openspec/backlog/`
 `openspec/backlog/parity.md` is the source-of-truth nginx-proxy ↔ DockYarp parity matrix that
 `docs/architecture.md` links to.
 
+**Exception: Renovate's own automerges.** A dependency bump that Renovate opens and merges on its own —
+checks green, `automerge` fires — needs no backlog item. It is exempt precisely *because* it is already fully
+verified end-to-end by the same gate every other change goes through (Test, E2E, DockerImage, SBOM,
+vulnerability scan), so there is no unverified decision to lose track of. Only a Renovate update that fails to
+automerge and needs a real source/config change to unblock follows the loop below like any other change.
+
 1. **Backlog** — ensure the work has an item `openspec/backlog/items/<id>.md` (add one if it is new). The
    item's `id` is the future change id; its *Why* + *Acceptance criteria* seed the proposal.
 2. **Propose** — `/opsx:propose <id>` → author `proposal.md` / `design.md` / `tasks.md` /
