@@ -26,11 +26,9 @@ jobs:
       # the manifest of every KEPT tagged version and excludes all of its child digests from the candidate
       # list — so a still-referenced multi-arch child is never touched, only genuinely orphaned ones are.
       #
-      # dry-run: true (temporary) — widening to "both" now considers many more candidates than the
-      # tagged-only sweep ever did; reviewing one real dry-run's candidate list before trusting it, same
-      # discipline this file's own history already used once (three real runs — 32414866147 investigation,
-      # 32415763262, 32416211579 debug trace, 32416645294 post-revert — before the original tagged-only sweep
-      # was flipped to dry-run: false). Flip back to false once the candidate list has been reviewed.
+      # dry-run: false — validated via a real workflow_dispatch dry run (32898786364, 2026-08-25): 47
+      # candidates (3 aged-out tagged prereleases + 44 orphaned untagged digests), none of which looked like
+      # a child of a currently-kept tag, reviewed and approved before flipping this.
       - name: Prune superseded edge prerelease tags
         uses: snok/container-retention-policy@v3.1.0
         with:
@@ -43,4 +41,4 @@ jobs:
           image-tags: '*-*'
           tag-selection: both
           cut-off: 3d
-          dry-run: true
+          dry-run: false
