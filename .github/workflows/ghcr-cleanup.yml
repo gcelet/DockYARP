@@ -19,9 +19,18 @@ jobs:
       # GitVersion-resolved edge-prerelease tag always does (semver's own "-" separator, e.g.
       # "0.1.0-alpha.223"). image-tags: "*-*" is therefore a positive filter for exactly the tags that should
       # ever be deleted — no keep-list to enumerate or maintain as the release tag scheme evolves elsewhere.
-      # dry-run: false — validated across three real runs (32414866147 investigation, 32415763262, 32416211579
-      # debug trace, 32416645294 post-revert) with a stable, correct, explicitly user-reviewed deletion list
-      # before this was flipped.
+      #
+      # tag-selection: both (not "tagged") — a tagged-only sweep leaves every multi-arch child digest of an
+      # already-deleted prerelease tag permanently orphaned (never tagged themselves, so "tagged" never
+      # revisits them). v3.1.0 added the safeguard that makes "both" safe here: before deleting, it fetches
+      # the manifest of every KEPT tagged version and excludes all of its child digests from the candidate
+      # list — so a still-referenced multi-arch child is never touched, only genuinely orphaned ones are.
+      #
+      # dry-run: true (temporary) — widening to "both" now considers many more candidates than the
+      # tagged-only sweep ever did; reviewing one real dry-run's candidate list before trusting it, same
+      # discipline this file's own history already used once (three real runs — 32414866147 investigation,
+      # 32415763262, 32416211579 debug trace, 32416645294 post-revert — before the original tagged-only sweep
+      # was flipped to dry-run: false). Flip back to false once the candidate list has been reviewed.
       - name: Prune superseded edge prerelease tags
         uses: snok/container-retention-policy@v3.1.0
         with:
@@ -32,6 +41,6 @@ jobs:
           token: ${{ secrets.GHCR_CLEANUP_TOKEN }}
           image-names: dockyarp
           image-tags: '*-*'
-          tag-selection: tagged
+          tag-selection: both
           cut-off: 3d
-          dry-run: false
+          dry-run: true
