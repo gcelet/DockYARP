@@ -51,3 +51,13 @@ jobs:
       - name: Full gate
         if: github.event.pull_request.user.login == 'renovate[bot]'
         run: ./build.sh Release
+
+      # Mirrors image.yml's own step — the runner is torn down after the job ends, so without this a CI-only
+      # E2E failure here is only ever diagnosable from the console tail, never the other resources' own logs.
+      - name: Upload E2E diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-logs
+          path: artifacts/e2e-logs/
+          if-no-files-found: ignore
