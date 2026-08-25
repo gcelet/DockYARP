@@ -37,6 +37,16 @@ public static class AspireAppHostFixture
     // organically. See openspec/backlog/items/fix-e2e-ci-runner-timeout.md's investigation log.
     private const int StartupTimeoutSeconds = 420;
 
+    // Docker can be transiently slow to stop/delete the old container on a loaded CI runner — confirmed via
+    // real e2e-logs diagnostics: DCP needed several "still running, trying again" stop retries plus a second
+    // delete attempt before the old container was actually gone, and a per-resource log flush then timed out
+    // after 5s. Aspire's WaitForResourceHealthyAsync observes the resulting failed-to-start state and throws
+    // immediately rather than waiting out the caller's own token budget, so a bigger timeout would not help —
+    // only reissuing the restart command (once the earlier stop/delete has had time to actually finish) does.
+    private const int RestartAttempts = 3;
+
+    private static readonly TimeSpan RestartRetryDelay = TimeSpan.FromSeconds(5);
+
     private static DistributedApplication? application;
 
     /// <summary>Gets the HTTP client targeting DockYarp's proxy endpoint.</summary>
@@ -104,14 +114,26 @@ public static class AspireAppHostFixture
             application ?? throw new InvalidOperationException("The application has not been started.");
 
         ResourceCommandService commands = app.Services.GetRequiredService<ResourceCommandService>();
-        ExecuteCommandResult result =
-            await commands.ExecuteCommandAsync(ProxyResource, KnownResourceCommands.RestartCommand, token);
-        if (!result.Success)
-        {
-            throw new InvalidOperationException($"Restarting '{ProxyResource}' failed: {result.Message}");
-        }
 
-        await app.ResourceNotifications.WaitForResourceHealthyAsync(ProxyResource, token);
+        for (int attempt = 1; attempt <= RestartAttempts; attempt++)
+        {
+            ExecuteCommandResult result =
+                await commands.ExecuteCommandAsync(ProxyResource, KnownResourceCommands.RestartCommand, token);
+            if (!result.Success)
+            {
+                throw new InvalidOperationException($"Restarting '{ProxyResource}' failed: {result.Message}");
+            }
+
+            try
+            {
+                await app.ResourceNotifications.WaitForResourceHealthyAsync(ProxyResource, token);
+                return;
+            }
+            catch (DistributedApplicationException) when (attempt < RestartAttempts)
+            {
+                await Task.Delay(RestartRetryDelay, token).ConfigureAwait(false);
+            }
+        }
     }
 
     /// <summary>Stops and disposes the distributed application, flushing the captured logs.</summary>
