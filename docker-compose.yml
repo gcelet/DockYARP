@@ -7,7 +7,7 @@
 services:
   # Minimal, read-only Docker API gateway; the only component that touches the socket.
   dockerproxy:
-    image: tecnativa/docker-socket-proxy
+    image: tecnativa/docker-socket-proxy@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459
     environment:
       # Discovery needs to list/inspect containers; the image enables the event stream by default.
       CONTAINERS: "1"
@@ -49,7 +49,7 @@ services:
     restart: unless-stopped
 
   whoami:
-    image: traefik/whoami
+    image: traefik/whoami@sha256:c4717a8d1f0134a7444e24f881160e033991f23027c6c5a9a3f8fd22e70d1d44
     labels:
       VIRTUAL_HOST: "whoami.local"
       VIRTUAL_PORT: "80"
