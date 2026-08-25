@@ -21,7 +21,7 @@ Remaining source:
 
 | Source | Warnings | Status |
 |---|---:|---|
-| `Org.BouncyCastle.Utilities` (via `Portable.BouncyCastle`, CRL parsing in DockYarp.Tls) | 1 | Unrelated third-party, single line, not currently worth its own item. |
+| `Org.BouncyCastle.Utilities` (via `Portable.BouncyCastle`, CRL parsing in DockYarp.Tls) | 1 | Open — [openspec backlog item](../openspec/backlog/items/investigate-bouncycastle-aot-warning.md) `investigate-bouncycastle-aot-warning`. Low priority (AOT itself not adopted yet), tracked for a clean 0-warning baseline before that decision. |
 
 > The 379→382 step is not a clean regression — that measurement's own conditions (machine state, incremental
 > build starting point) weren't reproducible from the prior session; see that change's archived `tasks.md`.
