@@ -101,7 +101,7 @@ public sealed class TlsTests : E2ETestBase
 
     /// <summary>The intermediate is actually sent during the handshake for an operator-provided (mounted PEM,
     /// non-ACME) certificate: a client trusting only the throwaway chain's own CA still builds a complete
-    /// chain. Covers the PEM-loading path independently of ACME/CertesAcmeClient.</summary>
+    /// chain. Covers the PEM-loading path independently of ACME/AcmeClient.</summary>
     [Test]
     public async Task MountedPemCertificate_ChainIncludesIntermediate()
     {

@@ -188,7 +188,7 @@ internal static class PemCertificateLoader
                 // Round-trip through PKCS12 so the private key is usable for TLS across platforms, and reload
                 // as a collection (not a single certificate) so the additional/intermediate certificates
                 // travel with the leaf instead of being silently dropped — the same shape an ACME-issued
-                // certificate uses (see CertesAcmeClient).
+                // certificate uses (see AcmeClient).
                 // Never null: exporting a non-empty X509Certificate2Collection as PKCS12 always produces bytes.
                 byte[] pkcs12 = full.Export(X509ContentType.Pkcs12)!;
                 certificate = CertificateCollectionLoader.LoadKeyed(pkcs12, null);

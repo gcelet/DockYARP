@@ -110,7 +110,7 @@ var proxy = builder.AddContainer("dockyarp", "dockyarp", "local")
     .WaitFor(dockerproxy)
     .WaitForCompletion(caBundle); // bundle written before DockYarp's first ACME call (trust ready)
 
-// TLS: point DockYarp's ACME client at step-ca, trust its root (Certes uses the default HttpClient, so the
+// TLS: point DockYarp's ACME client at step-ca, trust its root (AcmeClient uses a plain HttpClient, so the
 // container OS must trust the CA via SSL_CERT_FILE), enable mutual TLS, and expose the HTTPS listener.
 // HTTP-01 host resolution is handled by the socat sidecar below, so DockYarp itself needs no aliases here.
 proxy

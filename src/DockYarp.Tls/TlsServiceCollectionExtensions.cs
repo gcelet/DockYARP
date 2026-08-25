@@ -31,7 +31,7 @@ public static class TlsServiceCollectionExtensions
         services.AddSingleton<IHttp01ChallengeStore, Http01ChallengeStore>();
         services.AddSingleton<Http01ChallengeMiddleware>();
         services.AddSingleton<IDnsChallengeProvider, Rfc2136DnsChallengeProvider>();
-        services.AddSingleton<IAcmeClient, CertesAcmeClient>();
+        services.AddSingleton<IAcmeClient, AcmeClient>();
 
         // Default: no reserved (non-route) hosts. A host application (e.g. the ASP.NET host, for the admin host)
         // may register its own IReservedCertificateHosts to add hosts to the provisioning loop.

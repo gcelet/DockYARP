@@ -11,16 +11,16 @@ regression to fix, not something to wave through because AOT itself isn't adopte
 
 ## Current baseline
 
-**142 total warnings** (2026-08-23, after `fix-adminapi-json-aot-trim`). History: 414 (`investigate-aot-build`
-baseline) → 379 (`fix-yamldotnet-aot-trim`) → 382 (`migrate-to-docker-dotnet-enhanced`, see note below) → 170
-(`migrate-dashboard-to-razorslices`) → 142 (`fix-adminapi-json-aot-trim`).
+**1 total warning** (2026-08-25, after `investigate-certes-aot-alternative`). History: 414
+(`investigate-aot-build` baseline) → 379 (`fix-yamldotnet-aot-trim`) → 382
+(`migrate-to-docker-dotnet-enhanced`, see note below) → 170 (`migrate-dashboard-to-razorslices`) → 142
+(`fix-adminapi-json-aot-trim`) → 1 (`investigate-certes-aot-alternative`, replaced Certes with a hand-rolled
+ACME v2 client — removed the entire ~141-warning Newtonsoft.Json bucket and its downstream consequences).
 
-Remaining sources, all currently tracked or accepted:
+Remaining source:
 
 | Source | Warnings | Status |
 |---|---:|---|
-| `Newtonsoft.Json.*` (via **Certes**, DockYarp.Tls's ACME client) | ~136 | Open — [openspec backlog item](../openspec/backlog/items/investigate-certes-aot-alternative.md) `investigate-certes-aot-alternative`. Real risk this stays blocked; no known alternative yet. |
-| `System.Linq.Expressions`/`Microsoft.CSharp.RuntimeBinder` (BCL) | ~5 | Downstream of Certes/Newtonsoft's own `dynamic` usage — folds into the item above, not separately tracked. |
 | `Org.BouncyCastle.Utilities` (via `Portable.BouncyCastle`, CRL parsing in DockYarp.Tls) | 1 | Unrelated third-party, single line, not currently worth its own item. |
 
 > The 379→382 step is not a clean regression — that measurement's own conditions (machine state, incremental
@@ -68,6 +68,15 @@ dotnet publish src/DockYarp.App -r win-x64 -c Release -p:PublishAot=true `
   both checks, neither alone is sufficient).
 - **Verify "no fix exists" as rigorously as "X is broken."** `investigate-aot-build`'s first-pass verdict on
   `Docker.DotNet` was too pessimistic and got corrected by real, checkable leads (an active fork, a
-  since-added source generator). Before writing a "this dependency blocks AOT, full stop" verdict into any
-  future item (including `investigate-certes-aot-alternative`), check whether the ecosystem has already moved
-  — a changelog, a fork, an upstream issue — rather than concluding from the current pinned version alone.
+  since-added source generator). `investigate-certes-aot-alternative` confirms the same discipline pays off
+  from the other direction too: 3 real fork candidates and 2 further user-supplied leads were all checked and
+  genuinely ruled out (none both removed Newtonsoft.Json and was trustworthy enough), but rather than stopping
+  at "no fix exists," a bounded hand-roll (RFC 8555 subset, ~300-350 LOC, mirroring `add-acme-dns01`'s own
+  precedent) was sized against the real usage surface and shipped — removing the single largest warning
+  bucket this document ever tracked.
+- **A hand-rolled protocol client's real bugs surface against a real server, not unit tests.** JWS/JWK
+  self-consistency tests (signature verifies against the same key, thumbprint is deterministic, etc.) all
+  passed before the E2E suite ever ran — the real bug (`StringContent`'s 3-arg constructor appends a
+  `charset` parameter RFC 8555 §6.2 doesn't allow, rejected by step-ca as "malformed") only surfaced once
+  actually talking to step-ca. Structural/self-consistency unit tests prove the crypto math; only a live
+  protocol round-trip proves the wire format.

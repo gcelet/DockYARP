@@ -9,7 +9,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Certes" />
     <PackageReference Include="System.IO.Abstractions" />
     <PackageReference Include="Portable.BouncyCastle" />
   </ItemGroup>
@@ -19,8 +18,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- CertesAcmeClient's chain-assembly logic is otherwise untestable at the unit level (the rest of the
-         class requires a live ACME network round-trip) — this exposes only that pure, deterministic piece. -->
+    <!-- Exposes the internal Acme.* JWS/HTTP-client helpers and AcmeClient's chain-assembly logic for unit
+         testing — the rest of AcmeClient itself requires a live ACME network round-trip, exercised via e2e only. -->
     <InternalsVisibleTo Include="DockYarp.Tls.Tests" />
   </ItemGroup>
 

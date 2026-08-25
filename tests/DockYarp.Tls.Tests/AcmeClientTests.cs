@@ -6,27 +6,24 @@ using System.Security.Cryptography.X509Certificates;
 
 using AwesomeAssertions;
 
-using Certes;
-using Certes.Acme;
-
 using DockYarp.Tls;
 
-/// <summary>Tests for <see cref="CertesAcmeClient"/>'s chain assembly — the only part of the class that does
-/// not require a live ACME network round-trip.</summary>
-public sealed class CertesAcmeClientTests
+/// <summary>Tests for <see cref="AcmeClient"/>'s chain assembly — the only part of the class that does not
+/// require a live ACME network round-trip.</summary>
+public sealed class AcmeClientTests
 {
     /// <summary>A private CA following normal ACME convention (root trusted out of band, never sent in the
-    /// response) still yields a certificate carrying its intermediate — the real bug this change fixes.</summary>
+    /// response) still yields a certificate carrying its intermediate — the real bug this preserves the fix for.</summary>
     [Test]
     public void ChainWithoutRootInResponsePreservesIntermediate()
     {
-        IKey leafKey = KeyFactory.NewKey(KeyAlgorithm.ES256);
+        using ECDsa leafKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         using ThreeTierChain fixture = CreateThreeTierChain(leafKey);
 
         // No root in the response — the shape a private CA following normal ACME convention returns.
-        CertificateChain chain = new(fixture.Leaf.ExportCertificatePem() + "\n" + fixture.Intermediate.ExportCertificatePem());
+        string pemChain = fixture.Leaf.ExportCertificatePem() + "\n" + fixture.Intermediate.ExportCertificatePem();
 
-        LoadedCertificate loaded = CertesAcmeClient.BuildLoadedCertificate(chain, leafKey);
+        LoadedCertificate loaded = AcmeClient.BuildLoadedCertificate(pemChain, leafKey);
         try
         {
             loaded.Leaf.HasPrivateKey.Should().BeTrue();
@@ -43,14 +40,14 @@ public sealed class CertesAcmeClientTests
     [Test]
     public void ChainWithRootInResponseStillPreservesIntermediate()
     {
-        IKey leafKey = KeyFactory.NewKey(KeyAlgorithm.ES256);
+        using ECDsa leafKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         using ThreeTierChain fixture = CreateThreeTierChain(leafKey);
 
-        CertificateChain chain = new(
+        string pemChain =
             fixture.Leaf.ExportCertificatePem() + "\n" + fixture.Intermediate.ExportCertificatePem() + "\n"
-            + fixture.Root.ExportCertificatePem());
+            + fixture.Root.ExportCertificatePem();
 
-        LoadedCertificate loaded = CertesAcmeClient.BuildLoadedCertificate(chain, leafKey);
+        LoadedCertificate loaded = AcmeClient.BuildLoadedCertificate(pemChain, leafKey);
         try
         {
             loaded.Leaf.HasPrivateKey.Should().BeTrue();
@@ -95,7 +92,7 @@ public sealed class CertesAcmeClientTests
     // A genuine three-tier hierarchy (self-signed root -> intermediate -> leaf), unlike TestChainFactory's
     // two-tier leaf+self-signed-CA shape — needed here to distinguish "root present in the response" from
     // "root absent," which is exactly what this bug depends on.
-    private static ThreeTierChain CreateThreeTierChain(IKey leafKey)
+    private static ThreeTierChain CreateThreeTierChain(ECDsa leafKey)
     {
         DateTimeOffset from = DateTimeOffset.UtcNow.AddDays(-1);
 
@@ -122,10 +119,8 @@ public sealed class CertesAcmeClientTests
             root, from, from.AddYears(2), RandomNumberGenerator.GetBytes(16));
         X509Certificate2 intermediate = intermediateWithoutKey.CopyWithPrivateKey(intermediateKey);
 
-        using ECDsa leafPublicKey = ECDsa.Create();
-        leafPublicKey.ImportFromPem(leafKey.ToPem());
         CertificateRequest leafRequest = new(
-            "CN=acme.example.local", leafPublicKey, HashAlgorithmName.SHA256);
+            "CN=acme.example.local", leafKey, HashAlgorithmName.SHA256);
         leafRequest.CertificateExtensions.Add(
             new X509BasicConstraintsExtension(certificateAuthority: false, hasPathLengthConstraint: false, pathLengthConstraint: 0, critical: false));
         X509Certificate2 leaf = leafRequest.Create(intermediate, from, from.AddYears(1), RandomNumberGenerator.GetBytes(16));
