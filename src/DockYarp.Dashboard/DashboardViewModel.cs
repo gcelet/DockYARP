@@ -55,6 +55,9 @@ public sealed record DashboardViewModel
     /// action.</summary>
     public required bool AllowKeyReencryption { get; init; }
 
+    /// <summary>Gets a value indicating whether the certificate table should render the revoke action.</summary>
+    public required bool AllowCertificateRevocation { get; init; }
+
     /// <summary>Gets the overall health status (<c>Healthy</c> or <c>Degraded</c>).</summary>
     public required string Status { get; init; }
 

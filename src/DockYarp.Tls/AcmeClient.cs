@@ -63,6 +63,36 @@ public sealed class AcmeClient(
         return BuildLoadedCertificate(pemChain, leafKey);
     }
 
+    /// <inheritdoc />
+    public async Task RevokeCertificateAsync(
+        string host, string? email, X509Certificate2 certificate, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(certificate);
+        string contact = email ?? options.ContactEmail
+            ?? throw new InvalidOperationException("An ACME contact email is required.");
+
+        using ECDsa? accountKey = AcmeAccountKeyStore.TryLoad(
+            fileSystem, options.CertificateDirectory, options.AcmeDirectoryUri, contact);
+        if (accountKey is null)
+        {
+            throw new InvalidOperationException(
+                $"No persisted ACME account exists for '{contact}' at {options.AcmeDirectoryUri} — nothing was "
+                + $"ever issued under that identity, so there is no account to revoke '{host}' with.");
+        }
+
+        using HttpClient httpClient = new();
+        AcmeHttpClient acme = new(httpClient, options.AcmeDirectoryUri, accountKey);
+
+        // Resolves the account's own URL (kid) via newAccount's idempotency — the same known account, not a
+        // new one — so the revocation request is signed as an authenticated request against that account,
+        // rather than a self-authenticating (and less broadly interoperable) bare-jwk-signed request.
+        await acme.CreateAccountAsync(
+            new AcmeNewAccountRequest { TermsOfServiceAgreed = options.AcceptTermsOfService, Contact = [$"mailto:{contact}"] },
+            cancellationToken).ConfigureAwait(false);
+
+        await acme.RevokeCertificateAsync(certificate.RawData, cancellationToken).ConfigureAwait(false);
+    }
+
     private async Task CompleteHttpChallengeAsync(ChallengeContext context, AcmeAuthorization authorization, CancellationToken cancellationToken)
     {
         AcmeChallenge challenge = authorization.Challenges.First(c => c.Type == "http-01");

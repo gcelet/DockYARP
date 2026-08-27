@@ -51,4 +51,12 @@ public interface ICertificateStore
     /// e.g. a <c>.pfx</c>-backed host, for which <see cref="ConvertToPem"/> already applies the current
     /// passphrase).</returns>
     bool RequiresKeyReencryption(string host);
+
+    /// <summary>Removes a host's stored certificate — its <c>.crt</c>/<c>.key</c> PEM pair and any legacy
+    /// <c>.pfx</c> file — and drops it from lookup. Used after a successful ACME revocation, so the
+    /// provisioning/renewal reconcile loop requests a fresh certificate (with a fresh key) on its next pass.</summary>
+    /// <param name="host">The host whose certificate to remove.</param>
+    /// <returns><see langword="true"/> when a certificate was found for <paramref name="host"/> and removed;
+    /// <see langword="false"/> when no certificate is stored for it.</returns>
+    bool Remove(string host);
 }

@@ -25,6 +25,8 @@ internal sealed class FakeCertificateStore : ICertificateStore
 
     public bool RequiresKeyReencryption(string host) => false;
 
+    public bool Remove(string host) => certificates.TryRemove(host, out _);
+
     public IReadOnlyList<CertificateInfo> List() =>
         [.. certificates.Select(entry => new CertificateInfo(entry.Key, new DateTimeOffset(entry.Value.Leaf.NotAfter)))];
 }

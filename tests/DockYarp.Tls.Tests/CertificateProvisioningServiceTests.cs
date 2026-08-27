@@ -3,6 +3,7 @@ namespace DockYarp.Tls.Tests;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -31,6 +32,25 @@ public sealed class CertificateProvisioningServiceTests
 
         certificates.Find("app.local").Should().NotBeNull();
         acme.RequestCount("app.local").Should().Be(1);
+    }
+
+    /// <summary>A host whose certificate was removed (the ACME-revocation flow's own store cleanup) is treated
+    /// as needing provisioning again on the next reconcile pass — proves <c>NeedsCertificate</c>'s existing
+    /// null-check is sufficient for post-revocation re-provisioning, without any new reconcile logic.</summary>
+    [Test]
+    public async Task ReprovisionsAfterCertificateIsRemoved()
+    {
+        RouteConfigStore routes = StoreWithTlsHost();
+        FakeCertificateStore certificates = new();
+        certificates.Save("app.local", new LoadedCertificate(DefaultCertificateFactory.CreateSelfSigned("app.local"), []));
+        FakeAcmeClient acme = new();
+        CertificateProvisioningService service = Service(routes, certificates, acme, new TlsOptions());
+
+        certificates.Remove("app.local").Should().BeTrue();
+        await service.ReconcileAsync(CancellationToken.None);
+
+        certificates.Find("app.local").Should().NotBeNull();
+        acme.RequestCount("app.local").Should().Be(1, "the removed certificate must be re-provisioned, not skipped");
     }
 
     /// <summary>A wildcard host (*.example.com) is stored under its parent domain, matching
@@ -292,6 +312,10 @@ public sealed class CertificateProvisioningServiceTests
                 ? Task.FromException<LoadedCertificate>(new TimeoutException("Timed out waiting for ACME authorization."))
                 : Task.FromResult(new LoadedCertificate(DefaultCertificateFactory.CreateSelfSigned(host), []));
         }
+
+        public Task RevokeCertificateAsync(
+            string host, string? email, X509Certificate2 certificate, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
     }
 
     /// <summary>An ACME client that fails only for one named host (an <see cref="InvalidOperationException"/>,
@@ -304,6 +328,10 @@ public sealed class CertificateProvisioningServiceTests
             string.Equals(host, failingHost, StringComparison.OrdinalIgnoreCase)
                 ? Task.FromException<LoadedCertificate>(new InvalidOperationException("DNS-01 requires Tls:DnsUpdateServer..."))
                 : Task.FromResult(new LoadedCertificate(DefaultCertificateFactory.CreateSelfSigned(host), []));
+
+        public Task RevokeCertificateAsync(
+            string host, string? email, X509Certificate2 certificate, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
     }
 
     /// <summary>An ACME client that always fails with a transient-looking timeout.</summary>
@@ -312,6 +340,10 @@ public sealed class CertificateProvisioningServiceTests
         public Task<LoadedCertificate> RequestCertificateAsync(
             string host, string? email, AcmeChallengeType challengeType, CancellationToken cancellationToken) =>
             Task.FromException<LoadedCertificate>(new TimeoutException("Timed out waiting for ACME authorization."));
+
+        public Task RevokeCertificateAsync(
+            string host, string? email, X509Certificate2 certificate, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
     }
 
     /// <summary>A fake ACME client where each of two hosts waits for the other to start, so both requests
@@ -339,5 +371,9 @@ public sealed class CertificateProvisioningServiceTests
 
             return new LoadedCertificate(DefaultCertificateFactory.CreateSelfSigned(host), []);
         }
+
+        public Task RevokeCertificateAsync(
+            string host, string? email, X509Certificate2 certificate, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
     }
 }

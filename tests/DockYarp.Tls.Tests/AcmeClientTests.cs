@@ -1,17 +1,51 @@
 namespace DockYarp.Tls.Tests;
 
 using System;
+using System.IO.Abstractions.TestingHelpers;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Threading;
+using System.Threading.Tasks;
 
 using AwesomeAssertions;
 
 using DockYarp.Tls;
 
-/// <summary>Tests for <see cref="AcmeClient"/>'s chain assembly — the only part of the class that does not
-/// require a live ACME network round-trip.</summary>
+/// <summary>Tests for <see cref="AcmeClient"/>'s chain assembly and the parts of revocation that don't
+/// require a live ACME network round-trip (the network exchange itself is exercised via integration only —
+/// see the class's own remark).</summary>
 public sealed class AcmeClientTests
 {
+    /// <summary>Revoking for an (email, endpoint) pair with no persisted account key fails fast, before any
+    /// network call, rather than generating a fresh account that couldn't correspond to anything the CA
+    /// actually associates with the certificate.</summary>
+    [Test]
+    public async Task RevokeCertificate_WithNoPersistedAccount_ThrowsWithoutAttemptingTheNetwork()
+    {
+        TlsOptions options = new()
+        {
+            CertificateDirectory = "certs",
+            AcmeDirectoryUri = new Uri("https://acme.example/directory"),
+            ContactEmail = "ops@example.com",
+        };
+        AcmeClient client = new(options, new Http01ChallengeStore(), new NoOpDnsChallengeProvider(), new MockFileSystem());
+        using X509Certificate2 certificate = DefaultCertificateFactory.CreateSelfSigned("revoke.example");
+
+        Func<Task> act = async () =>
+            await client.RevokeCertificateAsync("revoke.example", null, certificate, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*No persisted ACME account*");
+    }
+
+    private sealed class NoOpDnsChallengeProvider : IDnsChallengeProvider
+    {
+        public Task PublishTxtRecordAsync(string fqdn, string value, CancellationToken cancellationToken) =>
+            throw new NotSupportedException("Not exercised by this test.");
+
+        public Task RemoveTxtRecordAsync(string fqdn, string value, CancellationToken cancellationToken) =>
+            throw new NotSupportedException("Not exercised by this test.");
+    }
+
     /// <summary>A private CA following normal ACME convention (root trusted out of band, never sent in the
     /// response) still yields a certificate carrying its intermediate — the real bug this preserves the fix for.</summary>
     [Test]

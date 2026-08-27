@@ -96,12 +96,18 @@ registration — since that would require adding RS256 (or general JWS-algorithm
 `AcmeHttpClient`, which DockYarp's ES256-only signing doesn't have today; DockYarp fails clearly (identifying
 the unsupported algorithm) rather than silently generating a new account when it finds one.
 
+**Certificate revocation** (`add-acme-certificate-revocation`, resolved): RFC 8555 §7.6 `revokeCert` is
+implemented (`AcmeHttpClient.RevokeCertificateAsync`), signed with the same persisted account key that issued
+the certificate. Reachable only via the admin dashboard's opt-in "Revoke" action
+(`AdminApi:AllowCertificateRevocation`, its own flag independent of `AllowCertificateConversion` — see
+`configuration.md`), not automatically or via `/api/*`. On success the certificate is removed from the store
+(`ICertificateStore.Remove`) so the existing provisioning/renewal reconcile loop requests a fresh certificate
+— with a fresh key — on its next pass.
+
 **Real known gaps**, from a completeness audit against RFC 8555 (not guessed), ranked by real severity for
 DockYarp's actual goal — a transparent nginx-proxy replacement, where **Let's Encrypt, not step-ca, is the
 realistic default CA** for most operators (this doc's own first assessment of the gaps below under-weighted
 that; corrected):
-- **Certificate revocation (§7.6) is not implemented** — no automated ACME-based path to revoke a certificate
-  if its private key were compromised. Tracked as its own item, `add-acme-certificate-revocation`.
 - **No `Retry-After`-aware backoff** on rate-limit or other transient errors — only `badNonce` (§6.7) gets a
   bounded retry today. Low-risk against step-ca, but a real gap against Let's Encrypt's own rate limits for
   the same reason as account persistence above. Tracked as its own item, `add-acme-retry-after-backoff`.

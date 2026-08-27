@@ -44,6 +44,7 @@ public static class DashboardEndpointMapping
         RequireHostIfConfigured(app.MapGet("/dashboard", GetDashboard), options.Host);
         RequireHostIfConfigured(app.MapPost("/dashboard/certs/{host}/convert", PostConvertAsync), options.Host);
         RequireHostIfConfigured(app.MapPost("/dashboard/certs/{host}/reencrypt", PostReencryptAsync), options.Host);
+        RequireHostIfConfigured(app.MapPost("/dashboard/certs/{host}/revoke", PostRevokeAsync), options.Host);
 
         if (options.AllowCertificateDownload)
         {
@@ -64,6 +65,7 @@ public static class DashboardEndpointMapping
             AllowCertificateConversion = services.AdminApiOptions.AllowCertificateConversion,
             AllowKeyReencryption = services.AdminApiOptions.AllowCertificateConversion
                 && services.CertificateConverter.PrivateKeyEncryptionConfigured,
+            AllowCertificateRevocation = services.AdminApiOptions.AllowCertificateRevocation,
             Status = status,
             DiscoveryStatus = discoveryStatus,
             AntiforgeryToken = services.Antiforgery.GetAndStoreTokens(context).RequestToken ?? string.Empty,
@@ -125,6 +127,27 @@ public static class DashboardEndpointMapping
         if (adminApiOptions.AllowCertificateConversion && certificateConverter.PrivateKeyEncryptionConfigured)
         {
             certificateConverter.ReencryptPrivateKey(host);
+        }
+
+        return Results.Redirect("/dashboard");
+    }
+
+    // Checks AllowCertificateRevocation itself rather than trusting the view to have hidden the form —
+    // defense in depth, same as PostConvertAsync/PostReencryptAsync.
+    private static async Task<IResult> PostRevokeAsync(
+        string host, HttpContext context, ICertificateRevoker certificateRevoker,
+        AdminApiOptions adminApiOptions, IAntiforgery antiforgery)
+    {
+        // IsRequestValidAsync (non-throwing) rather than ValidateRequestAsync + catch: an invalid token is
+        // an expected, routine outcome here, not an exceptional one.
+        if (!await antiforgery.IsRequestValidAsync(context).ConfigureAwait(false))
+        {
+            return Results.BadRequest();
+        }
+
+        if (adminApiOptions.AllowCertificateRevocation)
+        {
+            await certificateRevoker.RevokeCertificateAsync(host, context.RequestAborted).ConfigureAwait(false);
         }
 
         return Results.Redirect("/dashboard");

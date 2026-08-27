@@ -127,6 +127,26 @@ public sealed class FileCertificateStore : ICertificateStore, IDisposable
     }
 
     /// <inheritdoc />
+    public bool Remove(string host)
+    {
+        lock (gate)
+        {
+            if (!certificates.Remove(host, out LoadedCertificate? certificate))
+            {
+                return false;
+            }
+
+            DisposeCertificate(certificate);
+            hostsRequiringReencryption.Remove(host);
+
+            DeleteIfExists(PathFor(host, ".crt"));
+            DeleteIfExists(PathFor(host, ".key"));
+            DeleteIfExists(PathFor(host, ".pfx"));
+            return true;
+        }
+    }
+
+    /// <inheritdoc />
     public IReadOnlyList<CertificateInfo> List()
     {
         lock (gate)
@@ -202,6 +222,14 @@ public sealed class FileCertificateStore : ICertificateStore, IDisposable
         foreach ((string host, LoadedCertificate certificate) in pfxOnly)
         {
             certificates[host] = certificate;
+        }
+    }
+
+    private void DeleteIfExists(string path)
+    {
+        if (fileSystem.File.Exists(path))
+        {
+            fileSystem.File.Delete(path);
         }
     }
 

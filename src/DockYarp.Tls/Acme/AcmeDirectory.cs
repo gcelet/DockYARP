@@ -16,4 +16,10 @@ internal sealed record AcmeDirectory
     /// <summary>URL to create a new order.</summary>
     [JsonPropertyName("newOrder")]
     public required string NewOrder { get; init; }
+
+    /// <summary>URL to revoke a certificate (RFC 8555 §7.6).</summary>
+    /// <remarks>Optional in the directory object per RFC 8555 §7.1.1 — unlike <see cref="NewNonce"/>/
+    /// <see cref="NewAccount"/>/<see cref="NewOrder"/>, a CA is not required to support revocation.</remarks>
+    [JsonPropertyName("revokeCert")]
+    public string? RevokeCert { get; init; }
 }

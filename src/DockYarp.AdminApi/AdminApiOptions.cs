@@ -42,4 +42,13 @@ public sealed class AdminApiOptions
     /// already-served certificate). Has no effect unless <see cref="Surface"/> is
     /// <see cref="AdminApiSurface.ApiAndDashboard"/>.</remarks>
     public bool AllowCertificateConversion { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether the dashboard exposes a certificate revocation
+    /// action.</summary>
+    /// <remarks>Opt-in (default <see langword="false"/>) — its own independent setting, deliberately not
+    /// reusing <see cref="AllowCertificateConversion"/>: unlike that flag's format-only rewrites, revocation
+    /// takes the host offline (served via the self-signed fallback) until the next reconcile pass
+    /// re-provisions it, and makes an irreversible call to the ACME provider. Has no effect unless
+    /// <see cref="Surface"/> is <see cref="AdminApiSurface.ApiAndDashboard"/>.</remarks>
+    public bool AllowCertificateRevocation { get; set; }
 }

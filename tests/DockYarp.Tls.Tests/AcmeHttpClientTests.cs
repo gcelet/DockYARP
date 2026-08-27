@@ -23,6 +23,10 @@ public sealed class AcmeHttpClientTests
         {"newNonce":"https://acme.example/new-nonce","newAccount":"https://acme.example/new-account","newOrder":"https://acme.example/new-order"}
         """;
 
+    private const string DirectoryJsonWithRevoke = """
+        {"newNonce":"https://acme.example/new-nonce","newAccount":"https://acme.example/new-account","newOrder":"https://acme.example/new-order","revokeCert":"https://acme.example/revoke-cert"}
+        """;
+
     private static AcmeHttpClient NewClient(QueueHandler handler) =>
         new(new HttpClient(handler), new Uri("https://acme.example/directory"), ECDsa.Create(ECCurve.NamedCurves.nistP256));
 
@@ -95,6 +99,36 @@ public sealed class AcmeHttpClientTests
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         handler.Requests.Should().HaveCount(4, "exactly one retry attempt, not unbounded");
+    }
+
+    [Test]
+    public async Task RevokeCertificate_SignsAndPostsWhenTheDirectoryAdvertisesRevocation()
+    {
+        QueueHandler handler = new(
+        [
+            _ => JsonResponse(HttpStatusCode.OK, DirectoryJsonWithRevoke, nonce: null),
+            _ => NonceOnly("nonce-A"),
+            _ => JsonResponse(HttpStatusCode.OK, "{}", "nonce-B"),
+        ]);
+        AcmeHttpClient client = NewClient(handler);
+
+        Func<Task> act = async () => await client.RevokeCertificateAsync([1, 2, 3], CancellationToken.None);
+
+        await act.Should().NotThrowAsync();
+        handler.Requests.Should().HaveCount(3, "directory, one nonce fetch, one signed POST to revokeCert");
+        handler.Requests[2].RequestUri.Should().Be(new Uri("https://acme.example/revoke-cert"));
+    }
+
+    [Test]
+    public async Task RevokeCertificate_ThrowsClearlyWhenTheDirectoryHasNoRevokeUrl()
+    {
+        QueueHandler handler = new([_ => JsonResponse(HttpStatusCode.OK, DirectoryJson, nonce: null)]);
+        AcmeHttpClient client = NewClient(handler);
+
+        Func<Task> act = async () => await client.RevokeCertificateAsync([1, 2, 3], CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*revocation*");
+        handler.Requests.Should().HaveCount(1, "only the directory fetch — no signed request should be attempted");
     }
 
     private static HttpResponseMessage JsonResponse(HttpStatusCode status, string json, string? nonce)

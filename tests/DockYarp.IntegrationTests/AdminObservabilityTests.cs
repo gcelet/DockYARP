@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 using AwesomeAssertions;
@@ -340,6 +341,76 @@ public sealed class AdminObservabilityTests
         converter.ReencryptedHosts.Should().BeEmpty();
     }
 
+    /// <summary>No revoke action is available when <c>AllowCertificateRevocation</c> is left at its default
+    /// (<see langword="false"/>), mirroring <see cref="CertificateConversionDefaultsToDisabled"/> — its own
+    /// independent gate, not tied to <c>AllowCertificateConversion</c>.</summary>
+    [Test]
+    public async Task CertificateRevocationDefaultsToDisabled()
+    {
+        FakeCertificateRevoker revoker = new();
+        using WebApplicationFactory<Program> factory = RevocationFactory(
+            allowCertificateRevocation: false,
+            services =>
+            {
+                services.AddSingleton<ICertificateInventory>(new FakeCertificateInventory());
+                services.AddSingleton<ICertificateRevoker>(revoker);
+            });
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage response = await client.GetAsync("/dashboard");
+        string html = await response.Content.ReadAsStringAsync();
+
+        html.Should().NotContain("Revoke");
+        revoker.RevokedHosts.Should().BeEmpty();
+    }
+
+    /// <summary>Enabled: submitting the revoke form (with its real anti-forgery token) invokes the revoker for
+    /// that host.</summary>
+    [Test]
+    public async Task RevokingCertificateInvokesRevoker()
+    {
+        FakeCertificateRevoker revoker = new();
+        using WebApplicationFactory<Program> factory = RevocationFactory(
+            allowCertificateRevocation: true,
+            services =>
+            {
+                services.AddSingleton<ICertificateInventory>(new FakeCertificateInventory());
+                services.AddSingleton<ICertificateRevoker>(revoker);
+            });
+        using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        string token = await GetAntiForgeryTokenAsync(client, "/dashboard");
+
+        using HttpResponseMessage response = await client.PostAsync(
+            "/dashboard/certs/app.local/revoke",
+            new FormUrlEncodedContent([new KeyValuePair<string, string>("__RequestVerificationToken", token)]));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect, "post-redirect-get back to /dashboard");
+        revoker.RevokedHosts.Should().ContainSingle().Which.Should().Be("app.local");
+    }
+
+    /// <summary>The revoke action actually enforces anti-forgery — a request without a valid token is
+    /// rejected, not silently honored (mirrors <see cref="ConvertingWithoutAntiForgeryTokenIsRejected"/>).</summary>
+    [Test]
+    public async Task RevokingWithoutAntiForgeryTokenIsRejected()
+    {
+        FakeCertificateRevoker revoker = new();
+        using WebApplicationFactory<Program> factory = RevocationFactory(
+            allowCertificateRevocation: true,
+            services =>
+            {
+                services.AddSingleton<ICertificateInventory>(new FakeCertificateInventory());
+                services.AddSingleton<ICertificateRevoker>(revoker);
+            });
+        using HttpClient client = factory.CreateClient();
+        await GetAntiForgeryTokenAsync(client, "/dashboard"); // establishes the anti-forgery cookie, token discarded
+
+        using HttpResponseMessage response =
+            await client.PostAsync("/dashboard/certs/app.local/revoke", new FormUrlEncodedContent([]));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        revoker.RevokedHosts.Should().BeEmpty();
+    }
+
     private static async Task<string> GetAntiForgeryTokenAsync(HttpClient client, string path)
     {
         using HttpResponseMessage response = await client.GetAsync(path);
@@ -357,6 +428,17 @@ public sealed class AdminObservabilityTests
             builder.UseSetting("AdminApi:Surface", "ApiAndDashboard");
             builder.UseSetting("AdminApi:Host", "localhost");
             builder.UseSetting("AdminApi:AllowCertificateConversion", allowCertificateConversion.ToString());
+            builder.ConfigureTestServices(configureServices);
+        });
+
+    private static WebApplicationFactory<Program> RevocationFactory(
+        bool allowCertificateRevocation, Action<IServiceCollection> configureServices) =>
+        new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("AdminApi:ApiKey", ApiKey);
+            builder.UseSetting("AdminApi:Surface", "ApiAndDashboard");
+            builder.UseSetting("AdminApi:Host", "localhost");
+            builder.UseSetting("AdminApi:AllowCertificateRevocation", allowCertificateRevocation.ToString());
             builder.ConfigureTestServices(configureServices);
         });
 
@@ -419,6 +501,17 @@ public sealed class AdminObservabilityTests
         {
             ReencryptedHosts.Add(host);
             return true;
+        }
+    }
+
+    private sealed class FakeCertificateRevoker : ICertificateRevoker
+    {
+        public List<string> RevokedHosts { get; } = [];
+
+        public Task<bool> RevokeCertificateAsync(string host, CancellationToken cancellationToken)
+        {
+            RevokedHosts.Add(host);
+            return Task.FromResult(true);
         }
     }
 

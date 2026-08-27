@@ -138,6 +138,14 @@ current passphrase are flagged with a "needs re-encryption" badge. Note that enc
 **not** defend against `AllowCertificateDownload` above — DockYarp decrypts the key itself, automatically, at
 startup, to serve TLS, so it only protects against someone with filesystem/volume/backup access.
 
+Setting `AdminApi:AllowCertificateRevocation: true` (default `false`) adds a "Revoke" action to the dashboard's
+certificate table: it revokes the certificate via ACME and removes it from the store, so a fresh certificate
+(with a fresh private key) is re-provisioned on the next reconcile pass — the intended response to a
+compromised private key. **Its own independent opt-in**, not gated by `AllowCertificateConversion`: unlike
+that flag's format-only rewrites, revoking takes the host offline (served via the self-signed fallback) until
+re-provisioning completes, and makes an irreversible call to the CA. The dashboard asks for confirmation
+before submitting.
+
 ## Static configuration
 
 Point `StaticConfig:Path` at a JSON file with `Routes`, `Clusters`, and per-host `Overrides` to configure

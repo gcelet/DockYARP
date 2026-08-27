@@ -486,6 +486,52 @@ public sealed class CertificateStoreTests
         fileSystem.File.Exists(fileSystem.Path.Combine(directory, "unknown.local.crt")).Should().BeFalse();
     }
 
+    /// <summary>Remove() deletes a PEM-backed host's files and drops it from lookup.</summary>
+    [Test]
+    public void RemoveDeletesPemPairAndDropsLookup()
+    {
+        using X509Certificate2 certificate = DefaultCertificateFactory.CreateSelfSigned("revoke-me.local");
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        using FileCertificateStore store = new(new TlsOptions { CertificateDirectory = directory }, fileSystem);
+        store.Save("revoke-me.local", new LoadedCertificate(certificate, []));
+
+        store.Remove("revoke-me.local").Should().BeTrue();
+
+        store.Find("revoke-me.local").Should().BeNull();
+        fileSystem.File.Exists(fileSystem.Path.Combine(directory, "revoke-me.local.crt")).Should().BeFalse();
+        fileSystem.File.Exists(fileSystem.Path.Combine(directory, "revoke-me.local.key")).Should().BeFalse();
+    }
+
+    /// <summary>Remove() also deletes a legacy PFX file for the host, not just PEM.</summary>
+    [Test]
+    public void RemoveDeletesLegacyPfx()
+    {
+        using X509Certificate2 source = DefaultCertificateFactory.CreateSelfSigned("pfx-revoke-me.local");
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        fileSystem.AddFile(
+            fileSystem.Path.Combine(directory, "pfx-revoke-me.local.pfx"),
+            new MockFileData(source.Export(X509ContentType.Pfx)));
+        using FileCertificateStore store = new(new TlsOptions { CertificateDirectory = directory }, fileSystem);
+
+        store.Remove("pfx-revoke-me.local").Should().BeTrue();
+
+        store.Find("pfx-revoke-me.local").Should().BeNull();
+        fileSystem.File.Exists(fileSystem.Path.Combine(directory, "pfx-revoke-me.local.pfx")).Should().BeFalse();
+    }
+
+    /// <summary>Removing an unknown host is a no-op that returns false.</summary>
+    [Test]
+    public void RemoveOnUnknownHostReturnsFalse()
+    {
+        MockFileSystem fileSystem = new();
+        string directory = CertificateDirectory(fileSystem);
+        using FileCertificateStore store = new(new TlsOptions { CertificateDirectory = directory }, fileSystem);
+
+        store.Remove("unknown.local").Should().BeFalse();
+    }
+
     /// <summary>A .crt without a matching .key is skipped.</summary>
     [Test]
     public void UnpairedCertificateIsSkipped()

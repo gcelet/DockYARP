@@ -75,6 +75,7 @@
           @if (Model.AllowCertificateDownload) { <th>Download</th> }
           @if (Model.AllowCertificateConversion) { <th>Format</th> }
           @if (Model.AllowKeyReencryption) { <th>Key encryption</th> }
+          @if (Model.AllowCertificateRevocation) { <th>Revoke</th> }
         </tr>
       </thead>
       <tbody>
@@ -120,6 +121,16 @@
               {
                 <span class="badge badge-warn">needs re-encryption</span>
               }
+            </td>
+          }
+          @if (Model.AllowCertificateRevocation)
+          {
+            <td>
+              <form method="post" action="/dashboard/certs/@Uri.EscapeDataString(cert.Host)/revoke"
+                    onsubmit="return confirm('Revoke the certificate for @cert.Host? It will be removed immediately and re-provisioned on the next reconcile pass.');">
+                <input type="hidden" name="__RequestVerificationToken" value="@Model.AntiforgeryToken">
+                <button type="submit">Revoke</button>
+              </form>
             </td>
           }
         </tr>

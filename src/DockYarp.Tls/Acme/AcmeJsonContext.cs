@@ -10,6 +10,7 @@ using System.Text.Json.Serialization;
 [JsonSerializable(typeof(AcmeNewOrderRequest))]
 [JsonSerializable(typeof(AcmeOrder))]
 [JsonSerializable(typeof(AcmeFinalizeRequest))]
+[JsonSerializable(typeof(AcmeRevokeCertificateRequest))]
 [JsonSerializable(typeof(AcmeAuthorization))]
 [JsonSerializable(typeof(AcmeProblemDetails))]
 [JsonSerializable(typeof(object))]

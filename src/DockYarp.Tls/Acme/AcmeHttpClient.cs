@@ -111,6 +111,28 @@ internal sealed class AcmeHttpClient(HttpClient http, Uri directoryUri, ECDsa ac
         return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Revokes a certificate (RFC 8555 §7.6) — no revocation reason is sent (the field is optional
+    /// and no operator-facing reason selection exists).</summary>
+    /// <param name="certificateDer">The DER-encoded certificate to revoke.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <exception cref="InvalidOperationException">The CA's directory does not advertise a <c>revokeCert</c>
+    /// URL (RFC 8555 marks it optional — not every CA supports revocation).</exception>
+    public async Task RevokeCertificateAsync(byte[] certificateDer, CancellationToken cancellationToken)
+    {
+        AcmeDirectory acmeDirectory = await DirectoryAsync(cancellationToken).ConfigureAwait(false);
+        string revokeUrl = acmeDirectory.RevokeCert
+            ?? throw new InvalidOperationException("The ACME server's directory does not support certificate revocation.");
+
+        AcmeRevokeCertificateRequest request = new()
+        {
+            Certificate = System.Buffers.Text.Base64Url.EncodeToString(certificateDer),
+        };
+        using HttpResponseMessage response = await SendSignedAsync(
+            revokeUrl, request, AcmeJsonContext.Default.AcmeRevokeCertificateRequest, cancellationToken)
+            .ConfigureAwait(false);
+        response.Dispose();
+    }
+
     private async Task<AcmeDirectory> DirectoryAsync(CancellationToken cancellationToken)
     {
         if (directory is not null)

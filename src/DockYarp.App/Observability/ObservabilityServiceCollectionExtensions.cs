@@ -37,6 +37,7 @@ internal static class ObservabilityServiceCollectionExtensions
         services.AddSingleton<ICertificateInventory, CertificateInventoryAdapter>();
         services.AddSingleton<ICertificateExporter, CertificateExporterAdapter>();
         services.AddSingleton<ICertificateConverter, CertificateConverterAdapter>();
+        services.AddSingleton<ICertificateRevoker, CertificateRevokerAdapter>();
         services.AddDockYarpDashboard(adminApiOptions);
 
         // Contribute the admin host to TLS provisioning (opt-in via AdminApi:LetsEncrypt). Registered after
