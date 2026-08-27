@@ -12,7 +12,7 @@ DockYarp obtains and serves HTTPS certificates automatically for hosts that decl
 | `SniCertificateSelector` | Picks the exact host certificate, then a wildcard parent, else the fallback. |
 | `KestrelTlsConfigurator` | Wires the selector into Kestrel's HTTPS defaults. |
 | `IHttp01ChallengeStore` / `Http01ChallengeMiddleware` | Serves `/.well-known/acme-challenge/{token}`. |
-| `IAcmeClient` / `CertesAcmeClient` | Obtains a certificate via ACME HTTP-01 or DNS-01 (Certes). |
+| `IAcmeClient` / `AcmeClient` | Obtains a certificate via ACME HTTP-01 or DNS-01 (hand-rolled RFC 8555 client — see [Client maintenance & security](#client-maintenance--security)). |
 | `IDnsChallengeProvider` / `Rfc2136DnsChallengeProvider` | Publishes/removes the `_acme-challenge` TXT record for DNS-01, via RFC 2136 (Dynamic DNS Update). |
 | `CertificateProvisioningService` | Acquires missing certificates and renews near-expiry ones. |
 
@@ -63,7 +63,58 @@ base domain exactly like a mounted wildcard certificate, so the same SNI lookup 
 
 The real ACME exchange with the CA cannot run in the test suite (no CA). It lives behind `IAcmeClient`;
 tests drive the whole orchestration (acquire → store → select; renew) with a fake client, so only the
-Certes↔CA network exchange is untested (validate manually against Let's Encrypt **staging** / Pebble).
+`AcmeClient`↔CA network exchange is untested at the unit level (proven instead by the e2e suite against a
+real step-ca — see [Client maintenance & security](#client-maintenance--security)).
+
+## Client maintenance & security
+
+`AcmeClient` (`src/DockYarp.Tls/AcmeClient.cs` + `src/DockYarp.Tls/Acme/`) is a hand-rolled ACME v2 (RFC 8555)
+client, not a NuGet package — a deliberate exception to this project's default preference for a maintained
+package over self-maintained protocol code. It replaced Certes (`investigate-certes-aot-alternative`,
+archived at `openspec/changes/archive/2026-08-25-investigate-certes-aot-alternative/`, full research there)
+specifically because no candidate at the time was both AOT-clean and trustworthy enough for a TLS-critical
+dependency — not because hand-rolling is preferred in general.
+
+**Real scope**: single-host orders, HTTP-01 and DNS-01 challenges, ES256 only, a fresh ACME account created
+per certificate request (no persisted account across requests — see the first gap below, the most
+significant one). Verified end-to-end against real step-ca via the e2e suite (`TlsTests.cs`), not just unit
+tests — a hand-rolled protocol client's real bugs (e.g. the `Content-Type` charset RFC 8555 §6.2 rejects,
+found this way) surface against a live server, not structural unit tests alone.
+
+**Real known gaps**, from a completeness audit against RFC 8555 (not guessed), ranked by real severity for
+DockYarp's actual goal — a transparent nginx-proxy replacement, where **Let's Encrypt, not step-ca, is the
+realistic default CA** for most operators (this doc's own first assessment of the gaps below under-weighted
+that; corrected):
+- **No persisted ACME account is the most significant gap, not a low-priority nicety.** A fresh account is
+  created on every single certificate request — including every renewal (every ~60 days per host by
+  default). Against step-ca (self-hosted, no default rate limits) this is mostly clutter; against
+  **Let's Encrypt, this is a real production risk**: LE applies real per-account limits (failed-validation
+  and new-account-creation limits among them), and creating a throwaway account on every renewal, across
+  potentially many hosts, is exactly the pattern LE's own abuse detection is built to flag. It also breaks
+  migration continuity: an operator moving from nginx-proxy (whose acme-companion sidecar persists one
+  account) would have DockYarp silently abandon that existing account relationship rather than reuse it.
+  Certes had this same gap (a fresh `AcmeContext`/account per call) — this is not a regression the hand-roll
+  introduced, but a pre-existing gap the audit surfaced. Tracked as its own item,
+  `add-acme-account-persistence`, high priority.
+- **Certificate revocation (§7.6) is not implemented** — no automated ACME-based path to revoke a certificate
+  if its private key were compromised. Tracked as its own item, `add-acme-certificate-revocation`.
+- **No `Retry-After`-aware backoff** on rate-limit or other transient errors — only `badNonce` (§6.7) gets a
+  bounded retry today. Low-risk against step-ca, but a real gap against Let's Encrypt's own rate limits for
+  the same reason as account persistence above. Tracked as its own item, `add-acme-retry-after-backoff`.
+- **Currently not applicable given non-persisted accounts, revisit once `add-acme-account-persistence`
+  ships**: account update/deactivation (§7.3.2/§7.3.6), account key rollover (§7.3.5), pre-authorization
+  (§7.4.1), and reusing an already-`valid` authorization from a prior order (a real optimization once an
+  account — and therefore its authorizations — persists across renewals, not just a theoretical one).
+- TLS-ALPN-01 challenge type: not implemented, not needed (DockYarp doesn't offer that challenge path).
+- ACME Renewal Info (ARI, a newer draft extension beyond core RFC 8555): not implemented — a future-watch
+  item, not a current gap (Certes itself predates ARI too).
+
+**When to reconsider a NuGet package**: re-check the ecosystem (at minimum, the 3 forks and 2 further leads
+already investigated in the archived research above — don't assume the landscape is unchanged) if any of the
+following happens:
+- A maintained, AOT-clean ACME client package appears or an existing one closes its Newtonsoft.Json gap.
+- A security advisory affects ACME client implementations generally (JWS/nonce handling, TLS validation, ...).
+- DockYarp's own requirements grow beyond the current scope (e.g. certificate revocation becomes a real need).
 
 ## Configuration (`TlsOptions`)
 
