@@ -272,6 +272,27 @@ Because this is a copy, your original nginx-proxy installation's files are **nev
 wrong after switching traffic to DockYARP, point traffic back at nginx-proxy and restart its stack — nothing
 about the migration prevents that, at any point.
 
+### Your ACME account (optional, but recommended against public Let's Encrypt)
+
+DockYARP persists one ACME account per (contact email, ACME directory endpoint) pair and reuses it for every
+certificate request and renewal, the same way `acme-companion` does — rather than starting fresh. If you skip
+this step, DockYARP simply registers a **new** account on its first request; your certificates still work, but
+you lose continuity with the account `acme-companion` already had reused across your existing certificates. Skipping
+this is more of a concern against public Let's Encrypt (which applies per-account rate limits) than against a
+private CA like `step-ca`.
+
+To carry the existing account over: `acme-companion`'s underlying `acme.sh` client stores each account's key as
+a PEM file (`account.key`) under its own persisted state, keyed by CA endpoint (and, on some installations, by
+contact email). Locate it — `docker exec` into the `acme-companion` container and look under its ACME state
+volume — and copy it to
+`{CertificateDirectory}/acme/{LETSENCRYPT_EMAIL}/{acme-directory-host}/{acme-directory-path}/account.key`
+(matching the certificate host you set `LETSENCRYPT_EMAIL` and `Tls:AcmeDirectoryUri` to) **before** DockYARP's
+first request for that host. Check the key's algorithm first —
+`openssl pkey -in account.key -noout -text | head -1` should show a 256-bit key (EC P-256); DockYARP only
+supports importing an **EC** account key today, not RSA (`acme.sh`'s own default when no EC key length was
+explicitly requested at registration). If your key is RSA, skip this step — DockYARP will register a new
+account on first use.
+
 ## Private ACME certificate authority
 
 If your certificates come from a private ACME certificate authority (for example a self-hosted `step-ca`

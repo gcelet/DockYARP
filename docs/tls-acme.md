@@ -75,36 +75,41 @@ archived at `openspec/changes/archive/2026-08-25-investigate-certes-aot-alternat
 specifically because no candidate at the time was both AOT-clean and trustworthy enough for a TLS-critical
 dependency — not because hand-rolling is preferred in general.
 
-**Real scope**: single-host orders, HTTP-01 and DNS-01 challenges, ES256 only, a fresh ACME account created
-per certificate request (no persisted account across requests — see the first gap below, the most
-significant one). Verified end-to-end against real step-ca via the e2e suite (`TlsTests.cs`), not just unit
-tests — a hand-rolled protocol client's real bugs (e.g. the `Content-Type` charset RFC 8555 §6.2 rejects,
-found this way) surface against a live server, not structural unit tests alone.
+**Real scope**: single-host orders, HTTP-01 and DNS-01 challenges, ES256 only, one persisted ACME account per
+(contact email, ACME directory endpoint) pair — see "Persisted ACME account" below. Verified end-to-end
+against real step-ca via the e2e suite (`TlsTests.cs`), not just unit tests — a hand-rolled protocol client's
+real bugs (e.g. the `Content-Type` charset RFC 8555 §6.2 rejects, found this way) surface against a live
+server, not structural unit tests alone.
+
+**Persisted ACME account** (`add-acme-account-persistence`, resolved): the account key is generated once per
+(contact email, ACME directory endpoint) pair — not per request — and persisted at
+`{CertificateDirectory}/acme/{email}/{directory-host}/{directory-path}/account.key` (an EC P-256 PEM),
+reused for every subsequent certificate request/renewal sharing that pair, relying on RFC 8555 `newAccount`
+idempotency. Scoping by contact email (not just by CA endpoint) matters: DockYarp already supports a
+per-host `LETSENCRYPT_EMAIL`, and `newAccount` resolves an account by JWK, not by the request's `Contact`
+field — so a host declaring a different email than another host still gets its own independent account,
+unchanged from before persistence. An operator migrating an existing **EC (P-256)**-keyed
+nginx-proxy/acme-companion account can place that account's PEM key at the resolved path before DockYarp's
+first request for that (email, endpoint) pair to continue using it. **RSA-keyed account import is not
+supported** — acme.sh's own default account-key algorithm when no EC key length is explicitly requested at
+registration — since that would require adding RS256 (or general JWS-algorithm-negotiation) support to
+`AcmeHttpClient`, which DockYarp's ES256-only signing doesn't have today; DockYarp fails clearly (identifying
+the unsupported algorithm) rather than silently generating a new account when it finds one.
 
 **Real known gaps**, from a completeness audit against RFC 8555 (not guessed), ranked by real severity for
 DockYarp's actual goal — a transparent nginx-proxy replacement, where **Let's Encrypt, not step-ca, is the
 realistic default CA** for most operators (this doc's own first assessment of the gaps below under-weighted
 that; corrected):
-- **No persisted ACME account is the most significant gap, not a low-priority nicety.** A fresh account is
-  created on every single certificate request — including every renewal (every ~60 days per host by
-  default). Against step-ca (self-hosted, no default rate limits) this is mostly clutter; against
-  **Let's Encrypt, this is a real production risk**: LE applies real per-account limits (failed-validation
-  and new-account-creation limits among them), and creating a throwaway account on every renewal, across
-  potentially many hosts, is exactly the pattern LE's own abuse detection is built to flag. It also breaks
-  migration continuity: an operator moving from nginx-proxy (whose acme-companion sidecar persists one
-  account) would have DockYarp silently abandon that existing account relationship rather than reuse it.
-  Certes had this same gap (a fresh `AcmeContext`/account per call) — this is not a regression the hand-roll
-  introduced, but a pre-existing gap the audit surfaced. Tracked as its own item,
-  `add-acme-account-persistence`, high priority.
 - **Certificate revocation (§7.6) is not implemented** — no automated ACME-based path to revoke a certificate
   if its private key were compromised. Tracked as its own item, `add-acme-certificate-revocation`.
 - **No `Retry-After`-aware backoff** on rate-limit or other transient errors — only `badNonce` (§6.7) gets a
   bounded retry today. Low-risk against step-ca, but a real gap against Let's Encrypt's own rate limits for
   the same reason as account persistence above. Tracked as its own item, `add-acme-retry-after-backoff`.
-- **Currently not applicable given non-persisted accounts, revisit once `add-acme-account-persistence`
-  ships**: account update/deactivation (§7.3.2/§7.3.6), account key rollover (§7.3.5), pre-authorization
-  (§7.4.1), and reusing an already-`valid` authorization from a prior order (a real optimization once an
-  account — and therefore its authorizations — persists across renewals, not just a theoretical one).
+- **Now that an account persists across renewals, these become real (not just theoretical) opportunities —
+  none implemented, no operator-facing need identified yet**: account update/deactivation (§7.3.2/§7.3.6),
+  account key rollover (§7.3.5), pre-authorization (§7.4.1), and reusing an already-`valid` authorization from
+  a prior order (RFC 8555 §7.5 — deliberately out of scope for `add-acme-account-persistence`, a fresh
+  challenge is still requested every time). Revisit only if a real need surfaces.
 - TLS-ALPN-01 challenge type: not implemented, not needed (DockYarp doesn't offer that challenge path).
 - ACME Renewal Info (ARI, a newer draft extension beyond core RFC 8555): not implemented — a future-watch
   item, not a current gap (Certes itself predates ARI too).

@@ -109,7 +109,7 @@ the container must listen on 80/443 directly — see [Examples](/docs/examples/#
 
 | Key | Default | Purpose |
 |-----|---------|---------|
-| `CertificateDirectory` | `certs` | Directory for the certificate store and Data Protection keys. |
+| `CertificateDirectory` | `certs` | Directory for the certificate store, Data Protection keys, and persisted ACME account keys (`acme/{email}/{ca-host}/{ca-path}/account.key`, one per contact email + ACME endpoint pair). |
 | `AcmeDirectoryUri` | Let's Encrypt **staging** | ACME directory endpoint (set the production URL to issue trusted certs). |
 | `AcceptTermsOfService` | `false` | Must be `true` for ACME issuance. |
 | `ContactEmail` | — | Default ACME contact when a host declares no `LETSENCRYPT_EMAIL`. |

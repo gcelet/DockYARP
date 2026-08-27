@@ -1,6 +1,7 @@
 namespace DockYarp.Tls;
 
 using System;
+using System.IO.Abstractions;
 using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
@@ -14,11 +15,16 @@ using DockYarp.Tls.Acme;
 /// <summary>Hand-rolled ACME v2 (RFC 8555) client, supporting the HTTP-01 and DNS-01 challenges.</summary>
 /// <remarks>Performs the real network exchange with the CA; exercised via integration only, not unit tests
 /// (mirrors the prior Certes-backed client's own established pattern — <c>AcmeJwsTests</c>/
-/// <c>AcmeHttpClientTests</c> cover the parts testable without a live CA).</remarks>
+/// <c>AcmeHttpClientTests</c> cover the parts testable without a live CA). The account key is persisted and
+/// reused per (contact email, ACME directory endpoint) pair via <see cref="AcmeAccountKeyStore"/> — accounts
+/// are not created fresh per request.</remarks>
 /// <param name="options">TLS options (ACME directory, contact email, ToS).</param>
 /// <param name="challenges">The HTTP-01 challenge store.</param>
 /// <param name="dnsChallenges">The DNS-01 challenge provider (RFC 2136).</param>
-public sealed class AcmeClient(TlsOptions options, IHttp01ChallengeStore challenges, IDnsChallengeProvider dnsChallenges) : IAcmeClient
+/// <param name="fileSystem">Filesystem abstraction used to load/persist the ACME account key.</param>
+public sealed class AcmeClient(
+    TlsOptions options, IHttp01ChallengeStore challenges, IDnsChallengeProvider dnsChallenges, IFileSystem fileSystem)
+    : IAcmeClient
 {
     /// <inheritdoc />
     public async Task<LoadedCertificate> RequestCertificateAsync(
@@ -27,7 +33,8 @@ public sealed class AcmeClient(TlsOptions options, IHttp01ChallengeStore challen
         string contact = email ?? options.ContactEmail
             ?? throw new InvalidOperationException("An ACME contact email is required.");
 
-        using ECDsa accountKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        using ECDsa accountKey = AcmeAccountKeyStore.LoadOrCreate(
+            fileSystem, options.CertificateDirectory, options.AcmeDirectoryUri, contact);
         using ECDsa leafKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         using HttpClient httpClient = new();
         AcmeHttpClient acme = new(httpClient, options.AcmeDirectoryUri, accountKey);

@@ -71,6 +71,43 @@ public sealed class TlsTests : E2ETestBase
             "dns01.example", "the wildcard order's CN is *.dns01.example, stored under the parent domain");
     }
 
+    /// <summary>Two independently-provisioned hosts sharing the fixture's single global contact email
+    /// (<c>tls.local</c> via HTTP-01, the DNS-01 wildcard order) reuse the same persisted ACME account key
+    /// rather than each creating their own — the account-key file is unchanged after the second order
+    /// completes.</summary>
+    /// <remarks>
+    /// The account key path is (contact email, ACME directory endpoint)-scoped, not per-host, so by
+    /// construction there is only ever one file for this fixture's single email/endpoint — this proves that
+    /// invariant holds across two genuinely separate ACME orders, not just that the path resolves to one file.
+    /// </remarks>
+    [Test]
+    [Retry(2)]
+    public async Task AcmeAccountKey_IsSharedAcrossIndependentlyProvisionedHosts()
+    {
+        TlsHarness.ServerCertificateHolder capture = new();
+        using HttpClient client = TlsHarness.CreateClient(capture);
+
+        await PollAsync(
+            client,
+            static () => new HttpRequestMessage(HttpMethod.Get, "https://tls.local/"),
+            _ => capture.ServerCertificate?.Issuer.Contains(CaIssuerMarker, StringComparison.Ordinal) == true,
+            TlsPollSeconds);
+
+        File.Exists(E2EPaths.AcmeAccountKeyFile).Should().BeTrue();
+        byte[] accountKeyAfterFirstHost = await File.ReadAllBytesAsync(E2EPaths.AcmeAccountKeyFile);
+
+        await PollAsync(
+            client,
+            static () => new HttpRequestMessage(HttpMethod.Get, "https://sub.dns01.example/"),
+            _ => capture.ServerCertificate?.Issuer.Contains(CaIssuerMarker, StringComparison.Ordinal) == true,
+            TlsPollSeconds);
+
+        byte[] accountKeyAfterSecondHost = await File.ReadAllBytesAsync(E2EPaths.AcmeAccountKeyFile);
+        accountKeyAfterSecondHost.Should().Equal(
+            accountKeyAfterFirstHost,
+            "a second, independently-provisioned host sharing the same contact email must reuse the persisted account, not regenerate it");
+    }
+
     /// <summary>The intermediate is actually sent during the handshake for an ACME-issued certificate: a client
     /// trusting only the step-ca root — no intermediate, no system/OS trust store — still builds a complete
     /// chain. This is the regression test for the bare-ServerCertificate bug: pre-fix, SslStream built its own

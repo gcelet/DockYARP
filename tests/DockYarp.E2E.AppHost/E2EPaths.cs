@@ -33,6 +33,13 @@ public static class E2EPaths
     /// bind-mounted at the container's <c>/certs</c>.</summary>
     public static string CertsDirectory { get; } = Path.Combine(Path.GetTempPath(), "dockyarp-e2e", "certs");
 
+    /// <summary>The persisted ACME account key path <c>AcmeAccountKeyStore</c> resolves for this fixture's
+    /// <c>Tls__ContactEmail</c>/<c>Tls__AcmeDirectoryUri</c> (see Program.cs) — literal on purpose, matching
+    /// this project's established convention for fixture-matching literals (e.g. the TSIG key in
+    /// TlsHarness.PrepareDnsZone).</summary>
+    public static string AcmeAccountKeyFile { get; } = Path.Combine(
+        CertsDirectory, "acme", "e2e@dockyarp.local", "stepca", "acme", "acme", "directory", "account.key");
+
     /// <summary>The directory holding the BIND9 config staged for the DNS-01 e2e scenario (bind-mounted
     /// read-only; the <c>bind9</c> container copies these into its own writable layer at startup, so no
     /// host-bind-mount write permission is ever needed — see the <c>bind9</c> resource in Program.cs).</summary>

@@ -1,11 +1,14 @@
 namespace DockYarp.E2E.Tests;
 
 using System;
+using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
 using AwesomeAssertions;
+
+using DockYarp.E2E.AppHost;
 
 /// <summary>Asserts that persisted state survives a container recreation: a provisioned certificate is reused.</summary>
 [Category("EndToEnd")]
@@ -41,6 +44,10 @@ public sealed class RestartPersistenceTests : E2ETestBase
         // fallback there is nothing persisted to reuse, so the assertion below would be meaningless.
         string thumbprintBefore = await ServedAcmeThumbprintAsync(ProvisionPollSeconds);
 
+        File.Exists(E2EPaths.AcmeAccountKeyFile).Should().BeTrue(
+            "provisioning a real certificate must have persisted the ACME account key at its (email, endpoint)-scoped path");
+        byte[] accountKeyBefore = await File.ReadAllBytesAsync(E2EPaths.AcmeAccountKeyFile);
+
         using CancellationTokenSource cts = new(TimeSpan.FromSeconds(RestartTimeoutSeconds));
         await AspireAppHostFixture.RestartProxyAndWaitHealthyAsync(cts.Token);
 
@@ -49,6 +56,11 @@ public sealed class RestartPersistenceTests : E2ETestBase
         thumbprintAfter.Should().Be(
             thumbprintBefore,
             "the certificate persisted to the mounted volume should be reused across a container recreation, not re-provisioned");
+
+        byte[] accountKeyAfter = await File.ReadAllBytesAsync(E2EPaths.AcmeAccountKeyFile);
+        accountKeyAfter.Should().Equal(
+            accountKeyBefore,
+            "the persisted ACME account key must survive a container recreation unchanged, not be regenerated");
     }
 
     // Polls tls.local over HTTPS until the served certificate is the ACME-issued one and returns its thumbprint.

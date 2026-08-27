@@ -33,6 +33,7 @@ runtime behavior through the real proxy.
 | · `EnvVar_OverridesSameNamedLabel` | Env value wins over a same-named label. |
 | **TlsTests** · `AcmeCertificate_IsProvisionedForHost` | ACME (step-ca) provisions a cert for `LETSENCRYPT_HOST`. |
 | · `AcmeWildcardCertificate_IsProvisionedViaDns01` | `DOCKYARP_ACME_CHALLENGE=dns-01` provisions a real wildcard certificate via RFC 2136 against a throwaway BIND9 authority — proves the hand-rolled DNS UPDATE/TSIG code, the DNS-01 challenge flow, and the wildcard parent-domain SNI fallback together, end to end. |
+| · `AcmeAccountKey_IsSharedAcrossIndependentlyProvisionedHosts` | Two independently-provisioned hosts (HTTP-01 `tls.local`, DNS-01 wildcard) sharing one contact email reuse the same persisted ACME account key, not one each. |
 | · `UnknownHost_UsesSelfSignedFallback` | Unknown SNI host → the self-signed fallback certificate. |
 | · `HttpRequest_RedirectsToHttps` | HTTP→HTTPS redirect on the edge. |
 | · `Hsts_HeaderIsPresentOverHttps` | Per-host `HSTS` header served over HTTPS. |
@@ -47,7 +48,7 @@ runtime behavior through the real proxy.
 | **SecurityTuningTests** · `BasicAuth_RejectsWithoutCredentials` / `_AcceptsWithCredentials` | Per-route Basic Auth through the real proxy. |
 | · `MaxBodySize_RejectsOversizedBody` | `DOCKYARP_MAX_BODY_SIZE` rejects an oversized body. |
 | · `ProxyTimeout_CancelsSlowResponse` | `DOCKYARP_PROXY_TIMEOUT` cancels a slow backend response. |
-| **RestartPersistenceTests** · `ProvisionedCertificate_IsReusedAfterRestart` | A provisioned certificate survives a proxy restart (persistent store + Data Protection). |
+| **RestartPersistenceTests** · `ProvisionedCertificate_IsReusedAfterRestart` | A provisioned certificate — and its persisted ACME account key — survives a proxy restart (persistent store + Data Protection). |
 | **AdminApiTests** · `Routes_ReflectDiscoveredContainers` / `Health_ReportsDiscoveryConnected` / `Routes_RejectMissingApiKey` | The admin API reflects live discovery and enforces the API key. |
 | **ProxyProtocolTests** · `ProxyProtocolV1_…` / `ProxyProtocolV2_…` | A PROXY v1/v2 header on the edge recovers the real client IP into `X-Real-IP` / `X-Forwarded-For` (dedicated `Server:EnableProxyProtocol` instance). |
 | **HostNetworkModeTests** · `HostNetworkBackend_IsReachedThroughDockYarp` | `Docker:HostAddress` reaches a real `--network host` backend created outside DCP (`NonDcpHarness`). **Requires Docker Desktop's "Enable host networking" beta setting on Windows/Mac** — without it, `--network host` doesn't route to the real host and this test fails locally with 502s (not a DockYarp bug); native Linux (this project's CI runner) needs no such setting. |

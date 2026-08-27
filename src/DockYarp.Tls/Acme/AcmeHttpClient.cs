@@ -13,8 +13,11 @@ using System.Threading.Tasks;
 
 /// <summary>Low-level ACME v2 (RFC 8555) wire operations: directory discovery, replay-nonce tracking,
 /// JWS(ES256)-signed requests (delegating to <see cref="AcmeJws"/>), and the one bounded retry RFC 8555
-/// §6.7 documents for a stale nonce. One instance is scoped to a single account key, matching Certes' own
-/// per-order-request <c>AcmeContext</c> lifetime — a fresh account is created per certificate request.</summary>
+/// §6.7 documents for a stale nonce. One instance is scoped to a single account key; a fresh instance is
+/// created per certificate request, but the key it's constructed with is persisted and reused across
+/// requests via <see cref="AcmeAccountKeyStore"/> — <see cref="CreateAccountAsync"/> relies on
+/// <c>newAccount</c>'s own idempotency to resolve repeated calls to the same account rather than a new one
+/// each time.</summary>
 /// <param name="http">The HTTP client to send ACME requests through.</param>
 /// <param name="directoryUri">The ACME server's directory URL.</param>
 /// <param name="accountKey">The account's ES256 key — signs every request from <see cref="CreateAccountAsync"/> on.</param>

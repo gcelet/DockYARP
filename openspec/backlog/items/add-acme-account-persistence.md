@@ -57,9 +57,22 @@ Not yet — real design questions to resolve, not assumed:
    shouldn't be.)
 2. **Migration path**: can DockYarp *import* an existing nginx-proxy/acme-companion account key (so a
    migrating operator keeps their real, existing LE account rather than starting a new one that just happens
-   to persist going forward)? What format does acme-companion actually store its account key in, and is
-   converting it into DockYarp's own key format realistic? This needs real investigation before assuming
-   either "yes, trivial" or "no, out of scope."
+   to persist going forward)? Real investigation done (reading `acme.sh`'s own source, and cross-checked
+   against a real operator installation):
+   - acme.sh (what acme-companion wraps) stores the account key as a PEM private key, one per registered CA
+     endpoint, under a path keyed by the CA's host+directory-path — confirmed both from source and from a
+     real installation's on-disk layout.
+   - **Key algorithm varies by operator choice, not a fixed format**: acme.sh's own default is RSA 2048
+     unless the operator explicitly requested an EC key at registration time (`--accountkeylength ec-256` or
+     similar) — confirmed from source. A real installation checked during this investigation turned out to
+     be a 256-bit EC key (i.e. P-256, matching DockYarp's own ES256-only `AcmeClient` directly) — proving
+     EC-keyed accounts do occur in practice, not just Certes'/DockYarp's convenience — but this is one data
+     point, not a guarantee: an RSA-keyed account is plausibly just as common and DockYarp's client has no
+     RS256 (or general JWS-algorithm-negotiation) support today.
+   - **Realistic scope for this item**: support importing an EC (P-256) PEM account key directly — this
+     covers a real, confirmed-to-exist subset of installations at low complexity. Treat RSA-keyed account
+     import as explicitly out of scope for this item (would need RS256 JWS support added to `AcmeHttpClient`
+     first) — worth its own follow-up item if there's real operator demand, not pre-built speculatively.
 3. First-run behavior: if no persisted key exists yet (fresh install, not a migration), generate one and
    persist it immediately — this is the straightforward default case regardless of the migration question.
 4. Once persisted, does `AcmeClient` gain the "reuse an already-`valid` authorization" optimization (RFC
