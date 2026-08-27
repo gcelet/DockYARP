@@ -102,6 +102,97 @@ public sealed class AcmeHttpClientTests
     }
 
     [Test]
+    public async Task SendSigned_RetriesOnceOnRateLimitedWithRetryAfterThenSucceeds()
+    {
+        QueueHandler handler = new(
+        [
+            _ => JsonResponse(HttpStatusCode.OK, DirectoryJson, nonce: null),
+            _ => NonceOnly("nonce-A"),
+            _ => RateLimitedResponse(retryAfterSeconds: 1, "nonce-B"),
+            _ => OrderCreatedResponse("""{"status":"pending","authorizations":[],"finalize":"https://acme.example/finalize/1"}""", "nonce-C"),
+        ]);
+        AcmeHttpClient client = NewClient(handler);
+
+        System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        AcmeOrderCreated created = await client.CreateOrderAsync("app.local", CancellationToken.None);
+        stopwatch.Stop();
+
+        created.Order.Status.Should().Be("pending");
+        handler.Requests.Should().HaveCount(4, "directory, nonce fetch, one rate-limited POST, one retried POST");
+        stopwatch.Elapsed.Should().BeGreaterThanOrEqualTo(
+            TimeSpan.FromMilliseconds(900), "the 1s Retry-After must actually be awaited, not skipped");
+    }
+
+    [Test]
+    public async Task SendSigned_RateLimitedWithoutRetryAfter_ThrowsImmediately()
+    {
+        QueueHandler handler = new(
+        [
+            _ => JsonResponse(HttpStatusCode.OK, DirectoryJson, nonce: null),
+            _ => NonceOnly("nonce-A"),
+            _ => JsonResponse(HttpStatusCode.TooManyRequests, """{"type":"urn:ietf:params:acme:error:rateLimited","detail":"slow down"}""", "nonce-B"),
+        ]);
+        AcmeHttpClient client = NewClient(handler);
+
+        Func<Task> act = async () => await client.CreateOrderAsync("app.local", CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*slow down*");
+        handler.Requests.Should().HaveCount(3, "no Retry-After to honor, so no retry — same as any other error");
+    }
+
+    [Test]
+    public async Task SendSigned_NonRateLimitedErrorWithRetryAfter_ThrowsImmediately()
+    {
+        QueueHandler handler = new(
+        [
+            _ => JsonResponse(HttpStatusCode.OK, DirectoryJson, nonce: null),
+            _ => NonceOnly("nonce-A"),
+            _ => RateLimitedResponse(retryAfterSeconds: 1, "nonce-B", problemType: "urn:ietf:params:acme:error:unauthorized"),
+        ]);
+        AcmeHttpClient client = NewClient(handler);
+
+        Func<Task> act = async () => await client.CreateOrderAsync("app.local", CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        handler.Requests.Should().HaveCount(3, "Retry-After is only honored for a rateLimited error, not others");
+    }
+
+    [Test]
+    public async Task GetAuthorization_SurfacesRetryAfterFromTheResponse()
+    {
+        QueueHandler handler = new(
+        [
+            _ => JsonResponse(HttpStatusCode.OK, DirectoryJson, nonce: null),
+            _ => NonceOnly("nonce-A"),
+            _ => AuthorizationResponseWithRetryAfter("""{"status":"pending","challenges":[]}""", "nonce-B", retryAfterSeconds: 5),
+        ]);
+        AcmeHttpClient client = NewClient(handler);
+
+        AcmePollResult<AcmeAuthorization> result =
+            await client.GetAuthorizationAsync("https://acme.example/authz/1", CancellationToken.None);
+
+        result.Resource.Status.Should().Be("pending");
+        result.RetryAfter.Should().Be(TimeSpan.FromSeconds(5));
+    }
+
+    [Test]
+    public async Task GetAuthorization_WithNoRetryAfter_SurfacesNull()
+    {
+        QueueHandler handler = new(
+        [
+            _ => JsonResponse(HttpStatusCode.OK, DirectoryJson, nonce: null),
+            _ => NonceOnly("nonce-A"),
+            _ => JsonResponse(HttpStatusCode.OK, """{"status":"pending","challenges":[]}""", "nonce-B"),
+        ]);
+        AcmeHttpClient client = NewClient(handler);
+
+        AcmePollResult<AcmeAuthorization> result =
+            await client.GetAuthorizationAsync("https://acme.example/authz/1", CancellationToken.None);
+
+        result.RetryAfter.Should().BeNull();
+    }
+
+    [Test]
     public async Task RevokeCertificate_SignsAndPostsWhenTheDirectoryAdvertisesRevocation()
     {
         QueueHandler handler = new(
@@ -156,6 +247,22 @@ public sealed class AcmeHttpClientTests
     {
         HttpResponseMessage response = new(HttpStatusCode.NoContent);
         response.Headers.Add("Replay-Nonce", nonce);
+        return response;
+    }
+
+    private static HttpResponseMessage RateLimitedResponse(
+        int retryAfterSeconds, string nonce, string problemType = "urn:ietf:params:acme:error:rateLimited")
+    {
+        HttpResponseMessage response = JsonResponse(
+            HttpStatusCode.TooManyRequests, $$"""{"type":"{{problemType}}","detail":"slow down"}""", nonce);
+        response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(retryAfterSeconds));
+        return response;
+    }
+
+    private static HttpResponseMessage AuthorizationResponseWithRetryAfter(string json, string nonce, int retryAfterSeconds)
+    {
+        HttpResponseMessage response = JsonResponse(HttpStatusCode.OK, json, nonce);
+        response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(retryAfterSeconds));
         return response;
     }
 

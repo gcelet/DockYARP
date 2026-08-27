@@ -12,8 +12,9 @@ using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>Low-level ACME v2 (RFC 8555) wire operations: directory discovery, replay-nonce tracking,
-/// JWS(ES256)-signed requests (delegating to <see cref="AcmeJws"/>), and the one bounded retry RFC 8555
-/// §6.7 documents for a stale nonce. One instance is scoped to a single account key; a fresh instance is
+/// JWS(ES256)-signed requests (delegating to <see cref="AcmeJws"/>), and one bounded retry — either RFC 8555
+/// §6.7's stale-nonce case, or a <c>rateLimited</c> error carrying a <c>Retry-After</c> header (RFC 8555 §6.6,
+/// waited out before retrying). One instance is scoped to a single account key; a fresh instance is
 /// created per certificate request, but the key it's constructed with is persisted and reused across
 /// requests via <see cref="AcmeAccountKeyStore"/> — <see cref="CreateAccountAsync"/> relies on
 /// <c>newAccount</c>'s own idempotency to resolve repeated calls to the same account rather than a new one
@@ -25,6 +26,7 @@ internal sealed class AcmeHttpClient(HttpClient http, Uri directoryUri, ECDsa ac
 {
     private const string JoseContentType = "application/jose+json";
     private const string BadNonceProblemType = "urn:ietf:params:acme:error:badNonce";
+    private const string RateLimitedProblemType = "urn:ietf:params:acme:error:rateLimited";
 
     private AcmeDirectory? directory;
     private string? nonce;
@@ -63,21 +65,19 @@ internal sealed class AcmeHttpClient(HttpClient http, Uri directoryUri, ECDsa ac
         return new AcmeOrderCreated(orderUrl, order);
     }
 
-    /// <summary>Fetches an authorization resource (also used to poll its status after triggering validation).</summary>
+    /// <summary>Fetches an authorization resource (also used to poll its status after triggering validation),
+    /// alongside any <c>Retry-After</c> the CA suggested for the next poll.</summary>
     /// <param name="authorizationUrl">The authorization URL, from the order's own <c>authorizations</c> list.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    public Task<AcmeAuthorization> GetAuthorizationAsync(string authorizationUrl, CancellationToken cancellationToken) =>
-        SendSignedForJsonAsync(
-            authorizationUrl, (object?)null, AcmeJsonContext.Default.Object,
-            AcmeJsonContext.Default.AcmeAuthorization, cancellationToken);
+    public Task<AcmePollResult<AcmeAuthorization>> GetAuthorizationAsync(string authorizationUrl, CancellationToken cancellationToken) =>
+        SendSignedForPollAsync(authorizationUrl, AcmeJsonContext.Default.AcmeAuthorization, cancellationToken);
 
-    /// <summary>Re-fetches an order resource — used to poll its status after finalizing (RFC 8555 §7.4).</summary>
+    /// <summary>Re-fetches an order resource — used to poll its status after finalizing (RFC 8555 §7.4) —
+    /// alongside any <c>Retry-After</c> the CA suggested for the next poll.</summary>
     /// <param name="orderUrl">The order's own URL, from <see cref="CreateOrderAsync"/>'s result.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    public Task<AcmeOrder> GetOrderAsync(string orderUrl, CancellationToken cancellationToken) =>
-        SendSignedForJsonAsync(
-            orderUrl, (object?)null, AcmeJsonContext.Default.Object,
-            AcmeJsonContext.Default.AcmeOrder, cancellationToken);
+    public Task<AcmePollResult<AcmeOrder>> GetOrderAsync(string orderUrl, CancellationToken cancellationToken) =>
+        SendSignedForPollAsync(orderUrl, AcmeJsonContext.Default.AcmeOrder, cancellationToken);
 
     /// <summary>Triggers CA-side validation of a challenge (POST an empty object to its own URL).</summary>
     /// <param name="challengeUrl">The challenge's own <c>url</c>.</param>
@@ -178,6 +178,21 @@ internal sealed class AcmeHttpClient(HttpClient http, Uri directoryUri, ECDsa ac
             ?? throw new InvalidOperationException($"The ACME server returned an empty response for {url}.");
     }
 
+    // Same shape as SendSignedForJsonAsync (POST-as-GET, RFC 8555 §6.3), but also surfaces the response's
+    // Retry-After — needed only for the two status-polling call sites (GetAuthorizationAsync/GetOrderAsync),
+    // not for every SendSignedForJsonAsync caller (e.g. FinalizeOrderAsync).
+    private async Task<AcmePollResult<TResponse>> SendSignedForPollAsync<TResponse>(
+        string url, JsonTypeInfo<TResponse> responseTypeInfo, CancellationToken cancellationToken)
+        where TResponse : class
+    {
+        using HttpResponseMessage response = await SendSignedAsync(
+            url, (object?)null, AcmeJsonContext.Default.Object, cancellationToken).ConfigureAwait(false);
+        byte[] body = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+        TResponse resource = JsonSerializer.Deserialize(body, responseTypeInfo)
+            ?? throw new InvalidOperationException($"The ACME server returned an empty response for {url}.");
+        return new AcmePollResult<TResponse>(resource, AcmeRetryAfter.Capped(response.Headers));
+    }
+
     private async Task<HttpResponseMessage> SendSignedAsync<TRequest>(
         string url, TRequest? payload, JsonTypeInfo<TRequest> typeInfo, CancellationToken cancellationToken)
         where TRequest : class
@@ -200,6 +215,12 @@ internal sealed class AcmeHttpClient(HttpClient http, Uri directoryUri, ECDsa ac
 
             byte[] problemBody = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
             AcmeProblemDetails? problem = JsonSerializer.Deserialize(problemBody, AcmeJsonContext.Default.AcmeProblemDetails);
+
+            // Captured before Dispose(): only a rateLimited error with an actual Retry-After to honor
+            // qualifies for the wait-then-retry path below — a rateLimited error with no Retry-After still
+            // fails immediately, same as any other error type (no retry is invented without a CA-supplied
+            // duration to honor).
+            TimeSpan? rateLimitWait = problem?.Type == RateLimitedProblemType ? AcmeRetryAfter.Capped(response.Headers) : null;
             response.Dispose();
 
             if (attempt == 0 && problem?.Type == BadNonceProblemType)
@@ -207,11 +228,17 @@ internal sealed class AcmeHttpClient(HttpClient http, Uri directoryUri, ECDsa ac
                 continue;
             }
 
+            if (attempt == 0 && rateLimitWait is { } wait)
+            {
+                await Task.Delay(wait, cancellationToken).ConfigureAwait(false);
+                continue;
+            }
+
             throw new InvalidOperationException(
                 $"ACME request to {url} failed: {problem?.Detail ?? problem?.Type ?? "unknown error"}");
         }
 
-        throw new InvalidOperationException($"ACME request to {url} exhausted its badNonce retry.");
+        throw new InvalidOperationException($"ACME request to {url} exhausted its retry attempt.");
     }
 
     private static string? ReplayNonce(HttpResponseHeaders headers) =>

@@ -104,13 +104,17 @@ the certificate. Reachable only via the admin dashboard's opt-in "Revoke" action
 (`ICertificateStore.Remove`) so the existing provisioning/renewal reconcile loop requests a fresh certificate
 — with a fresh key — on its next pass.
 
+**Retry-After-aware backoff** (`add-acme-retry-after-backoff`, resolved): `AcmeHttpClient`'s bounded retry
+(previously `badNonce`-only, RFC 8555 §6.7) also covers a `rateLimited` error (§6.6) carrying a `Retry-After`
+header — waited out (capped at 60s, `AcmeRetryAfter.Cap`) before retrying once, instead of failing
+immediately. Authorization/order status polling also honors a `Retry-After` from the CA (same cap) instead of
+the fixed 2s default. Deliberately scoped to `rateLimited` only — other error types still fail immediately
+even if they happen to carry a `Retry-After`, since retrying wouldn't fix them.
+
 **Real known gaps**, from a completeness audit against RFC 8555 (not guessed), ranked by real severity for
 DockYarp's actual goal — a transparent nginx-proxy replacement, where **Let's Encrypt, not step-ca, is the
 realistic default CA** for most operators (this doc's own first assessment of the gaps below under-weighted
 that; corrected):
-- **No `Retry-After`-aware backoff** on rate-limit or other transient errors — only `badNonce` (§6.7) gets a
-  bounded retry today. Low-risk against step-ca, but a real gap against Let's Encrypt's own rate limits for
-  the same reason as account persistence above. Tracked as its own item, `add-acme-retry-after-backoff`.
 - **Now that an account persists across renewals, these become real (not just theoretical) opportunities —
   none implemented, no operator-facing need identified yet**: account update/deactivation (§7.3.2/§7.3.6),
   account key rollover (§7.3.5), pre-authorization (§7.4.1), and reusing an already-`valid` authorization from

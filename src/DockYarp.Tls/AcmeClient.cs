@@ -45,7 +45,8 @@ public sealed class AcmeClient(
 
         AcmeOrderCreated created = await acme.CreateOrderAsync(host, cancellationToken).ConfigureAwait(false);
         ChallengeContext context = new(acme, created.Order.Authorizations[0], accountKey);
-        AcmeAuthorization authorization = await acme.GetAuthorizationAsync(context.AuthorizationUrl, cancellationToken).ConfigureAwait(false);
+        AcmeAuthorization authorization =
+            (await acme.GetAuthorizationAsync(context.AuthorizationUrl, cancellationToken).ConfigureAwait(false)).Resource;
 
         if (challengeType == AcmeChallengeType.Dns01)
         {
@@ -179,22 +180,26 @@ public sealed class AcmeClient(
         }
     }
 
+    // The 2s fallback applies only when the CA sends no Retry-After; when it does, that value (already capped
+    // by AcmeHttpClient) drives the poll delay instead.
+    private static readonly TimeSpan DefaultPollDelay = TimeSpan.FromSeconds(2);
+
     private static async Task WaitForValidationAsync(AcmeHttpClient acme, string authorizationUrl, CancellationToken cancellationToken)
     {
         for (int attempt = 0; attempt < 30; attempt++)
         {
-            AcmeAuthorization authorization = await acme.GetAuthorizationAsync(authorizationUrl, cancellationToken).ConfigureAwait(false);
-            if (authorization.Status == "valid")
+            AcmePollResult<AcmeAuthorization> poll = await acme.GetAuthorizationAsync(authorizationUrl, cancellationToken).ConfigureAwait(false);
+            if (poll.Resource.Status == "valid")
             {
                 return;
             }
 
-            if (authorization.Status == "invalid")
+            if (poll.Resource.Status == "invalid")
             {
                 throw new InvalidOperationException("ACME authorization failed.");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
+            await Task.Delay(poll.RetryAfter ?? DefaultPollDelay, cancellationToken).ConfigureAwait(false);
         }
 
         throw new TimeoutException("Timed out waiting for ACME authorization.");
@@ -204,18 +209,18 @@ public sealed class AcmeClient(
     {
         for (int attempt = 0; attempt < 30; attempt++)
         {
-            AcmeOrder order = await acme.GetOrderAsync(orderUrl, cancellationToken).ConfigureAwait(false);
-            if (order.Certificate is { } certificateUrl)
+            AcmePollResult<AcmeOrder> poll = await acme.GetOrderAsync(orderUrl, cancellationToken).ConfigureAwait(false);
+            if (poll.Resource.Certificate is { } certificateUrl)
             {
                 return certificateUrl;
             }
 
-            if (order.Status == "invalid")
+            if (poll.Resource.Status == "invalid")
             {
                 throw new InvalidOperationException("ACME order finalization failed.");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
+            await Task.Delay(poll.RetryAfter ?? DefaultPollDelay, cancellationToken).ConfigureAwait(false);
         }
 
         throw new TimeoutException("Timed out waiting for the ACME order to finalize.");
