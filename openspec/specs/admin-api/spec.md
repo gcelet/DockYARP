@@ -173,9 +173,10 @@ protection is `AdminApi:Host` not being internet-exposed — the same setting th
 `AdminApi:Surface` now requires to be set (see "Admin endpoint host isolation"). The dashboard SHALL ship with
 no external CDN dependency and no JavaScript framework. Whether the dashboard is served is one of
 `AdminApi:Surface`'s three states (`ApiAndDashboard` serves it, `Api` and `Disabled` do not) — there is no
-separate independent toggle for the dashboard. The dashboard is read-only with exactly one narrow, explicitly
-opt-in exception: certificate format conversion (see "Certificate format conversion from the dashboard") — no
-other mutating action exists or is implied by this requirement.
+separate independent toggle for the dashboard. The dashboard is read-only with exactly two narrow, explicitly
+opt-in exceptions: certificate format conversion (see "Certificate format conversion from the dashboard") and
+certificate revocation (see "Certificate revocation from the dashboard") — no other mutating action exists or
+is implied by this requirement.
 
 #### Scenario: Dashboard shows current resources and status
 - **WHEN** an operator opens `/dashboard` on the admin host
@@ -326,3 +327,33 @@ by the framework's anti-forgery mechanism, the same as the PFX-to-PEM conversion
 #### Scenario: The indication clears once the action is applied
 - **WHEN** an operator triggers re-encryption for a host previously indicated as needing it
 - **THEN** the dashboard no longer indicates that host as needing re-encryption
+
+### Requirement: Certificate revocation from the dashboard
+The system SHALL support revoking a stored certificate via ACME, triggered from the admin dashboard, gated by
+an explicit opt-in setting `AdminApi:AllowCertificateRevocation` (default `false`), independent of
+`AdminApi:AllowCertificateConversion`. On a successful revocation, the certificate SHALL be removed from the
+certificate store, so it is re-provisioned — with a fresh private key — on the next provisioning/renewal
+reconcile pass, rather than continuing to be served. When `false`, no revocation action SHALL be available
+(neither rendered in the UI nor honored if invoked directly). The revocation action SHALL be a state-changing
+(POST) operation protected by the framework's anti-forgery mechanism, the same as the conversion and
+re-encryption actions.
+
+#### Scenario: Disabled by default, no action available
+- **WHEN** `AdminApi:AllowCertificateRevocation` is left at its default (`false`)
+- **THEN** no revocation action is available for any host
+
+#### Scenario: Revoking a stored certificate
+- **WHEN** `AdminApi:AllowCertificateRevocation` is `true` and an operator triggers revocation for a host with
+  a stored certificate
+- **THEN** the certificate is revoked via ACME and removed from the store, so the host has no certificate
+  until the next reconcile pass provisions a new one
+
+#### Scenario: Gated independently of certificate conversion
+- **WHEN** `AdminApi:AllowCertificateConversion` is `true` but `AdminApi:AllowCertificateRevocation` is left at
+  its default (`false`)
+- **THEN** the conversion/re-encryption actions remain available but no revocation action is available
+
+#### Scenario: The revocation action is not exploitable via a forged link
+- **WHEN** a request attempts to trigger the revocation action without a valid anti-forgery token (as a
+  same-origin form submission from the dashboard page would carry)
+- **THEN** the request is rejected, not honored
