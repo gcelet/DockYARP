@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
 
 # ---- build (driven by the Nuke pipeline via build.sh) ----
-FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:e70cdb7f80b0348f5cb85f19a8f670fca061f033d57eed12fa003d58b0e06317 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa AS build
 # The version is computed on the host (GitVersion needs .git, which is excluded from this context) and injected
 # here; the Nuke build stamps it explicitly instead of recomputing.
 ARG VERSION=0.0.0-dev
@@ -14,7 +14,7 @@ RUN bash build.sh Publish --configuration Release --version "$VERSION"
 RUN mkdir -p /certs-seed
 
 # ---- runtime (chiseled, non-root) ----
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled@sha256:48e51f2f6798897be7ac4e775c049ed8fe60d3190f637e1f9c9dc7513efa659c AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled@sha256:84def277556c2843a44fdeefbd3145d0a2e32d8f736d0c1a7b0a96b2880b0187 AS runtime
 WORKDIR /app
 COPY --from=build /src/artifacts/publish ./
 
