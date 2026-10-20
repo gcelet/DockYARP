@@ -10,14 +10,14 @@
     <PackageVersion Include="Docker.DotNet.Enhanced.Unix" Version="4.3.3" />
     <PackageVersion Include="Docker.DotNet.Enhanced.NPipe" Version="4.3.3" />
     <PackageVersion Include="Docker.DotNet.Enhanced.X509" Version="4.3.3" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.12" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.20.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.17.0-beta.1" />
     <PackageVersion Include="System.IO.Abstractions" Version="22.3.0" />
     <PackageVersion Include="YamlDotNet" Version="18.1.0" />
-    <PackageVersion Include="RazorSlices" Version="0.12.1" />
+    <PackageVersion Include="RazorSlices" Version="0.12.2" />
     <PackageVersion Include="BCrypt.Net-Next" Version="4.2.0" />
     <!-- DockYarp.Tls's own CRL parsing (add-mtls-optional-crl) uses this package's X509Crl/X509CrlParser
          directly. Do not add the newer BouncyCastle.Cryptography package alongside it: its Org.BouncyCastle.X509
@@ -55,9 +55,9 @@
   </ItemGroup>
   <!-- Build dependencies -->
   <ItemGroup>
-    <PackageVersion Include="Microsoft.Build" Version="18.10.1" />
-    <PackageVersion Include="Microsoft.Build.Tasks.Core" Version="18.10.1" />
-    <PackageVersion Include="Microsoft.Build.Utilities.Core" Version="18.10.1" />
+    <PackageVersion Include="Microsoft.Build" Version="18.11.0" />
+    <PackageVersion Include="Microsoft.Build.Tasks.Core" Version="18.11.0" />
+    <PackageVersion Include="Microsoft.Build.Utilities.Core" Version="18.11.0" />
     <PackageVersion Include="Fallout.Common" Version="10.4.0" />
   </ItemGroup>
 </Project>
