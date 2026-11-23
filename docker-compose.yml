@@ -7,7 +7,7 @@
 services:
   # Minimal, read-only Docker API gateway; the only component that touches the socket.
   dockerproxy:
-    image: tecnativa/docker-socket-proxy@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459
+    image: tecnativa/docker-socket-proxy@sha256:be1ac64f33bd82043beb504822a17ba6b71668ea1ad7cf51a9a01d27bb7ab047
     environment:
       # Discovery needs to list/inspect containers; the image enables the event stream by default.
       CONTAINERS: "1"
